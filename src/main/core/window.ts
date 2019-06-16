@@ -1,4 +1,4 @@
-import Part from "../part";
+import Part from "./module";
 
 export default class Window {
     private windowEl: HTMLDivElement;
