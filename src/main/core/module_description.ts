@@ -1,6 +1,6 @@
 import { ModuleComponentType } from "./module";
 
-export default class ModuleDefinition {
+export default class ModuleDescription {
     private instanceName: string;
     private sourceUri: string;
     private componentType: ModuleComponentType;
