@@ -7,10 +7,13 @@
         {
             "type": "chrome",
             "request": "launch",
-            "name": "Launch Chrome against localhost",
+            "name": "Launch Chrome With DevMode",
             "file": "${workspaceRoot}/index.html",
             "sourceMaps": true,
-            "webRoot": "${workspaceFolder}"
+            "webRoot": "${workspaceFolder}",
+            "runtimeArgs": [
+                "--disable-web-security"
+            ]
         }
     ]
 }

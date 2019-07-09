@@ -1,9 +1,10 @@
-import { ModuleComponentType } from "./module";
+import { ModuleType } from "./module";
 
-export default class ModuleDescription {
-    private instanceName: string;
-    private sourceUri: string;
-    private componentType: ModuleComponentType;
-    private lazySourceLoading: boolean;
-    private lazyModuleLoading: boolean;
+export default interface ModuleDescription {
+    name: string;
+    sourceUri: string;
+    componentType: ModuleType;
+    targetContainerId: string;
+    lazyModuleLoading?: boolean;
+    preloadSourceAtLazy?: boolean;
 }
