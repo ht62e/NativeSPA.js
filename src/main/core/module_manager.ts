@@ -1,7 +1,6 @@
 import ModuleDescription from "./module_description";
 import Module, { ModuleType } from "./module";
 import NativeComponent from "./native_component";
-import ModuleSwitcher from "./module_switcher";
 import RuntimeError from "./runtime_error";
 import ContainerManager from "./container_manager";
 import AbstractContainer from "./abstract_container";
@@ -9,6 +8,7 @@ import AbstractContainer from "./abstract_container";
 export default class ModuleManager {
     private static instance = new ModuleManager();
     private static ROOT_NAME: string = "root";
+    private static moduleIndexCounter = 0;
 
     private descriptions: Array<ModuleDescription>;
     private modules: Map<string, Module>;
@@ -30,7 +30,8 @@ export default class ModuleManager {
             let newModule: Module = null;
             
             if (description.componentType === ModuleType.Native) {
-                newModule = new NativeComponent(description.name, description.sourceUri);
+                newModule = new NativeComponent(description.name, description.sourceUri, 
+                                                ModuleManager.moduleIndexCounter++);
             } else {
                 throw new RuntimeError("不明な種類のコンポーネント");
             }

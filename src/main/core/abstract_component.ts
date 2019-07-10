@@ -1,6 +1,7 @@
 import AbstractContainer from "./abstract_container";
 import Module from "./module";
 import SourceRepository from "./source_repository";
+import ContainerManager from "./container_manager";
 
 export default abstract class Component implements Module {
     private isFetched: boolean = false;
@@ -8,19 +9,10 @@ export default abstract class Component implements Module {
     private source: string;
     private contentHtml: string;
     private currentContainer: AbstractContainer;
-    private subContainerNames = new Map<string, string>();
-    private subContainers = new Map<string, AbstractContainer>();
+    private subContainerInfos = new Map<string, ContainerInfo>();
 
-    constructor(private name: string, private sourceUri: string) {
-        // this.source = null;
-        // const repository = SourceRepository.getInstance();
-        // repository.fetch(this.sourceUri).then((res) => {
-        //     this.source = res;
-        //     if (this.waitingLoadMethodCall) {
-        //         this.load(this.waitingLoadMethodCall);
-        //         this.waitingLoadMethodCall = null;
-        //     }
-        // });
+    constructor(private name: string, private sourceUri: string, private moduleIndex: number) {
+
     }
 
     async fetch(): Promise<boolean> {
@@ -31,8 +23,10 @@ export default abstract class Component implements Module {
 
         let match: RegExpExecArray;
         while (match = regExp.exec(this.source)) {
-            this.subContainers.set(match[1], null);
-            this.subContainerNames.set(match[1], match[2]);
+            this.subContainerInfos.set(match[1], {
+                name: match[2],
+                container: null
+            });
         }
 
         this.isFetched = true;
@@ -42,14 +36,29 @@ export default abstract class Component implements Module {
     async mount(containerElement: HTMLDivElement): Promise<boolean> {
         //NOTE このメソッドはAbstractContainerのaddModule内からコールされる
 
-
         if (!this.isFetched) await this.fetch();
 
-        //TODO サブコンテナをContainerManagerで生成・登録
+        const toLocalPrefix = (index: number): string => {
+            return "_" + this.moduleIndex.toString() + "_";
+        }
 
-        //TODO ここでテンプレート処理
+        //ソースに対してテンプレート処理
+        const localizeRegExp = /_LS_/g;
+        this.source = this.source.replace(localizeRegExp, toLocalPrefix(this.moduleIndex));
 
-        //TODO targetContainerのコンテナDOMを取得して自身（のDOMツリー）をロード
+        //サブコンテナをContainerManagerで生成・登録
+        const containerManager = ContainerManager.getInstance();
+        for (let domId in this.subContainerInfos) {
+            let currentContainerInfo = this.subContainerInfos.get(domId);
+            let localElementId = domId.replace(localizeRegExp, toLocalPrefix(this.moduleIndex));
+            let containerEl: HTMLDivElement = document.getElementById(localElementId) as HTMLDivElement;
+            let containerId: string = this.name + "." + currentContainerInfo.name;
+            currentContainerInfo.container = containerManager.createContainer(containerId, "", containerEl);
+        }
+
+        //引数で与えられたコンテナDOMに対して自身をロード
+        containerElement.innerHTML = this.source;
+
 
         //TODO scriptタグをevalで実行
 
@@ -82,8 +91,8 @@ export default abstract class Component implements Module {
 
     getSubContainerNames(): Array<string> {
         let ary = new Array<string>();
-        this.subContainerNames.forEach((value: string) => {
-            ary.push(value);
+        this.subContainerInfos.forEach((c: ContainerInfo) => {
+            ary.push(c.name);
         });
         return ary;
     }
@@ -92,4 +101,9 @@ export default abstract class Component implements Module {
         return this.name;
     }
 
+}
+
+interface ContainerInfo {
+    name: string;
+    container: AbstractContainer;
 }

@@ -142,118 +142,6 @@ define("core/source_repository", ["require", "exports"], function (require, expo
     }());
     exports.default = SourceRepository;
 });
-define("core/abstract_component", ["require", "exports", "core/source_repository"], function (require, exports, source_repository_1) {
-    "use strict";
-    Object.defineProperty(exports, "__esModule", { value: true });
-    var Component = /** @class */ (function () {
-        function Component(name, sourceUri) {
-            this.name = name;
-            this.sourceUri = sourceUri;
-            this.isFetched = false;
-            this.isMounted = false;
-            this.subContainerNames = new Map();
-            this.subContainers = new Map();
-            // this.source = null;
-            // const repository = SourceRepository.getInstance();
-            // repository.fetch(this.sourceUri).then((res) => {
-            //     this.source = res;
-            //     if (this.waitingLoadMethodCall) {
-            //         this.load(this.waitingLoadMethodCall);
-            //         this.waitingLoadMethodCall = null;
-            //     }
-            // });
-        }
-        Component.prototype.fetch = function () {
-            return __awaiter(this, void 0, void 0, function () {
-                var repository, _a, regExp, match;
-                return __generator(this, function (_b) {
-                    switch (_b.label) {
-                        case 0:
-                            repository = source_repository_1.default.getInstance();
-                            _a = this;
-                            return [4 /*yield*/, repository.fetch(this.sourceUri)];
-                        case 1:
-                            _a.source = _b.sent();
-                            regExp = /<div *id *= *["'](.+)["'] *.*data-container-name *= *["'](.+)["'].*>/g;
-                            while (match = regExp.exec(this.source)) {
-                                this.subContainers.set(match[1], null);
-                                this.subContainerNames.set(match[1], match[2]);
-                            }
-                            this.isFetched = true;
-                            return [2 /*return*/, null];
-                    }
-                });
-            });
-        };
-        Component.prototype.mount = function (containerElement) {
-            return __awaiter(this, void 0, void 0, function () {
-                return __generator(this, function (_a) {
-                    switch (_a.label) {
-                        case 0:
-                            if (!!this.isFetched) return [3 /*break*/, 2];
-                            return [4 /*yield*/, this.fetch()];
-                        case 1:
-                            _a.sent();
-                            _a.label = 2;
-                        case 2:
-                            //TODO サブコンテナをContainerManagerで生成・登録
-                            //TODO ここでテンプレート処理
-                            //TODO targetContainerのコンテナDOMを取得して自身（のDOMツリー）をロード
-                            //TODO scriptタグをevalで実行
-                            this.isMounted = true;
-                            return [2 /*return*/, true];
-                    }
-                });
-            });
-        };
-        Component.prototype.initialize = function () {
-            return __awaiter(this, void 0, void 0, function () {
-                return __generator(this, function (_a) {
-                    throw new Error("Method not implemented.");
-                });
-            });
-        };
-        Component.prototype.show = function () {
-            throw new Error("Method not implemented.");
-        };
-        Component.prototype.close = function () {
-            throw new Error("Method not implemented.");
-        };
-        Component.prototype.getScopeId = function () {
-            throw new Error("Method not implemented.");
-        };
-        Component.prototype.getContentHtml = function () {
-            return this.contentHtml;
-        };
-        Component.prototype.getCurrentContainer = function () {
-            return this.currentContainer;
-        };
-        Component.prototype.getSubContainerNames = function () {
-            var ary = new Array();
-            this.subContainerNames.forEach(function (value) {
-                ary.push(value);
-            });
-            return ary;
-        };
-        Component.prototype.getName = function () {
-            return this.name;
-        };
-        return Component;
-    }());
-    exports.default = Component;
-});
-define("core/native_component", ["require", "exports", "core/abstract_component"], function (require, exports, abstract_component_1) {
-    "use strict";
-    Object.defineProperty(exports, "__esModule", { value: true });
-    var NativeComponent = /** @class */ (function (_super) {
-        __extends(NativeComponent, _super);
-        function NativeComponent() {
-            return _super !== null && _super.apply(this, arguments) || this;
-        }
-        return NativeComponent;
-    }(abstract_component_1.default));
-    exports.default = NativeComponent;
-});
 define("core/runtime_error", ["require", "exports"], function (require, exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -326,7 +214,126 @@ define("core/container_manager", ["require", "exports", "core/runtime_error", "c
     }());
     exports.default = ContainerManager;
 });
-define("core/module_manager", ["require", "exports", "core/module", "core/native_component", "core/runtime_error", "core/container_manager"], function (require, exports, module_1, native_component_1, runtime_error_2, container_manager_1) {
+define("core/abstract_component", ["require", "exports", "core/source_repository", "core/container_manager"], function (require, exports, source_repository_1, container_manager_1) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    var Component = /** @class */ (function () {
+        function Component(name, sourceUri, moduleIndex) {
+            this.name = name;
+            this.sourceUri = sourceUri;
+            this.moduleIndex = moduleIndex;
+            this.isFetched = false;
+            this.isMounted = false;
+            this.subContainerInfos = new Map();
+        }
+        Component.prototype.fetch = function () {
+            return __awaiter(this, void 0, void 0, function () {
+                var repository, _a, regExp, match;
+                return __generator(this, function (_b) {
+                    switch (_b.label) {
+                        case 0:
+                            repository = source_repository_1.default.getInstance();
+                            _a = this;
+                            return [4 /*yield*/, repository.fetch(this.sourceUri)];
+                        case 1:
+                            _a.source = _b.sent();
+                            regExp = /<div *id *= *["'](.+)["'] *.*data-container-name *= *["'](.+)["'].*>/g;
+                            while (match = regExp.exec(this.source)) {
+                                this.subContainerInfos.set(match[1], {
+                                    name: match[2],
+                                    container: null
+                                });
+                            }
+                            this.isFetched = true;
+                            return [2 /*return*/, null];
+                    }
+                });
+            });
+        };
+        Component.prototype.mount = function (containerElement) {
+            return __awaiter(this, void 0, void 0, function () {
+                var toLocalPrefix, localizeRegExp, containerManager, domId, currentContainerInfo, localElementId, containerEl, containerId;
+                var _this = this;
+                return __generator(this, function (_a) {
+                    switch (_a.label) {
+                        case 0:
+                            if (!!this.isFetched) return [3 /*break*/, 2];
+                            return [4 /*yield*/, this.fetch()];
+                        case 1:
+                            _a.sent();
+                            _a.label = 2;
+                        case 2:
+                            toLocalPrefix = function (index) {
+                                return "_" + _this.moduleIndex.toString() + "_";
+                            };
+                            localizeRegExp = /_LS_/g;
+                            this.source = this.source.replace(localizeRegExp, toLocalPrefix(this.moduleIndex));
+                            containerManager = container_manager_1.default.getInstance();
+                            for (domId in this.subContainerInfos) {
+                                currentContainerInfo = this.subContainerInfos.get(domId);
+                                localElementId = domId.replace(localizeRegExp, toLocalPrefix(this.moduleIndex));
+                                containerEl = document.getElementById(localElementId);
+                                containerId = this.name + "." + currentContainerInfo.name;
+                                currentContainerInfo.container = containerManager.createContainer(containerId, "", containerEl);
+                            }
+                            //引数で与えられたコンテナDOMに対して自身をロード
+                            containerElement.innerHTML = this.source;
+                            //TODO scriptタグをevalで実行
+                            this.isMounted = true;
+                            return [2 /*return*/, true];
+                    }
+                });
+            });
+        };
+        Component.prototype.initialize = function () {
+            return __awaiter(this, void 0, void 0, function () {
+                return __generator(this, function (_a) {
+                    throw new Error("Method not implemented.");
+                });
+            });
+        };
+        Component.prototype.show = function () {
+            throw new Error("Method not implemented.");
+        };
+        Component.prototype.close = function () {
+            throw new Error("Method not implemented.");
+        };
+        Component.prototype.getScopeId = function () {
+            throw new Error("Method not implemented.");
+        };
+        Component.prototype.getContentHtml = function () {
+            return this.contentHtml;
+        };
+        Component.prototype.getCurrentContainer = function () {
+            return this.currentContainer;
+        };
+        Component.prototype.getSubContainerNames = function () {
+            var ary = new Array();
+            this.subContainerInfos.forEach(function (c) {
+                ary.push(c.name);
+            });
+            return ary;
+        };
+        Component.prototype.getName = function () {
+            return this.name;
+        };
+        return Component;
+    }());
+    exports.default = Component;
+});
+define("core/native_component", ["require", "exports", "core/abstract_component"], function (require, exports, abstract_component_1) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    var NativeComponent = /** @class */ (function (_super) {
+        __extends(NativeComponent, _super);
+        function NativeComponent() {
+            return _super !== null && _super.apply(this, arguments) || this;
+        }
+        return NativeComponent;
+    }(abstract_component_1.default));
+    exports.default = NativeComponent;
+});
+define("core/module_manager", ["require", "exports", "core/module", "core/native_component", "core/runtime_error", "core/container_manager"], function (require, exports, module_1, native_component_1, runtime_error_2, container_manager_2) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var ModuleManager = /** @class */ (function () {
@@ -352,7 +359,7 @@ define("core/module_manager", ["require", "exports", "core/module", "core/native
                             description = _a[_i];
                             newModule = null;
                             if (description.componentType === module_1.ModuleType.Native) {
-                                newModule = new native_component_1.default(description.name, description.sourceUri);
+                                newModule = new native_component_1.default(description.name, description.sourceUri, ModuleManager.moduleIndexCounter++);
                             }
                             else {
                                 throw new runtime_error_2.default("不明な種類のコンポーネント");
@@ -391,7 +398,7 @@ define("core/module_manager", ["require", "exports", "core/module", "core/native
                                     throw new runtime_error_2.default("未定義のコンテナが指定された");
                                 }
                             });
-                            containerManager = container_manager_1.default.getInstance();
+                            containerManager = container_manager_2.default.getInstance();
                             loadModule = function (mclInfo) { return __awaiter(_this, void 0, void 0, function () {
                                 var targetContainer, _i, _a, subModuleName;
                                 return __generator(this, function (_b) {
@@ -428,6 +435,7 @@ define("core/module_manager", ["require", "exports", "core/module", "core/native
         };
         ModuleManager.instance = new ModuleManager();
         ModuleManager.ROOT_NAME = "root";
+        ModuleManager.moduleIndexCounter = 0;
         return ModuleManager;
     }());
     exports.default = ModuleManager;
@@ -449,19 +457,23 @@ define("core/module_manager", ["require", "exports", "core/module", "core/native
         return ModuleContainerLinkInfo;
     }());
 });
-define("spartina", ["require", "exports", "core/module", "core/module_manager"], function (require, exports, module_2, module_manager_1) {
+define("spartina", ["require", "exports", "core/module", "core/module_manager", "core/container_manager"], function (require, exports, module_2, module_manager_1, container_manager_3) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     console.log("******** start ********");
     var moduleManager = module_manager_1.default.getInstance();
-    moduleManager.registerDescription({
-        name: "Base",
-        sourceUri: "src/module/base.html",
-        componentType: module_2.ModuleType.Native,
-        targetContainerId: ""
+    var containerManager = container_manager_3.default.getInstance();
+    window.addEventListener("load", function (e) {
+        containerManager.createContainer("root", "", document.getElementById("app"));
+        moduleManager.registerDescription({
+            name: "base",
+            sourceUri: "src/module/base.html",
+            componentType: module_2.ModuleType.Native,
+            targetContainerId: "root"
+        });
+        moduleManager.initialize();
+        console.log("******** end ********");
     });
-    moduleManager.initialize();
-    console.log("******** end ********");
 });
 define("core/dialog_result", ["require", "exports"], function (require, exports) {
     "use strict";
