@@ -87,7 +87,7 @@ export default class ModuleManager {
                 if (targetContainer) {
                     await targetContainer.addModule(this.modules.get(mclInfo.moduleDescription.name));
                 } else {
-                    throw new RuntimeError("ターゲットコンテナが未ロード");
+                    throw new RuntimeError("ターゲットコンテナが存在しないか、未ロード");
                 }
             }
 

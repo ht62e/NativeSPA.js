@@ -252,7 +252,7 @@ define("core/abstract_component", ["require", "exports", "core/source_repository
         };
         Component.prototype.mount = function (containerElement) {
             return __awaiter(this, void 0, void 0, function () {
-                var toLocalPrefix, localizeRegExp, containerManager, domId, currentContainerInfo, localElementId, containerEl, containerId;
+                var toLocalPrefix, localizeRegExp, containerManager;
                 var _this = this;
                 return __generator(this, function (_a) {
                     switch (_a.label) {
@@ -268,17 +268,15 @@ define("core/abstract_component", ["require", "exports", "core/source_repository
                             };
                             localizeRegExp = /_LS_/g;
                             this.source = this.source.replace(localizeRegExp, toLocalPrefix(this.moduleIndex));
-                            containerManager = container_manager_1.default.getInstance();
-                            for (domId in this.subContainerInfos) {
-                                currentContainerInfo = this.subContainerInfos.get(domId);
-                                localElementId = domId.replace(localizeRegExp, toLocalPrefix(this.moduleIndex));
-                                containerEl = document.getElementById(localElementId);
-                                containerId = this.name + "." + currentContainerInfo.name;
-                                currentContainerInfo.container = containerManager.createContainer(containerId, "", containerEl);
-                            }
                             //引数で与えられたコンテナDOMに対して自身をロード
                             containerElement.innerHTML = this.source;
-                            //TODO scriptタグをevalで実行
+                            containerManager = container_manager_1.default.getInstance();
+                            this.subContainerInfos.forEach(function (currentContainerInfo, domId) {
+                                var localElementId = domId.replace(localizeRegExp, toLocalPrefix(_this.moduleIndex));
+                                var containerEl = document.getElementById(localElementId);
+                                var containerId = _this.name + "." + currentContainerInfo.name;
+                                currentContainerInfo.container = containerManager.createContainer(containerId, "", containerEl);
+                            });
                             this.isMounted = true;
                             return [2 /*return*/, true];
                     }
@@ -414,7 +412,7 @@ define("core/module_manager", ["require", "exports", "core/module", "core/native
                                         case 1:
                                             _b.sent();
                                             return [3 /*break*/, 3];
-                                        case 2: throw new runtime_error_2.default("ターゲットコンテナが未ロード");
+                                        case 2: throw new runtime_error_2.default("ターゲットコンテナが存在しないか、未ロード");
                                         case 3:
                                             for (_i = 0, _a = mclInfo.subModuleNames; _i < _a.length; _i++) {
                                                 subModuleName = _a[_i];
@@ -470,6 +468,12 @@ define("spartina", ["require", "exports", "core/module", "core/module_manager", 
             sourceUri: "src/module/base.html",
             componentType: module_2.ModuleType.Native,
             targetContainerId: "root"
+        });
+        moduleManager.registerDescription({
+            name: "header",
+            sourceUri: "src/module/header.html",
+            componentType: module_2.ModuleType.Native,
+            targetContainerId: "base.header"
         });
         moduleManager.initialize();
         console.log("******** end ********");

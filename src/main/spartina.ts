@@ -17,6 +17,13 @@ window.addEventListener("load", (e) => {
         componentType: ModuleType.Native,
         targetContainerId: "root"
     });
+
+    moduleManager.registerDescription({
+        name: "header",
+        sourceUri: "src/module/header.html",
+        componentType: ModuleType.Native,
+        targetContainerId: "base.header"
+    });
     
     moduleManager.initialize();
     

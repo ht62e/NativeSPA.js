@@ -46,21 +46,20 @@ export default abstract class Component implements Module {
         const localizeRegExp = /_LS_/g;
         this.source = this.source.replace(localizeRegExp, toLocalPrefix(this.moduleIndex));
 
+        //引数で与えられたコンテナDOMに対して自身をロード
+        containerElement.innerHTML = this.source;
+
+        //TODO scriptタグをevalで実行
+
         //サブコンテナをContainerManagerで生成・登録
         const containerManager = ContainerManager.getInstance();
-        for (let domId in this.subContainerInfos) {
-            let currentContainerInfo = this.subContainerInfos.get(domId);
+        this.subContainerInfos.forEach((currentContainerInfo: ContainerInfo, domId: string) => {
             let localElementId = domId.replace(localizeRegExp, toLocalPrefix(this.moduleIndex));
             let containerEl: HTMLDivElement = document.getElementById(localElementId) as HTMLDivElement;
             let containerId: string = this.name + "." + currentContainerInfo.name;
             currentContainerInfo.container = containerManager.createContainer(containerId, "", containerEl);
-        }
+        });
 
-        //引数で与えられたコンテナDOMに対して自身をロード
-        containerElement.innerHTML = this.source;
-
-
-        //TODO scriptタグをevalで実行
 
         this.isMounted = true;
 
