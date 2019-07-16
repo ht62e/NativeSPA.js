@@ -29,7 +29,7 @@ export default class ModuleManager {
         for (let description of this.descriptions) {
             let newModule: Module = null;
             
-            if (description.componentType === ModuleType.Native) {
+            if (description.componentType === ModuleType.Native || !description.componentType) {
                 newModule = new NativeComponent(description.name, description.sourceUri, 
                                                 ModuleManager.moduleIndexCounter++);
             } else {

@@ -7,7 +7,7 @@ export default abstract class Component implements Module {
     private isFetched: boolean = false;
     private isMounted: boolean = false;
     private source: string;
-    private contentHtml: string;
+    private wrapperElement: HTMLDivElement;
     private currentContainer: AbstractContainer;
     private subContainerInfos = new Map<string, ContainerInfo>();
 
@@ -33,7 +33,7 @@ export default abstract class Component implements Module {
         return null;
     }
 
-    async mount(containerElement: HTMLDivElement): Promise<boolean> {
+    async mount(container: AbstractContainer): Promise<boolean> {
         //NOTE このメソッドはAbstractContainerのaddModule内からコールされる
 
         if (!this.isFetched) await this.fetch();
@@ -42,28 +42,66 @@ export default abstract class Component implements Module {
             return "_" + this.moduleIndex.toString() + "_";
         }
 
+        this.currentContainer = container;
+
         //ソースに対してテンプレート処理
         const localizeRegExp = /_LS_/g;
         this.source = this.source.replace(localizeRegExp, toLocalPrefix(this.moduleIndex));
 
         //引数で与えられたコンテナDOMに対して自身をロード
-        containerElement.innerHTML = this.source;
+        this.wrapperElement = document.createElement("div");
+        this.wrapperElement.innerHTML = this.source;
+        container.addModuleElement(this.wrapperElement);
 
         //TODO scriptタグをevalで実行
+        this.evalScripts();
 
         //サブコンテナをContainerManagerで生成・登録
         const containerManager = ContainerManager.getInstance();
-        this.subContainerInfos.forEach((currentContainerInfo: ContainerInfo, domId: string) => {
+        this.subContainerInfos.forEach((containerInfo: ContainerInfo, domId: string) => {
             let localElementId = domId.replace(localizeRegExp, toLocalPrefix(this.moduleIndex));
             let containerEl: HTMLDivElement = document.getElementById(localElementId) as HTMLDivElement;
-            let containerId: string = this.name + "." + currentContainerInfo.name;
-            currentContainerInfo.container = containerManager.createContainer(containerId, "", containerEl);
+            let containerId: string = this.name + "." + containerInfo.name;
+            containerInfo.container = containerManager.createContainer(containerId, "", containerEl);
         });
-
 
         this.isMounted = true;
 
         return true;
+    }
+
+    private evalScripts(): void {
+        let autoInheritScript = "";
+        let nativeScript = "";
+
+        this.wrapperElement.querySelectorAll("script").forEach((element: HTMLScriptElement) => {
+            if (element.dataset["scopeMode"] === "true") {
+                autoInheritScript += element.textContent;
+            } else {
+                nativeScript += element.textContent;
+            }
+        })
+
+        const tempElement = document.createElement("script");
+        tempElement.textContent = autoInheritScript;
+        this.wrapperElement.appendChild(tempElement);
+        this.wrapperElement.removeChild(tempElement);
+
+        const tempElement2 = document.createElement("script");
+        tempElement2.textContent = nativeScript;
+        this.wrapperElement.appendChild(tempElement2);
+        this.wrapperElement.removeChild(tempElement2);
+
+
+        // this.wrapperElement.querySelectorAll("script").forEach((element: HTMLScriptElement) => {
+        //     const tempElement = document.createElement("script");
+        //     tempElement.textContent = element.textContent;
+            
+        //     this.wrapperElement.appendChild(tempElement);
+        //     this.wrapperElement.removeChild(tempElement);
+
+        //     console.log(element.dataset["autoInherit"]);
+        // })
     }
 
     async initialize(): Promise<boolean> {
@@ -79,9 +117,9 @@ export default abstract class Component implements Module {
     getScopeId(): number {
         throw new Error("Method not implemented.");
     }
-    
-    getContentHtml(): string {
-        return this.contentHtml;
+
+    getElement(): HTMLDivElement {
+        throw this.wrapperElement;
     }
 
     getCurrentContainer(): AbstractContainer {

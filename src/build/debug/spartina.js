@@ -165,6 +165,7 @@ define("core/container", ["require", "exports", "core/abstract_container"], func
             var _this = _super.call(this) || this;
             _this.id = id;
             _this.bindDomElement = bindDomElement;
+            //private activeModuleName: string;
             _this.mountedModules = new Map();
             return _this;
         }
@@ -175,7 +176,7 @@ define("core/container", ["require", "exports", "core/abstract_container"], func
             return __awaiter(this, void 0, void 0, function () {
                 return __generator(this, function (_a) {
                     switch (_a.label) {
-                        case 0: return [4 /*yield*/, module.mount(this.bindDomElement)];
+                        case 0: return [4 /*yield*/, module.mount(this)];
                         case 1:
                             _a.sent();
                             this.mountedModules.set(module.getName(), module);
@@ -183,6 +184,12 @@ define("core/container", ["require", "exports", "core/abstract_container"], func
                     }
                 });
             });
+        };
+        Container.prototype.addModuleElement = function (element) {
+            this.bindDomElement.appendChild(element);
+        };
+        Container.prototype.getElement = function () {
+            return this.bindDomElement;
         };
         return Container;
     }(abstract_container_1.default));
@@ -250,7 +257,7 @@ define("core/abstract_component", ["require", "exports", "core/source_repository
                 });
             });
         };
-        Component.prototype.mount = function (containerElement) {
+        Component.prototype.mount = function (container) {
             return __awaiter(this, void 0, void 0, function () {
                 var toLocalPrefix, localizeRegExp, containerManager;
                 var _this = this;
@@ -266,22 +273,54 @@ define("core/abstract_component", ["require", "exports", "core/source_repository
                             toLocalPrefix = function (index) {
                                 return "_" + _this.moduleIndex.toString() + "_";
                             };
+                            this.currentContainer = container;
                             localizeRegExp = /_LS_/g;
                             this.source = this.source.replace(localizeRegExp, toLocalPrefix(this.moduleIndex));
                             //引数で与えられたコンテナDOMに対して自身をロード
-                            containerElement.innerHTML = this.source;
+                            this.wrapperElement = document.createElement("div");
+                            this.wrapperElement.innerHTML = this.source;
+                            container.addModuleElement(this.wrapperElement);
+                            //TODO scriptタグをevalで実行
+                            this.evalScripts();
                             containerManager = container_manager_1.default.getInstance();
-                            this.subContainerInfos.forEach(function (currentContainerInfo, domId) {
+                            this.subContainerInfos.forEach(function (containerInfo, domId) {
                                 var localElementId = domId.replace(localizeRegExp, toLocalPrefix(_this.moduleIndex));
                                 var containerEl = document.getElementById(localElementId);
-                                var containerId = _this.name + "." + currentContainerInfo.name;
-                                currentContainerInfo.container = containerManager.createContainer(containerId, "", containerEl);
+                                var containerId = _this.name + "." + containerInfo.name;
+                                containerInfo.container = containerManager.createContainer(containerId, "", containerEl);
                             });
                             this.isMounted = true;
                             return [2 /*return*/, true];
                     }
                 });
             });
+        };
+        Component.prototype.evalScripts = function () {
+            var autoInheritScript = "";
+            var nativeScript = "";
+            this.wrapperElement.querySelectorAll("script").forEach(function (element) {
+                if (element.dataset["autoInherit"] === "true") {
+                    autoInheritScript += element.textContent;
+                }
+                else {
+                    nativeScript += element.textContent;
+                }
+            });
+            var tempElement = document.createElement("script");
+            tempElement.textContent = autoInheritScript;
+            this.wrapperElement.appendChild(tempElement);
+            this.wrapperElement.removeChild(tempElement);
+            var tempElement2 = document.createElement("script");
+            tempElement2.textContent = nativeScript;
+            this.wrapperElement.appendChild(tempElement2);
+            this.wrapperElement.removeChild(tempElement2);
+            // this.wrapperElement.querySelectorAll("script").forEach((element: HTMLScriptElement) => {
+            //     const tempElement = document.createElement("script");
+            //     tempElement.textContent = element.textContent;
+            //     this.wrapperElement.appendChild(tempElement);
+            //     this.wrapperElement.removeChild(tempElement);
+            //     console.log(element.dataset["autoInherit"]);
+            // })
         };
         Component.prototype.initialize = function () {
             return __awaiter(this, void 0, void 0, function () {
@@ -299,8 +338,8 @@ define("core/abstract_component", ["require", "exports", "core/source_repository
         Component.prototype.getScopeId = function () {
             throw new Error("Method not implemented.");
         };
-        Component.prototype.getContentHtml = function () {
-            return this.contentHtml;
+        Component.prototype.getElement = function () {
+            throw this.wrapperElement;
         };
         Component.prototype.getCurrentContainer = function () {
             return this.currentContainer;
@@ -356,7 +395,7 @@ define("core/module_manager", ["require", "exports", "core/module", "core/native
                             if (!(_i < _a.length)) return [3 /*break*/, 4];
                             description = _a[_i];
                             newModule = null;
-                            if (description.componentType === module_1.ModuleType.Native) {
+                            if (description.componentType === module_1.ModuleType.Native || !description.componentType) {
                                 newModule = new native_component_1.default(description.name, description.sourceUri, ModuleManager.moduleIndexCounter++);
                             }
                             else {
@@ -474,6 +513,12 @@ define("spartina", ["require", "exports", "core/module", "core/module_manager", 
             sourceUri: "src/module/header.html",
             componentType: module_2.ModuleType.Native,
             targetContainerId: "base.header"
+        });
+        moduleManager.registerDescription({
+            name: "main",
+            sourceUri: "src/module/main.html",
+            componentType: module_2.ModuleType.Native,
+            targetContainerId: "base.body"
         });
         moduleManager.initialize();
         console.log("******** end ********");

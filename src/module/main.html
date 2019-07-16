@@ -1,0 +1,27 @@
+<div id="_LS_all" class="module">
+    <div>コンテンツ</div>
+</div>
+
+<script>
+    setTimeout(() => {
+        document.getElementById("_LS_all").innerText = "実行完了";
+    }, 1000);
+</script>
+
+<script data-scope-mode="prototype">
+    setTimeout(() => {
+        document.getElementById("_LS_all").innerText = "実行完了2";
+    }, 2000);
+</script>
+
+<script>
+    setTimeout(() => {
+        document.getElementById("_LS_all").innerText = "実行完了3";
+    }, 3000);
+</script>
+
+<script data-scope-mode="class">
+    setTimeout(() => {
+        document.getElementById("_LS_all").innerText = "実行完了4";
+    }, 4000);
+</script>
