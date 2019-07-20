@@ -1,8 +1,8 @@
-import AbstractContainer from "./abstract_container";
+import Container from "./container";
 import DialogResult from "./dialog_result";
 
 export default class WindowManager {
-    private viewPort: AbstractContainer;
+    private viewPort: Container;
 
     public showModal(moduleName: String): DialogResult {
         return null;

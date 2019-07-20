@@ -1,28 +1,36 @@
-<div id="_LS_all" class="module">
-    <div id="_LS_header" data-container-name="header"></div>
-    <div id="_LS_body" data-container-name="body"></div>
-    <div id="_LS_footer" data-container-name="footer"></div>
-</div>
+<div id="_LS_header" data-container-name="header"></div>
+<div id="_LS_body" data-container-name="body"></div>
+<div id="_LS_footer" data-container-name="footer"></div>
 
 <style>
-    #_LS_all {
+    #_LS_module {
+        display: flex;
+        flex-direction: column;
         width: 100%;
         height: 600px;
         /* background-color: #F0F0F0; */
     }
 
     #_LS_header {
+        flex-grow: 0;
+        flex-shrink: 0;
         height: 40px;
         /* background-color: rgb(63, 89, 175); */
     }
 
     #_LS_body {
+        flex-grow: 1;
+        flex-shrink: 1;
         height: 480px;
+        background-color: #F5F5F5;
     }
 
     #_LS_footer {
+        flex-grow: 0;
+        flex-shrink: 0;
         height: 60px;
         /* background-color: #FFFFFF; */
+        background-color: #F0F0F0;
     }
 
 </style>

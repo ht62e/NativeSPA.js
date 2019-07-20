@@ -3,7 +3,7 @@ import Module, { ModuleType } from "./module";
 import NativeComponent from "./native_component";
 import RuntimeError from "./runtime_error";
 import ContainerManager from "./container_manager";
-import AbstractContainer from "./abstract_container";
+import Container from "./container";
 
 export default class ModuleManager {
     private static instance = new ModuleManager();
@@ -20,6 +20,15 @@ export default class ModuleManager {
 
     public static getInstance(): ModuleManager {
         return ModuleManager.instance;
+    }
+   
+    public registerDescription(description: ModuleDescription) {
+        this.descriptions.push(description);
+    }
+
+    public getModule(name: string) {
+        if (!this.modules.has(name)) throw new RuntimeError("指定されたモジュールが見つかりません。");
+        return this.modules.get(name);
     }
 
     public async initialize(): Promise<boolean> {
@@ -83,26 +92,31 @@ export default class ModuleManager {
             mclInfo.isProcessed = true;
             
             if (mclInfo !== rootMclInfo && !mclInfo.moduleDescription.lazyModuleLoading) {
-                let targetContainer: AbstractContainer = containerManager.getContainer(mclInfo.moduleDescription.targetContainerId);
+                let targetContainer: Container = containerManager.getContainer(mclInfo.moduleDescription.targetContainerId);
                 if (targetContainer) {
-                    await targetContainer.addModule(this.modules.get(mclInfo.moduleDescription.name));
+                    const module = this.modules.get(mclInfo.moduleDescription.name);
+                    await targetContainer.addModule(module);
+                    if (mclInfo.moduleDescription.isContainerDefault) {
+                        module.show();
+                    }
                 } else {
                     throw new RuntimeError("ターゲットコンテナが存在しないか、未ロード");
                 }
             }
 
             for (let subModuleName of mclInfo.subModuleNames) {
-                loadModule(mcLinkInfoMap.get(subModuleName));
+                await loadModule(mcLinkInfoMap.get(subModuleName));
             }
         }
-        loadModule(rootMclInfo);
+
+        await loadModule(rootMclInfo);
  
         return true;
     }
 
-    public registerDescription(description: ModuleDescription) {
-        this.descriptions.push(description);
-    }
+
+
+
 }
 
 class ModuleContainerLinkInfo {
