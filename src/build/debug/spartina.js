@@ -116,6 +116,16 @@ define("core/container", ["require", "exports", "core/runtime_error"], function 
     }());
     exports.default = Container;
 });
+define("core/module_dto", ["require", "exports"], function (require, exports) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    var ModuleDTO = /** @class */ (function () {
+        function ModuleDTO() {
+        }
+        return ModuleDTO;
+    }());
+    exports.default = ModuleDTO;
+});
 define("core/module", ["require", "exports"], function (require, exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -190,6 +200,163 @@ define("core/source_repository", ["require", "exports"], function (require, expo
     }());
     exports.default = SourceRepository;
 });
+define("core/container_manager", ["require", "exports", "core/runtime_error", "core/container"], function (require, exports, runtime_error_2, container_1) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    var ContainerManager = /** @class */ (function () {
+        function ContainerManager() {
+            this.containers = new Map();
+        }
+        ContainerManager.getInstance = function () {
+            return ContainerManager.instance;
+        };
+        ContainerManager.prototype.createContainer = function (id, type, bindDomElement) {
+            if (this.containers.has(id)) {
+                throw new runtime_error_2.default("コンテナID重複");
+            }
+            var newContainer = new container_1.default(id, bindDomElement);
+            this.containers.set(id, newContainer);
+            return newContainer;
+        };
+        ContainerManager.prototype.getContainer = function (id) {
+            return this.containers.get(id);
+        };
+        ContainerManager.instance = new ContainerManager();
+        return ContainerManager;
+    }());
+    exports.default = ContainerManager;
+});
+define("core/module_router", ["require", "exports", "core/container_manager", "core/module_manager"], function (require, exports, container_manager_1, module_manager_1) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    var ModuleRouter = /** @class */ (function () {
+        function ModuleRouter() {
+            this.history = new Map();
+        }
+        ModuleRouter.getInstance = function () {
+            return ModuleRouter.instance;
+        };
+        ModuleRouter.prototype.forward = function (targetIdentifier, callback) {
+            return __awaiter(this, void 0, void 0, function () {
+                var s, targetContainerId, moduleName, target, module, routerHisInfo, newHisStack, result;
+                return __generator(this, function (_a) {
+                    switch (_a.label) {
+                        case 0:
+                            s = targetIdentifier.split("::");
+                            targetContainerId = s[0];
+                            moduleName = s[1];
+                            target = container_manager_1.default.getInstance().getContainer(targetContainerId);
+                            module = module_manager_1.default.getInstance().getModule(moduleName);
+                            module.initialize(null);
+                            target.changeActiveModule(module);
+                            routerHisInfo = new RouterHistoryInfo(module, "test");
+                            if (!this.history.has(targetContainerId)) {
+                                newHisStack = [routerHisInfo];
+                                this.history.set(targetContainerId, newHisStack);
+                            }
+                            else {
+                                this.history.get(targetContainerId).push(routerHisInfo);
+                            }
+                            return [4 /*yield*/, module.waitForClose()];
+                        case 1:
+                            result = _a.sent();
+                            if (callback) {
+                                //for ES5
+                                callback(result);
+                            }
+                            else {
+                                return [2 /*return*/, result];
+                            }
+                            return [2 /*return*/];
+                    }
+                });
+            });
+        };
+        ModuleRouter.prototype.back = function (targetContainerId) {
+            var target = container_manager_1.default.getInstance().getContainer(targetContainerId);
+            var historyStack = this.history.get(targetContainerId);
+            var currentModule = historyStack[historyStack.length - 1].getModule();
+            currentModule.closeRequest().then(function (closed) {
+                historyStack.pop();
+                target.changeActiveModule(historyStack[historyStack.length - 1].getModule());
+            });
+        };
+        ModuleRouter.instance = new ModuleRouter();
+        return ModuleRouter;
+    }());
+    exports.default = ModuleRouter;
+    var RouterHistoryInfo = /** @class */ (function () {
+        function RouterHistoryInfo(module, title) {
+            this.module = module;
+            this.title = title;
+        }
+        RouterHistoryInfo.prototype.getModule = function () {
+            return this.module;
+        };
+        RouterHistoryInfo.prototype.getTitle = function () {
+            return this.title;
+        };
+        return RouterHistoryInfo;
+    }());
+});
+define("core/html_component_adapter", ["require", "exports", "core/module_router"], function (require, exports, module_router_1) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    exports.htmlComponentAdapters = new Map();
+    var HTMLComponentAdapter = /** @class */ (function () {
+        function HTMLComponentAdapter() {
+            this.isModified = false;
+            this.moduleRouter = module_router_1.default.getInstance();
+        }
+        HTMLComponentAdapter.prototype.setHtmlComponent = function (htmlComponent) {
+            this.htmlComponent = htmlComponent;
+        };
+        HTMLComponentAdapter.prototype.triggerOnLoadHandler = function (param) {
+            if (this.onLoad)
+                this.onLoad(param);
+        };
+        HTMLComponentAdapter.prototype.triggerOnInitializeHandler = function (param) {
+            if (this.onInitialize)
+                this.onInitialize(param);
+        };
+        HTMLComponentAdapter.prototype.triggerOnShowHandler = function (isFirst, param) {
+            if (this.onShow)
+                this.onShow(isFirst, param);
+        };
+        HTMLComponentAdapter.prototype.triggerOnHideHandler = function (param) {
+            if (this.onHide)
+                this.onHide(param);
+        };
+        HTMLComponentAdapter.prototype.triggerOnCloseRequestHandler = function (force) {
+            if (this.onCloseRequest) {
+                this.onCloseRequest(force);
+            }
+            else {
+                this.close(null);
+            }
+        };
+        // public callOnCloseHandler(param: any): void {
+        //     if (this.onLoad) this.onLoad(param);
+        // }
+        // public async callCloseEventRequest(): Promise<boolean> {
+        //     if (this.onCloseRequest) {
+        //         return this.onCloseRequest();
+        //     } else {
+        //         return Promise.resolve(true);
+        //     }
+        // }
+        HTMLComponentAdapter.prototype.close = function (result) {
+            this.htmlComponent.notifyClose(result);
+        };
+        return HTMLComponentAdapter;
+    }());
+    exports.default = HTMLComponentAdapter;
+    var __global = window;
+    __global.__HTMLComponentAdapter = HTMLComponentAdapter;
+    __global.__registerHTMLComponentAdapter = function (moduleIndex, componentClass) {
+        exports.htmlComponentAdapters.set(moduleIndex, componentClass);
+    };
+});
 define("core/abstract_html_component", ["require", "exports", "core/source_repository"], function (require, exports, source_repository_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -200,7 +367,9 @@ define("core/abstract_html_component", ["require", "exports", "core/source_repos
             this.moduleIndex = moduleIndex;
             this.isFetched = false;
             this.isMounted = false;
+            this.isInitialized = false;
             this.subContainerInfos = new Map();
+            this.htmlAdapter = null;
             this.onCreate();
         }
         HTMLComponent.prototype.onResize = function (containerWidth, containerHeight) {
@@ -230,24 +399,41 @@ define("core/abstract_html_component", ["require", "exports", "core/source_repos
                 });
             });
         };
-        HTMLComponent.prototype.initialize = function () {
-            return __awaiter(this, void 0, void 0, function () {
-                return __generator(this, function (_a) {
-                    throw new Error("Method not implemented.");
-                });
-            });
+        HTMLComponent.prototype.initialize = function (param) {
+            this.htmlAdapter.triggerOnInitializeHandler(param);
         };
         HTMLComponent.prototype.show = function () {
             this.wrapperElement.style.display = "";
             this.wrapperElement.style.visibility = "";
+            this.htmlAdapter.triggerOnShowHandler(false, null);
         };
         HTMLComponent.prototype.hide = function () {
             if (this.wrapperElement.style.visibility !== "hidden") {
                 this.wrapperElement.style.display = "none";
             }
+            this.htmlAdapter.triggerOnHideHandler(null);
         };
-        HTMLComponent.prototype.close = function () {
-            throw new Error("Method not implemented.");
+        HTMLComponent.prototype.waitForClose = function () {
+            var _this = this;
+            return new Promise(function (resolve) {
+                _this.closeForWaitResolver = resolve;
+            });
+        };
+        HTMLComponent.prototype.closeRequest = function () {
+            return __awaiter(this, void 0, void 0, function () {
+                var _this = this;
+                return __generator(this, function (_a) {
+                    return [2 /*return*/, new Promise(function (resolve) {
+                            _this.closeRequestResolver = resolve;
+                            _this.htmlAdapter.triggerOnCloseRequestHandler(false);
+                        })];
+                });
+            });
+        };
+        HTMLComponent.prototype.notifyClose = function (result) {
+            console.log(this.closeRequestResolver);
+            this.closeRequestResolver(true);
+            this.closeForWaitResolver(result);
         };
         HTMLComponent.prototype.getElement = function () {
             throw this.wrapperElement;
@@ -265,104 +451,12 @@ define("core/abstract_html_component", ["require", "exports", "core/source_repos
         HTMLComponent.prototype.getName = function () {
             return this.name;
         };
+        HTMLComponent.prototype.isClosed = function () {
+            return !this.isInitialized;
+        };
         return HTMLComponent;
     }());
     exports.default = HTMLComponent;
-});
-define("core/container_manager", ["require", "exports", "core/runtime_error", "core/container"], function (require, exports, runtime_error_2, container_1) {
-    "use strict";
-    Object.defineProperty(exports, "__esModule", { value: true });
-    var ContainerManager = /** @class */ (function () {
-        function ContainerManager() {
-            this.containers = new Map();
-        }
-        ContainerManager.getInstance = function () {
-            return ContainerManager.instance;
-        };
-        ContainerManager.prototype.createContainer = function (id, type, bindDomElement) {
-            if (this.containers.has(id)) {
-                throw new runtime_error_2.default("コンテナID重複");
-            }
-            var newContainer = new container_1.default(id, bindDomElement);
-            this.containers.set(id, newContainer);
-            return newContainer;
-        };
-        ContainerManager.prototype.getContainer = function (id) {
-            return this.containers.get(id);
-        };
-        ContainerManager.instance = new ContainerManager();
-        return ContainerManager;
-    }());
-    exports.default = ContainerManager;
-});
-define("core/module_switcher", ["require", "exports", "core/container_manager", "core/module_manager"], function (require, exports, container_manager_1, module_manager_1) {
-    "use strict";
-    Object.defineProperty(exports, "__esModule", { value: true });
-    var ModuleSwitcher = /** @class */ (function () {
-        function ModuleSwitcher() {
-        }
-        ModuleSwitcher.getInstance = function () {
-            return ModuleSwitcher.instance;
-        };
-        ModuleSwitcher.prototype.forward = function (targetContainerId, nextModuleName) {
-            var containerManager = container_manager_1.default.getInstance();
-            var moduleManager = module_manager_1.default.getInstance();
-            var target = containerManager.getContainer(targetContainerId);
-            var module = moduleManager.getModule(nextModuleName);
-            target.changeActiveModule(module);
-        };
-        ModuleSwitcher.prototype.back = function (targetContainerId) {
-        };
-        ModuleSwitcher.instance = new ModuleSwitcher();
-        return ModuleSwitcher;
-    }());
-    exports.default = ModuleSwitcher;
-});
-define("core/html_component_adapter", ["require", "exports", "core/module_switcher"], function (require, exports, module_switcher_1) {
-    "use strict";
-    Object.defineProperty(exports, "__esModule", { value: true });
-    exports.htmlComponentAdapters = new Map();
-    var HTMLComponentAdapter = /** @class */ (function () {
-        function HTMLComponentAdapter(moduleIndex) {
-            this.moduleIndex = moduleIndex;
-            this.isModified = false;
-            this.moduleSwitcher = module_switcher_1.default.getInstance();
-        }
-        HTMLComponentAdapter.prototype.callOnLoadHandler = function (param) {
-            if (this.onLoad)
-                this.onLoad(param);
-        };
-        HTMLComponentAdapter.prototype.callOnInitializeHandler = function (param) {
-            if (this.onInitialize)
-                this.onInitialize(param);
-        };
-        HTMLComponentAdapter.prototype.callOnShowHandler = function (param) {
-            //if (this.onShow) this.onShow(param);
-        };
-        // public callOnCloseHandler(param: any): void {
-        //     if (this.onLoad) this.onLoad(param);
-        // }
-        HTMLComponentAdapter.prototype.callOnCloseRequest = function () {
-            return __awaiter(this, void 0, void 0, function () {
-                return __generator(this, function (_a) {
-                    if (this.onCloseRequest) {
-                        return [2 /*return*/, this.onCloseRequest()];
-                    }
-                    else {
-                        return [2 /*return*/, Promise.resolve(true)];
-                    }
-                    return [2 /*return*/];
-                });
-            });
-        };
-        return HTMLComponentAdapter;
-    }());
-    exports.default = HTMLComponentAdapter;
-    var __global = window;
-    __global.__HTMLComponentAdapter = HTMLComponentAdapter;
-    __global.__registerHTMLComponentAdapter = function (moduleIndex, componentClass) {
-        exports.htmlComponentAdapters.set(moduleIndex, componentClass);
-    };
 });
 define("core/native_component", ["require", "exports", "core/abstract_html_component", "core/container_manager", "core/html_component_adapter"], function (require, exports, abstract_html_component_1, container_manager_2, html_component_adapter_1) {
     "use strict";
@@ -370,9 +464,7 @@ define("core/native_component", ["require", "exports", "core/abstract_html_compo
     var NativeComponent = /** @class */ (function (_super) {
         __extends(NativeComponent, _super);
         function NativeComponent() {
-            var _this = _super !== null && _super.apply(this, arguments) || this;
-            _this.htmlAdapter = null;
-            return _this;
+            return _super !== null && _super.apply(this, arguments) || this;
         }
         NativeComponent.prototype.onCreate = function () {
             this.prototypeTemplateBegin =
@@ -425,7 +517,8 @@ define("core/native_component", ["require", "exports", "core/abstract_html_compo
                             });
                             this.isMounted = true;
                             this.htmlAdapter = html_component_adapter_1.htmlComponentAdapters.get(this.moduleIndex);
-                            this.htmlAdapter.callOnLoadHandler("name is " + this.name);
+                            this.htmlAdapter.setHtmlComponent(this);
+                            this.htmlAdapter.triggerOnLoadHandler("name is " + this.name);
                             return [2 /*return*/, true];
                     }
                 });

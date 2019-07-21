@@ -1,12 +1,17 @@
 import Container from "./container";
+import ModuleDTO from "./module_dto";
 
 export default interface Module {
     fetch(): Promise<boolean>;
     mount(container: Container): Promise<boolean>;
-    initialize(): Promise<boolean>;
+    initialize(param: ModuleDTO): void;
+    closeRequest(): Promise<boolean>;
+
+    waitForClose(): Promise<ModuleDTO>;
+    
     show(): void;
     hide(): void;
-    close(): void;
+    
 
     onResize(containerWidth: number, containerHeight: number): void;
 
@@ -24,3 +29,5 @@ export enum ModuleType {
     Vue,
     React
 }
+
+

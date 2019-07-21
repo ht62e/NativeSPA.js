@@ -1,8 +1,8 @@
 import Container, { ContainerInfo } from "./container";
 import Module from "./module";
 import SourceRepository from "./source_repository";
-
-
+import ModuleDTO from "./module_dto";
+import HTMLComponentAdapter from "./html_component_adapter";
 
 export default abstract class HTMLComponent implements Module {
     protected isFetched: boolean = false;
@@ -12,6 +12,11 @@ export default abstract class HTMLComponent implements Module {
     protected wrapperElement: HTMLDivElement;
     protected currentContainer: Container;
     protected subContainerInfos = new Map<string, ContainerInfo>();
+
+    protected htmlAdapter: HTMLComponentAdapter = null;
+
+    private closeRequestResolver: (value?: boolean | PromiseLike<boolean>) => void;
+    private closeForWaitResolver: (value?: ModuleDTO | PromiseLike<ModuleDTO>) => void;
 
     protected abstract onCreate(): void;
     protected abstract loadSubContainerInfos(): void;
@@ -41,23 +46,40 @@ export default abstract class HTMLComponent implements Module {
         return null;
     }
 
-    async initialize(): Promise<boolean> {
-        throw new Error("Method not implemented.");
+    initialize(param: ModuleDTO): void {
+        this.htmlAdapter.triggerOnInitializeHandler(param);
     }
 
     show(): void {
         this.wrapperElement.style.display = "";
         this.wrapperElement.style.visibility = "";
+        this.htmlAdapter.triggerOnShowHandler(false, null);
     }
 
     hide(): void {
         if (this.wrapperElement.style.visibility !== "hidden") {
             this.wrapperElement.style.display = "none";
         }
+        this.htmlAdapter.triggerOnHideHandler(null);
     }
 
-    close(): void {
-        throw new Error("Method not implemented.");
+    waitForClose(): Promise<ModuleDTO> {
+        return new Promise(resolve => {
+            this.closeForWaitResolver = resolve;
+        });
+    }
+
+    async closeRequest(): Promise<boolean> {
+        return new Promise(resolve => {
+            this.closeRequestResolver = resolve;
+            this.htmlAdapter.triggerOnCloseRequestHandler(false);
+        });
+    }
+
+    notifyClose(result: ModuleDTO) {
+        console.log(this.closeRequestResolver);
+        this.closeRequestResolver(true);
+        this.closeForWaitResolver(result);
     }
 
     getElement(): HTMLDivElement {

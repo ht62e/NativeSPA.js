@@ -2,22 +2,23 @@
     this.page = 0;
 
     this.test1Click = function() {
-        if (this.page === 0) {
-            this.moduleSwitcher.forward("base.body", "main2");
-            this.page = 1;
-        } else {
-            this.moduleSwitcher.forward("base.body", "main");
-            this.page = 0;
-        }
+        this.moduleRouter.forward("base.body::main");
+        this.page = 0;
+        // if (this.page === 0) {
+        //     this.moduleSwitcher.forward("base.body::main2");
+        //     this.page = 1;
+        // } else {
+        //     this.moduleSwitcher.forward("base.body::main");
+        //     this.page = 0;
+        // }
     }
-
-    addEventListener("click", this.test1Click.bind(this));
+    document.getElementById("_LS_show_main_button").addEventListener("click", this.test1Click.bind(this));
 </script>
 
 <div id="_LS_button"></div>
 <div id="_LS_title">
     Window Title
-    <input type="button" value="test1">
+    <input type="button" id="_LS_show_main_button" value="show main">
 </div>
 <div id="_LS_logout">ログアウト　</div>
 

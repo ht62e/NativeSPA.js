@@ -1,46 +1,68 @@
-import ContainerManager from "./container_manager";
-import ModuleSwitcher from "./module_switcher";
+import ModuleRouter from "./module_router";
+import HTMLComponent from "./abstract_html_component";
+import ModuleDTO from "./module_dto";
 
 export const htmlComponentAdapters = new Map<number, HTMLComponentAdapter>();
 
 export default abstract class HTMLComponentAdapter {
+    protected htmlComponent: HTMLComponent;
     protected isModified: boolean = false;
 
-    protected moduleSwitcher: ModuleSwitcher = ModuleSwitcher.getInstance();
+    protected moduleRouter: ModuleRouter = ModuleRouter.getInstance();
 
-    constructor(protected moduleIndex: number) {
+    constructor() {
 
     }
 
-    public abstract onLoad(param: any): void;
-    public abstract onInitialize(param: any): void;
-    public abstract onShow(isFirst: boolean, param: any): void;
-    public abstract async onCloseRequest(): Promise<boolean>;
-    public abstract onClose(): void;
+    public setHtmlComponent(htmlComponent: HTMLComponent) {
+        this.htmlComponent = htmlComponent;
+    }
+
+    protected abstract onLoad(param: any): void;
+    protected abstract onInitialize(param: ModuleDTO): void;
+    protected abstract onShow(isFirst: boolean, param: any): void;
+    protected abstract onHide(param: any): void;
+    protected abstract onCloseRequest(force: boolean): void;
     
 
-    public callOnLoadHandler(param: any): void {
+    public triggerOnLoadHandler(param: any): void {
         if (this.onLoad) this.onLoad(param);
     }
 
-    public callOnInitializeHandler(param: any): void {
+    public triggerOnInitializeHandler(param: any): void {
         if (this.onInitialize) this.onInitialize(param);
     }
 
-    public callOnShowHandler(param: any): void {
-        //if (this.onShow) this.onShow(param);
+    public triggerOnShowHandler(isFirst: boolean, param: any): void {
+        if (this.onShow) this.onShow(isFirst, param);
+    }
+
+    public triggerOnHideHandler(param: any): void {
+        if (this.onHide) this.onHide(param);
+    }
+
+    public triggerOnCloseRequestHandler(force: boolean): void {
+        if (this.onCloseRequest) {
+            this.onCloseRequest(force)
+        } else {
+            this.close(null);
+        }
     }
 
     // public callOnCloseHandler(param: any): void {
     //     if (this.onLoad) this.onLoad(param);
     // }
 
-    public async callOnCloseRequest(): Promise<boolean> {
-        if (this.onCloseRequest) {
-            return this.onCloseRequest();
-        } else {
-            return Promise.resolve(true);
-        }
+    // public async callCloseEventRequest(): Promise<boolean> {
+    //     if (this.onCloseRequest) {
+    //         return this.onCloseRequest();
+    //     } else {
+    //         return Promise.resolve(true);
+    //     }
+    // }
+
+    private close(result: ModuleDTO) {
+        this.htmlComponent.notifyClose(result);
     }
 }
 

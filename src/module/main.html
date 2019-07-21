@@ -1,31 +1,61 @@
 <div id="_LS_all" class="module">
     <div>コンテンツ</div>
+    <div><input type="button" id="_LS_show_main2" value="show main2"></div>
+    <div><input type="text" id="_LS_input1"></div>
+    <div><textarea id="_LS_textarea1"></textarea></div>
 </div>
+
+<style>
+    #_LS_textarea1 {
+        width: 400px;
+        height: 500px;
+    }
+</style>
 
 <script>
     setTimeout(() => {
-        document.getElementById("_LS_all").innerText = "実行完了1";
+        document.getElementById("_LS_input1").value = "実行完了1";
     }, 1000);
 </script>
 
 <script data-scope-mode="prototype">
+    this.textArea1 = document.getElementById("_LS_textarea1");
+    document.getElementById("_LS_show_main2").addEventListener("click", (function() {
+        this.moduleRouter.forward("base.body::main2");
+    }).bind(this));
+
     setTimeout(() => {
-        document.getElementById("_LS_all").innerText = "実行完了2";
+        document.getElementById("_LS_input1").value = "実行完了2";
     }, 2000);
 
     this.onLoad = function(param) {
-        console.log(param);
+        this.textArea1.value = "onLoad is called." + "\n";
     };
+
+    this.onInitialize = function(param) {
+        this.textArea1.value = "onInitialize is called." + "\n";
+        if (param !== null) {
+            this.textArea1.value = param.toString() + "\n";
+        }
+    }
+
+    this.onShow = function(isFirst, param) {
+        this.textArea1.value += "onShow is called." + "\n";
+    }
+
+    this.onHide = function(param) {
+        this.textArea1.value += "onHide is called." + "\n";
+    }
 </script>
 
 <script>
     setTimeout(() => {
-        document.getElementById("_LS_all").innerText = "実行完了3";
+        document.getElementById("_LS_input1").value = "実行完了3";
     }, 3000);
 </script>
 
 <script data-scope-mode="class">
     setTimeout(() => {
-        document.getElementById("_LS_all").innerText = "実行完了4";
+        document.getElementById("_LS_input1").value = "実行完了4";
     }, 4000);
 </script>

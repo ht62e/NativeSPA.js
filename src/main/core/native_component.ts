@@ -1,13 +1,13 @@
 import Container, { ContainerInfo } from "./container";
 import HTMLComponent from "./abstract_html_component";
 import ContainerManager from "./container_manager";
-import HTMLComponentAdapter, { htmlComponentAdapters } from "./html_component_adapter";
+import { htmlComponentAdapters } from "./html_component_adapter";
 
 export default class NativeComponent extends HTMLComponent {
     private prototypeTemplateBegin: string;
     private prototypeTemplateEnd: string;
 
-    private htmlAdapter: HTMLComponentAdapter = null;
+    
 
     protected onCreate(): void {
         this.prototypeTemplateBegin = 
@@ -72,7 +72,8 @@ export default class NativeComponent extends HTMLComponent {
         this.isMounted = true;
 
         this.htmlAdapter = htmlComponentAdapters.get(this.moduleIndex);
-        this.htmlAdapter.callOnLoadHandler("name is " + this.name);
+        this.htmlAdapter.setHtmlComponent(this);
+        this.htmlAdapter.triggerOnLoadHandler("name is " + this.name);
 
         return true;
     }
