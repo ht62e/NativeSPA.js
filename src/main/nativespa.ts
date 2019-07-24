@@ -7,7 +7,7 @@ console.log("******** start ********");
 var moduleManager = ModuleManager.getInstance();
 var containerManager = ContainerManager.getInstance();
 
-window.addEventListener("load", (event) => {
+//window.addEventListener("load", (event) => {
     const rootContainer = containerManager.createContainer("root", "", document.getElementById("app") as HTMLDivElement);
     
     window.addEventListener("resize", (event) => {
@@ -54,5 +54,5 @@ window.addEventListener("load", (event) => {
     
     
     console.log("******** end ********");
-});
+//});
 

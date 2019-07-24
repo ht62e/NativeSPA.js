@@ -45,7 +45,7 @@ export default class NativeComponent extends HTMLComponent {
         this.currentContainer = container;
 
         //ソースに対してテンプレート処理
-        const localizeRegExp = /_LS_/g;
+        const localizeRegExp = /\\:/g;
         this.source = this.source.replace(localizeRegExp, localPrefix);
 
         //引数で与えられたコンテナDOMに対して自身をロード

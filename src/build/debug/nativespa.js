@@ -60,6 +60,43 @@ define("core/runtime_error", ["require", "exports"], function (require, exports)
     }(Error));
     exports.default = RuntimeError;
 });
+define("core/result_dto", ["require", "exports"], function (require, exports) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    var ResultDto = /** @class */ (function () {
+        function ResultDto(actionType, dataIsChanged, result) {
+            this.actionType = actionType;
+            this.dataIsChanged = dataIsChanged;
+            this.result = result;
+        }
+        return ResultDto;
+    }());
+    exports.default = ResultDto;
+    var ActionType;
+    (function (ActionType) {
+        ActionType[ActionType["BACK_CANCEL"] = 0] = "BACK_CANCEL";
+        ActionType[ActionType["OK"] = 1] = "OK";
+    })(ActionType = exports.ActionType || (exports.ActionType = {}));
+});
+define("core/forward_dto", ["require", "exports"], function (require, exports) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    var ForwardDto = /** @class */ (function () {
+        function ForwardDto(forwardMode, params) {
+            this.forwardMode = forwardMode;
+            this.params = params;
+        }
+        return ForwardDto;
+    }());
+    exports.default = ForwardDto;
+    var ForwardMode;
+    (function (ForwardMode) {
+        ForwardMode[ForwardMode["READONLY"] = 0] = "READONLY";
+        ForwardMode[ForwardMode["NEW"] = 1] = "NEW";
+        ForwardMode[ForwardMode["NEW_EDIT"] = 2] = "NEW_EDIT";
+        ForwardMode[ForwardMode["EDIT"] = 3] = "EDIT";
+    })(ForwardMode = exports.ForwardMode || (exports.ForwardMode = {}));
+});
 define("core/container", ["require", "exports", "core/runtime_error"], function (require, exports, runtime_error_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -68,6 +105,7 @@ define("core/container", ["require", "exports", "core/runtime_error"], function 
             this.id = id;
             this.bindDomElement = bindDomElement;
             this.mountedModules = new Map();
+            this.moduleChangeHistory = new Array();
         }
         Container.prototype.getId = function () {
             return this.id;
@@ -105,6 +143,9 @@ define("core/container", ["require", "exports", "core/runtime_error"], function 
                 }
             });
         };
+        Container.prototype.hideModule = function () {
+            this.activeModule.hide();
+        };
         Container.prototype.onResize = function () {
             var containerWidth = this.bindDomElement.clientWidth;
             var containerHeight = this.bindDomElement.clientHeight;
@@ -112,19 +153,58 @@ define("core/container", ["require", "exports", "core/runtime_error"], function 
                 module.onResize(containerWidth, containerHeight);
             });
         };
+        Container.prototype.forward = function (module, params, callback) {
+            return __awaiter(this, void 0, void 0, function () {
+                var result;
+                return __generator(this, function (_a) {
+                    switch (_a.label) {
+                        case 0:
+                            module.initialize(null);
+                            this.changeActiveModule(module);
+                            this.moduleChangeHistory.push(module);
+                            return [4 /*yield*/, module.waitForClose()];
+                        case 1:
+                            result = _a.sent();
+                            if (callback) {
+                                //for ES5
+                                callback(result);
+                            }
+                            else {
+                                return [2 /*return*/, result];
+                            }
+                            return [2 /*return*/];
+                    }
+                });
+            });
+        };
+        Container.prototype.back = function () {
+            var _this = this;
+            this.activeModule.closeRequest().then(function (closed) {
+                if (_this.moduleChangeHistory.length > 0) {
+                    _this.moduleChangeHistory.pop();
+                }
+                if (_this.moduleChangeHistory.length > 0) {
+                    _this.changeActiveModule(_this.moduleChangeHistory[_this.moduleChangeHistory.length - 1]);
+                }
+                else {
+                    _this.hideModule();
+                }
+            });
+        };
+        Container.prototype.backWithoutConfirmation = function () {
+            if (this.moduleChangeHistory.length > 0) {
+                this.moduleChangeHistory.pop();
+            }
+            if (this.moduleChangeHistory.length > 0) {
+                this.changeActiveModule(this.moduleChangeHistory[this.moduleChangeHistory.length - 1]);
+            }
+            else {
+                this.hideModule();
+            }
+        };
         return Container;
     }());
     exports.default = Container;
-});
-define("core/module_dto", ["require", "exports"], function (require, exports) {
-    "use strict";
-    Object.defineProperty(exports, "__esModule", { value: true });
-    var ModuleDTO = /** @class */ (function () {
-        function ModuleDTO() {
-        }
-        return ModuleDTO;
-    }());
-    exports.default = ModuleDTO;
 });
 define("core/module", ["require", "exports"], function (require, exports) {
     "use strict";
@@ -231,73 +311,31 @@ define("core/module_router", ["require", "exports", "core/container_manager", "c
     Object.defineProperty(exports, "__esModule", { value: true });
     var ModuleRouter = /** @class */ (function () {
         function ModuleRouter() {
-            this.history = new Map();
         }
         ModuleRouter.getInstance = function () {
             return ModuleRouter.instance;
         };
-        ModuleRouter.prototype.forward = function (targetIdentifier, callback) {
+        ModuleRouter.prototype.forward = function (targetIdentifier, params, callback) {
             return __awaiter(this, void 0, void 0, function () {
-                var s, targetContainerId, moduleName, target, module, routerHisInfo, newHisStack, result;
+                var s, targetContainerId, moduleName, target, module;
                 return __generator(this, function (_a) {
-                    switch (_a.label) {
-                        case 0:
-                            s = targetIdentifier.split("::");
-                            targetContainerId = s[0];
-                            moduleName = s[1];
-                            target = container_manager_1.default.getInstance().getContainer(targetContainerId);
-                            module = module_manager_1.default.getInstance().getModule(moduleName);
-                            module.initialize(null);
-                            target.changeActiveModule(module);
-                            routerHisInfo = new RouterHistoryInfo(module, "test");
-                            if (!this.history.has(targetContainerId)) {
-                                newHisStack = [routerHisInfo];
-                                this.history.set(targetContainerId, newHisStack);
-                            }
-                            else {
-                                this.history.get(targetContainerId).push(routerHisInfo);
-                            }
-                            return [4 /*yield*/, module.waitForClose()];
-                        case 1:
-                            result = _a.sent();
-                            if (callback) {
-                                //for ES5
-                                callback(result);
-                            }
-                            else {
-                                return [2 /*return*/, result];
-                            }
-                            return [2 /*return*/];
-                    }
+                    s = targetIdentifier.split("::");
+                    targetContainerId = s[0];
+                    moduleName = s[1];
+                    target = container_manager_1.default.getInstance().getContainer(targetContainerId);
+                    module = module_manager_1.default.getInstance().getModule(moduleName);
+                    return [2 /*return*/, target.forward(module, params, callback)];
                 });
             });
         };
         ModuleRouter.prototype.back = function (targetContainerId) {
             var target = container_manager_1.default.getInstance().getContainer(targetContainerId);
-            var historyStack = this.history.get(targetContainerId);
-            var currentModule = historyStack[historyStack.length - 1].getModule();
-            currentModule.closeRequest().then(function (closed) {
-                historyStack.pop();
-                target.changeActiveModule(historyStack[historyStack.length - 1].getModule());
-            });
+            target.back();
         };
         ModuleRouter.instance = new ModuleRouter();
         return ModuleRouter;
     }());
     exports.default = ModuleRouter;
-    var RouterHistoryInfo = /** @class */ (function () {
-        function RouterHistoryInfo(module, title) {
-            this.module = module;
-            this.title = title;
-        }
-        RouterHistoryInfo.prototype.getModule = function () {
-            return this.module;
-        };
-        RouterHistoryInfo.prototype.getTitle = function () {
-            return this.title;
-        };
-        return RouterHistoryInfo;
-    }());
 });
 define("core/html_component_adapter", ["require", "exports", "core/module_router"], function (require, exports, module_router_1) {
     "use strict";
@@ -335,18 +373,8 @@ define("core/html_component_adapter", ["require", "exports", "core/module_router
                 this.close(null);
             }
         };
-        // public callOnCloseHandler(param: any): void {
-        //     if (this.onLoad) this.onLoad(param);
-        // }
-        // public async callCloseEventRequest(): Promise<boolean> {
-        //     if (this.onCloseRequest) {
-        //         return this.onCloseRequest();
-        //     } else {
-        //         return Promise.resolve(true);
-        //     }
-        // }
         HTMLComponentAdapter.prototype.close = function (result) {
-            this.htmlComponent.notifyClose(result);
+            this.htmlComponent.close(result);
         };
         return HTMLComponentAdapter;
     }());
@@ -430,10 +458,19 @@ define("core/abstract_html_component", ["require", "exports", "core/source_repos
                 });
             });
         };
-        HTMLComponent.prototype.notifyClose = function (result) {
-            console.log(this.closeRequestResolver);
-            this.closeRequestResolver(true);
-            this.closeForWaitResolver(result);
+        HTMLComponent.prototype.close = function (result) {
+            if (this.closeRequestResolver) {
+                this.closeRequestResolver(true);
+                this.closeRequestResolver = null;
+            }
+            else {
+                //backナビゲーションではなく自身で閉じたとき
+                this.currentContainer.backWithoutConfirmation();
+            }
+            if (this.closeForWaitResolver) {
+                this.closeForWaitResolver(result);
+                this.closeForWaitResolver = null;
+            }
         };
         HTMLComponent.prototype.getElement = function () {
             throw this.wrapperElement;
@@ -449,6 +486,9 @@ define("core/abstract_html_component", ["require", "exports", "core/source_repos
             return ary;
         };
         HTMLComponent.prototype.getName = function () {
+            return this.name;
+        };
+        HTMLComponent.prototype.getCaption = function () {
             return this.name;
         };
         HTMLComponent.prototype.isClosed = function () {
@@ -497,7 +537,7 @@ define("core/native_component", ["require", "exports", "core/abstract_html_compo
                         case 2:
                             localPrefix = "_" + this.moduleIndex.toString() + "_";
                             this.currentContainer = container;
-                            localizeRegExp = /_LS_/g;
+                            localizeRegExp = /\\:/g;
                             this.source = this.source.replace(localizeRegExp, localPrefix);
                             //引数で与えられたコンテナDOMに対して自身をロード
                             this.wrapperElement = document.createElement("div");
@@ -706,51 +746,51 @@ define("core/module_manager", ["require", "exports", "core/module", "core/native
         return ModuleContainerLinkInfo;
     }());
 });
-define("spartina", ["require", "exports", "core/module", "core/module_manager", "core/container_manager"], function (require, exports, module_2, module_manager_2, container_manager_4) {
+define("nativespa", ["require", "exports", "core/module", "core/module_manager", "core/container_manager"], function (require, exports, module_2, module_manager_2, container_manager_4) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     console.log("******** start ********");
     var moduleManager = module_manager_2.default.getInstance();
     var containerManager = container_manager_4.default.getInstance();
-    window.addEventListener("load", function (event) {
-        var rootContainer = containerManager.createContainer("root", "", document.getElementById("app"));
-        window.addEventListener("resize", function (event) {
-            rootContainer.getElement().style.width = window.innerWidth + "px";
-            rootContainer.getElement().style.height = window.innerHeight + "px";
-            rootContainer.onResize();
-        });
-        moduleManager.registerDescription({
-            name: "base",
-            sourceUri: "src/module/base.html",
-            componentType: module_2.ModuleType.Native,
-            targetContainerId: "root",
-            isContainerDefault: true
-        });
-        moduleManager.registerDescription({
-            name: "header",
-            sourceUri: "src/module/header.html",
-            componentType: module_2.ModuleType.Native,
-            targetContainerId: "base.header",
-            isContainerDefault: true
-        });
-        moduleManager.registerDescription({
-            name: "main",
-            sourceUri: "src/module/main.html",
-            componentType: module_2.ModuleType.Native,
-            targetContainerId: "base.body"
-        });
-        moduleManager.registerDescription({
-            name: "main2",
-            sourceUri: "src/module/main2.html",
-            componentType: module_2.ModuleType.Native,
-            targetContainerId: "base.body"
-        });
-        moduleManager.initialize().then(function () {
-            window.dispatchEvent(new Event("resize"));
-        });
-        console.log("******** end ********");
+    //window.addEventListener("load", (event) => {
+    var rootContainer = containerManager.createContainer("root", "", document.getElementById("app"));
+    window.addEventListener("resize", function (event) {
+        rootContainer.getElement().style.width = window.innerWidth + "px";
+        rootContainer.getElement().style.height = window.innerHeight + "px";
+        rootContainer.onResize();
     });
+    moduleManager.registerDescription({
+        name: "base",
+        sourceUri: "src/module/base.html",
+        componentType: module_2.ModuleType.Native,
+        targetContainerId: "root",
+        isContainerDefault: true
+    });
+    moduleManager.registerDescription({
+        name: "header",
+        sourceUri: "src/module/header.html",
+        componentType: module_2.ModuleType.Native,
+        targetContainerId: "base.header",
+        isContainerDefault: true
+    });
+    moduleManager.registerDescription({
+        name: "main",
+        sourceUri: "src/module/main.html",
+        componentType: module_2.ModuleType.Native,
+        targetContainerId: "base.body"
+    });
+    moduleManager.registerDescription({
+        name: "main2",
+        sourceUri: "src/module/main2.html",
+        componentType: module_2.ModuleType.Native,
+        targetContainerId: "base.body"
+    });
+    moduleManager.initialize().then(function () {
+        window.dispatchEvent(new Event("resize"));
+    });
+    console.log("******** end ********");
 });
+//});
 define("core/dialog_result", ["require", "exports"], function (require, exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -795,4 +835,4 @@ define("core/window_manager", ["require", "exports"], function (require, exports
     }());
     exports.default = WindowManager;
 });
-//# sourceMappingURL=spartina.js.map
+//# sourceMappingURL=nativespa.js.map

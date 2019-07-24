@@ -1,13 +1,14 @@
-<div id="_LS_all" class="module">
+<div id="\:all" class="module">
         <div>This is main2.html</div>
-        <div><input type="button" id="_LS_show_main2" value="show main2"></div>
-        <div><input type="button" id="_LS_close" value="close"></div>
-        <div><input type="text" id="_LS_input1"></div>
-        <div><textarea id="_LS_textarea1"></textarea></div>
+        <div><input type="button" id="\:show_main" value="show main"></div>
+        <div><input type="button" id="\:back" value="back"></div>
+        <div><input type="button" id="\:close" value="close"></div>
+        <div><input type="text" id="\:input1"></div>
+        <div><textarea id="\:textarea1"></textarea></div>
     </div>
     
     <style>
-        #_LS_textarea1 {
+        #\:textarea1 {
             width: 400px;
             height: 300px;
         }
@@ -15,22 +16,29 @@
     
     <script>
         setTimeout(() => {
-            document.getElementById("_LS_input1").value = "実行完了1";
+            document.getElementById("\:input1").value = "実行完了1";
         }, 1000);
     </script>
     
     <script data-scope-mode="prototype">
-        this.textArea1 = document.getElementById("_LS_textarea1");
-        document.getElementById("_LS_show_main2").addEventListener("click", (function() {
-            this.moduleRouter.forward("base.body::main");
+        this.textArea1 = document.getElementById("\:textarea1");
+        document.getElementById("\:show_main").addEventListener("click", (function() {
+            this.moduleRouter.forward("base.body::main", null, (obj) => {
+                console.log("main2 callback");
+                console.log(obj);
+            });
         }).bind(this));
 
-        document.getElementById("_LS_close").addEventListener("click", (function() {
+        document.getElementById("\:back").addEventListener("click", (function() {
             this.moduleRouter.back("base.body");
+        }).bind(this));
+
+        document.getElementById("\:close").addEventListener("click", (function() {
+            this.close("This is close object in main2.html");
         }).bind(this));
     
         setTimeout(() => {
-            document.getElementById("_LS_input1").value = "実行完了2";
+            document.getElementById("\:input1").value = "実行完了2";
         }, 2000);
     
         this.onLoad = function(param) {
@@ -55,12 +63,12 @@
     
     <script>
         setTimeout(() => {
-            document.getElementById("_LS_input1").value = "実行完了3";
+            document.getElementById("\:input1").value = "実行完了3";
         }, 3000);
     </script>
     
     <script data-scope-mode="class">
         setTimeout(() => {
-            document.getElementById("_LS_input1").value = "実行完了4";
+            document.getElementById("\:input1").value = "実行完了4";
         }, 4000);
     </script>

@@ -1,8 +1,9 @@
 import Container, { ContainerInfo } from "./container";
 import Module from "./module";
 import SourceRepository from "./source_repository";
-import ModuleDTO from "./module_dto";
+import ForwardDto from "./forward_dto";
 import HTMLComponentAdapter from "./html_component_adapter";
+import ResultDto from "./result_dto";
 
 export default abstract class HTMLComponent implements Module {
     protected isFetched: boolean = false;
@@ -16,7 +17,7 @@ export default abstract class HTMLComponent implements Module {
     protected htmlAdapter: HTMLComponentAdapter = null;
 
     private closeRequestResolver: (value?: boolean | PromiseLike<boolean>) => void;
-    private closeForWaitResolver: (value?: ModuleDTO | PromiseLike<ModuleDTO>) => void;
+    private closeForWaitResolver: (value?: ResultDto | PromiseLike<ResultDto>) => void;
 
     protected abstract onCreate(): void;
     protected abstract loadSubContainerInfos(): void;
@@ -46,7 +47,7 @@ export default abstract class HTMLComponent implements Module {
         return null;
     }
 
-    initialize(param: ModuleDTO): void {
+    initialize(param: ForwardDto): void {
         this.htmlAdapter.triggerOnInitializeHandler(param);
     }
 
@@ -63,7 +64,7 @@ export default abstract class HTMLComponent implements Module {
         this.htmlAdapter.triggerOnHideHandler(null);
     }
 
-    waitForClose(): Promise<ModuleDTO> {
+    waitForClose(): Promise<ResultDto> {
         return new Promise(resolve => {
             this.closeForWaitResolver = resolve;
         });
@@ -76,10 +77,18 @@ export default abstract class HTMLComponent implements Module {
         });
     }
 
-    notifyClose(result: ModuleDTO) {
-        console.log(this.closeRequestResolver);
-        this.closeRequestResolver(true);
-        this.closeForWaitResolver(result);
+    close(result: ResultDto) {
+        if (this.closeRequestResolver) {
+            this.closeRequestResolver(true);
+            this.closeRequestResolver = null;
+        } else {
+            //backナビゲーションではなく自身で閉じたとき
+            this.currentContainer.backWithoutConfirmation();
+        }
+        if (this.closeForWaitResolver) {
+            this.closeForWaitResolver(result);
+            this.closeForWaitResolver = null;
+        }
     }
 
     getElement(): HTMLDivElement {
@@ -99,6 +108,10 @@ export default abstract class HTMLComponent implements Module {
     }
 
     getName(): string {
+        return this.name;
+    }
+
+    getCaption(): string {
         return this.name;
     }
 

@@ -1,6 +1,7 @@
 import ModuleRouter from "./module_router";
 import HTMLComponent from "./abstract_html_component";
-import ModuleDTO from "./module_dto";
+import ForwardDto from "./forward_dto";
+import ResultDto from "./result_dto";
 
 export const htmlComponentAdapters = new Map<number, HTMLComponentAdapter>();
 
@@ -19,7 +20,7 @@ export default abstract class HTMLComponentAdapter {
     }
 
     protected abstract onLoad(param: any): void;
-    protected abstract onInitialize(param: ModuleDTO): void;
+    protected abstract onInitialize(param: ForwardDto): void;
     protected abstract onShow(isFirst: boolean, param: any): void;
     protected abstract onHide(param: any): void;
     protected abstract onCloseRequest(force: boolean): void;
@@ -49,20 +50,8 @@ export default abstract class HTMLComponentAdapter {
         }
     }
 
-    // public callOnCloseHandler(param: any): void {
-    //     if (this.onLoad) this.onLoad(param);
-    // }
-
-    // public async callCloseEventRequest(): Promise<boolean> {
-    //     if (this.onCloseRequest) {
-    //         return this.onCloseRequest();
-    //     } else {
-    //         return Promise.resolve(true);
-    //     }
-    // }
-
-    private close(result: ModuleDTO) {
-        this.htmlComponent.notifyClose(result);
+    private close(result: ResultDto) {
+        this.htmlComponent.close(result);
     }
 }
 
