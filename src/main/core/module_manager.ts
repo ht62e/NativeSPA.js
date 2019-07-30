@@ -1,9 +1,41 @@
-import ModuleDescription from "./module_description";
-import Module, { ModuleType } from "./module";
+import Module from "./module";
 import NativeComponent from "./native_component";
 import RuntimeError from "./runtime_error";
 import ContainerManager from "./container_manager";
 import Container from "./container";
+
+export interface ModuleDescription {
+    name: string;
+    sourceUri: string;
+    moduleType?: ModuleType;
+    displayMode?: DisplayMode;
+    targetContainerId?: string;
+    isContainerDefault?: boolean;
+    lazyModuleLoading?: boolean;
+    preloadSourceAtLazy?: boolean;
+}
+
+interface registerOptions {
+    moduleType?: ModuleType;
+    displayMode?: DisplayMode;
+    isContainerDefault?: boolean;
+    lazyModuleLoading?: boolean;
+    preloadSourceAtLazy?: boolean;
+}
+
+
+export enum DisplayMode {
+    Embedding,
+    Window,
+    PopupMenu
+}
+
+export enum ModuleType {
+    Native,
+    Vue,
+    React,
+    SSRP
+}
 
 export default class ModuleManager {
     private static instance = new ModuleManager();
@@ -21,10 +53,38 @@ export default class ModuleManager {
     public static getInstance(): ModuleManager {
         return ModuleManager.instance;
     }
-   
-    public registerDescription(description: ModuleDescription) {
-        this.descriptions.push(description);
+
+    public register(name: string, sourceUri: string, targetContainerId: string, 
+                    isContainerDefault: boolean, options?: registerOptions) {
+        this.registerDescription(name, sourceUri, DisplayMode.Embedding, targetContainerId, isContainerDefault, options);
     }
+
+    public registerWindow(name: string, sourceUri: string, options?: registerOptions) {
+        this.registerDescription(name, sourceUri, DisplayMode.Window, null, null, options);
+    }
+
+    public registerPopup(name: string, sourceUri: string, options?: registerOptions) {
+        this.registerDescription(name, sourceUri, DisplayMode.PopupMenu, null, null, options);
+    }
+
+    private registerDescription(name: string, sourceUri: string, displayMode: DisplayMode, 
+                                targetContainerId: string, isContainerDefault: boolean,
+                                options?: registerOptions) {
+        const op: registerOptions = options || {};
+        const ds: ModuleDescription = {
+            name: name,
+            sourceUri: sourceUri,
+            targetContainerId: targetContainerId,
+            displayMode: displayMode,
+            moduleType: op.moduleType !== undefined ? op.moduleType : ModuleType.Native,
+            isContainerDefault: isContainerDefault,
+            lazyModuleLoading: op.lazyModuleLoading !== undefined ? op.lazyModuleLoading : false,
+            preloadSourceAtLazy: op.preloadSourceAtLazy !== undefined ? op.preloadSourceAtLazy : true,
+        };
+        this.descriptions.push(ds);
+    }
+   
+
 
     public getModule(name: string) {
         if (!this.modules.has(name)) throw new RuntimeError("指定されたモジュールが見つかりません。");
@@ -38,7 +98,7 @@ export default class ModuleManager {
         for (let description of this.descriptions) {
             let newModule: Module = null;
             
-            if (description.componentType === ModuleType.Native || !description.componentType) {
+            if (description.moduleType === ModuleType.Native || !description.moduleType) {
                 newModule = new NativeComponent(description.name, description.sourceUri, 
                                                 ModuleManager.moduleIndexCounter++);
             } else {
@@ -61,9 +121,10 @@ export default class ModuleManager {
         const rootMclInfo = new ModuleContainerLinkInfo(null, [ModuleManager.ROOT_NAME]);
         mcLinkInfoMap.set(ModuleManager.ROOT_NAME, rootMclInfo);
 
-        //モジュールとコンテナの依存関係を解決するためのツリーを生成する
+        //モジュールとコンテナの依存関係を解決するためのツリーを生成する（組み込み利用）
         mcLinkInfoMap.forEach((mclInfo: ModuleContainerLinkInfo, moduleName: string) => {
             if (mclInfo === rootMclInfo) return;
+            if (mclInfo.moduleDescription.displayMode !== DisplayMode.Embedding) return;
 
             let targetModuleName: string = ModuleManager.ROOT_NAME;
             let targetContainerName: string = ModuleManager.ROOT_NAME;
@@ -84,6 +145,19 @@ export default class ModuleManager {
                 throw new RuntimeError("未定義のコンテナが指定された");
             }
         });
+
+        //モジュールとコンテナの依存関係を解決するためのツリーを生成する（オーバーレイ利用）
+        // mcLinkInfoMap.forEach((mclInfo: ModuleContainerLinkInfo, moduleName: string) => {
+        //     if (mclInfo === rootMclInfo) return;
+        //     const displayMode = mclInfo.moduleDescription.displayMode;
+        //     if (displayMode === DisplayMode.Embedding) return;
+
+        //     if (displayMode === DisplayMode.Window) {
+
+        //     } else if (displayMode === DisplayMode.PopupMenu) {
+
+        //     }
+        // });
 
         //ツリールートから順番にモジュールのロードを実行（遅延ロードモジュールを除く
         const containerManager = ContainerManager.getInstance();

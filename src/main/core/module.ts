@@ -25,11 +25,4 @@ export default interface Module {
 }
 
 
-export enum ModuleType {
-    SSRP,
-    Native,
-    Vue,
-    React
-}
-
 

@@ -209,17 +209,6 @@ define("core/container", ["require", "exports", "core/runtime_error"], function 
 define("core/module", ["require", "exports"], function (require, exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
-    var ModuleType;
-    (function (ModuleType) {
-        ModuleType[ModuleType["SSRP"] = 0] = "SSRP";
-        ModuleType[ModuleType["Native"] = 1] = "Native";
-        ModuleType[ModuleType["Vue"] = 2] = "Vue";
-        ModuleType[ModuleType["React"] = 3] = "React";
-    })(ModuleType = exports.ModuleType || (exports.ModuleType = {}));
-});
-define("core/module_description", ["require", "exports"], function (require, exports) {
-    "use strict";
-    Object.defineProperty(exports, "__esModule", { value: true });
 });
 define("core/source_repository", ["require", "exports"], function (require, exports) {
     "use strict";
@@ -603,9 +592,22 @@ define("core/native_component", ["require", "exports", "core/abstract_html_compo
     }(abstract_html_component_1.default));
     exports.default = NativeComponent;
 });
-define("core/module_manager", ["require", "exports", "core/module", "core/native_component", "core/runtime_error", "core/container_manager"], function (require, exports, module_1, native_component_1, runtime_error_3, container_manager_3) {
+define("core/module_manager", ["require", "exports", "core/native_component", "core/runtime_error", "core/container_manager"], function (require, exports, native_component_1, runtime_error_3, container_manager_3) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
+    var DisplayMode;
+    (function (DisplayMode) {
+        DisplayMode[DisplayMode["Embedding"] = 0] = "Embedding";
+        DisplayMode[DisplayMode["Window"] = 1] = "Window";
+        DisplayMode[DisplayMode["PopupMenu"] = 2] = "PopupMenu";
+    })(DisplayMode = exports.DisplayMode || (exports.DisplayMode = {}));
+    var ModuleType;
+    (function (ModuleType) {
+        ModuleType[ModuleType["Native"] = 0] = "Native";
+        ModuleType[ModuleType["Vue"] = 1] = "Vue";
+        ModuleType[ModuleType["React"] = 2] = "React";
+        ModuleType[ModuleType["SSRP"] = 3] = "SSRP";
+    })(ModuleType = exports.ModuleType || (exports.ModuleType = {}));
     var ModuleManager = /** @class */ (function () {
         function ModuleManager() {
             this.descriptions = [];
@@ -614,8 +616,22 @@ define("core/module_manager", ["require", "exports", "core/module", "core/native
         ModuleManager.getInstance = function () {
             return ModuleManager.instance;
         };
-        ModuleManager.prototype.registerDescription = function (description) {
-            this.descriptions.push(description);
+        ModuleManager.prototype.register = function (name, sourceUri, targetContainerId, isContainerDefault, options) {
+            this.registerDescription(name, sourceUri, DisplayMode.Embedding, targetContainerId, isContainerDefault, options);
+        };
+        ModuleManager.prototype.registerDescription = function (name, sourceUri, displayMode, targetContainerId, isContainerDefault, options) {
+            var op = options || {};
+            var ds = {
+                name: name,
+                sourceUri: sourceUri,
+                targetContainerId: targetContainerId,
+                displayMode: displayMode,
+                moduleType: op.moduleType !== undefined ? op.moduleType : ModuleType.Native,
+                isContainerDefault: isContainerDefault,
+                lazyModuleLoading: op.lazyModuleLoading !== undefined ? op.lazyModuleLoading : false,
+                preloadSourceAtLazy: op.preloadSourceAtLazy !== undefined ? op.preloadSourceAtLazy : true,
+            };
+            this.descriptions.push(ds);
         };
         ModuleManager.prototype.getModule = function (name) {
             if (!this.modules.has(name))
@@ -636,7 +652,7 @@ define("core/module_manager", ["require", "exports", "core/module", "core/native
                             if (!(_i < _a.length)) return [3 /*break*/, 4];
                             description = _a[_i];
                             newModule = null;
-                            if (description.componentType === module_1.ModuleType.Native || !description.componentType) {
+                            if (description.moduleType === ModuleType.Native || !description.moduleType) {
                                 newModule = new native_component_1.default(description.name, description.sourceUri, ModuleManager.moduleIndexCounter++);
                             }
                             else {
@@ -746,51 +762,27 @@ define("core/module_manager", ["require", "exports", "core/module", "core/native
         return ModuleContainerLinkInfo;
     }());
 });
-define("nativespa", ["require", "exports", "core/module", "core/module_manager", "core/container_manager"], function (require, exports, module_2, module_manager_2, container_manager_4) {
+define("nativespa", ["require", "exports", "core/module_manager", "core/container_manager"], function (require, exports, module_manager_2, container_manager_4) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     console.log("******** start ********");
     var moduleManager = module_manager_2.default.getInstance();
     var containerManager = container_manager_4.default.getInstance();
-    //window.addEventListener("load", (event) => {
     var rootContainer = containerManager.createContainer("root", "", document.getElementById("app"));
     window.addEventListener("resize", function (event) {
         rootContainer.getElement().style.width = window.innerWidth + "px";
         rootContainer.getElement().style.height = window.innerHeight + "px";
         rootContainer.onResize();
     });
-    moduleManager.registerDescription({
-        name: "base",
-        sourceUri: "src/module/base.html",
-        componentType: module_2.ModuleType.Native,
-        targetContainerId: "root",
-        isContainerDefault: true
-    });
-    moduleManager.registerDescription({
-        name: "header",
-        sourceUri: "src/module/header.html",
-        componentType: module_2.ModuleType.Native,
-        targetContainerId: "base.header",
-        isContainerDefault: true
-    });
-    moduleManager.registerDescription({
-        name: "main",
-        sourceUri: "src/module/main.html",
-        componentType: module_2.ModuleType.Native,
-        targetContainerId: "base.body"
-    });
-    moduleManager.registerDescription({
-        name: "main2",
-        sourceUri: "src/module/main2.html",
-        componentType: module_2.ModuleType.Native,
-        targetContainerId: "base.body"
-    });
+    moduleManager.register("base", "src/module/base.html", "root", true);
+    moduleManager.register("header", "src/module/header.html", "base.header", true);
+    moduleManager.register("main", "src/module/main.html", "base.body", false);
+    moduleManager.register("main2", "src/module/main2.html", "base.body", false);
     moduleManager.initialize().then(function () {
         window.dispatchEvent(new Event("resize"));
     });
     console.log("******** end ********");
 });
-//});
 define("core/dialog_result", ["require", "exports"], function (require, exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -808,31 +800,64 @@ define("core/dialog_result", ["require", "exports"], function (require, exports)
         DialogResultAction[DialogResultAction["NO"] = 3] = "NO";
     })(DialogResultAction = exports.DialogResultAction || (exports.DialogResultAction = {}));
 });
+define("core/overlay", ["require", "exports"], function (require, exports) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    var Overlay = /** @class */ (function () {
+        function Overlay(viewPortElement, width, height) {
+            this.contentElement = document.createElement("div");
+            this.contentElement.style.position = "absolute";
+            this.contentElement.style.width = String(width) + "px";
+            this.contentElement.style.height = String(height) + "px";
+            this.contentElement.style.display = "none";
+            viewPortElement.appendChild(this.contentElement);
+        }
+        return Overlay;
+    }());
+    exports.default = Overlay;
+});
+define("core/overlay_manager", ["require", "exports"], function (require, exports) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    var OvarlayManager = /** @class */ (function () {
+        function OvarlayManager() {
+        }
+        OvarlayManager.prototype.showAsPopupMenu = function (moduleName) {
+            return null;
+        };
+        OvarlayManager.prototype.showAsWindow = function (moduleName) {
+            return null;
+        };
+        OvarlayManager.prototype.showAsModalWindow = function (moduleName) {
+            return null;
+        };
+        return OvarlayManager;
+    }());
+    exports.default = OvarlayManager;
+});
 define("core/transition_effect", ["require", "exports"], function (require, exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
 });
-define("core/window", ["require", "exports"], function (require, exports) {
+define("core/window", ["require", "exports", "core/overlay"], function (require, exports, overlay_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
-    var Window = /** @class */ (function () {
+    var Window = /** @class */ (function (_super) {
+        __extends(Window, _super);
         function Window() {
+            return _super !== null && _super.apply(this, arguments) || this;
         }
-        return Window;
-    }());
-    exports.default = Window;
-});
-define("core/window_manager", ["require", "exports"], function (require, exports) {
-    "use strict";
-    Object.defineProperty(exports, "__esModule", { value: true });
-    var WindowManager = /** @class */ (function () {
-        function WindowManager() {
-        }
-        WindowManager.prototype.showModal = function (moduleName) {
-            return null;
+        Window.prototype.setPosition = function (x, y) {
+            throw new Error("Method not implemented.");
         };
-        return WindowManager;
-    }());
-    exports.default = WindowManager;
+        Window.prototype.show = function (x, y) {
+            throw new Error("Method not implemented.");
+        };
+        Window.prototype.hide = function () {
+            throw new Error("Method not implemented.");
+        };
+        return Window;
+    }(overlay_1.default));
+    exports.default = Window;
 });
 //# sourceMappingURL=nativespa.js.map
