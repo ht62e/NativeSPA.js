@@ -29,8 +29,8 @@ export default abstract class HTMLComponent implements Module {
 
     onResize(containerWidth: number, containerHeight: number): void {
         if (!this.wrapperElement) return;
-        this.wrapperElement.style.width = containerWidth.toString() + "px";
-        this.wrapperElement.style.height = containerHeight.toString() + "px";
+        //this.wrapperElement.style.width = containerWidth.toString() + "px";
+        //this.wrapperElement.style.height = containerHeight.toString() + "px";
 
         this.subContainerInfos.forEach((containerInfo: ContainerInfo) => {
             containerInfo.container.onResize();

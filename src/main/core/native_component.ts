@@ -52,6 +52,9 @@ export default class NativeComponent extends HTMLComponent {
         this.wrapperElement = document.createElement("div");
         this.wrapperElement.id = localPrefix + "module"
         this.wrapperElement.style.position = "absolute";
+        this.wrapperElement.style.overflow = "auto";
+        this.wrapperElement.style.width = "100%";
+        this.wrapperElement.style.height = "100%";
         this.wrapperElement.style.visibility = "hidden";
 
         this.wrapperElement.innerHTML = this.source;

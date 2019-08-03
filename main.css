@@ -1,0 +1,18 @@
+.spa_overlay_container {
+    overflow: hidden;
+    box-shadow: 8px 8px 25px -5px rgba(0,0,0,0.4);
+}
+
+.spa_dialog_window_header {
+    height: 30px;
+    background-color: #3d5885;
+}
+
+.spa_dialog_window_body {
+    background-color: #FFFFFF;
+}
+
+.spa_dialog_window_footer {
+    height: 50px;
+    background-color: #F5F5F5;
+}

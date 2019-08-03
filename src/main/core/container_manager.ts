@@ -14,6 +14,10 @@ export default class ContainerManager {
         return ContainerManager.instance;
     }
 
+    public createRootContainer(domElement: HTMLDivElement): Container {
+        return this.createContainer("root", "", domElement);
+    }
+
     public createContainer(id: string, type: string, bindDomElement: HTMLDivElement): Container {
         if (this.containers.has(id)) {
             throw new RuntimeError("コンテナID重複");

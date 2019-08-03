@@ -9,6 +9,7 @@ export default class Container {
     private moduleChangeHistory = new Array<Module>();
 
     constructor(private id: string, private bindDomElement: HTMLDivElement) {
+        this.bindDomElement.style.position = "relative";
     }
 
     public getId(): string {
