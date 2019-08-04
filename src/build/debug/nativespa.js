@@ -616,7 +616,27 @@ define("core/dialog_result", ["require", "exports"], function (require, exports)
         DialogResultAction[DialogResultAction["NO"] = 3] = "NO";
     })(DialogResultAction = exports.DialogResultAction || (exports.DialogResultAction = {}));
 });
-define("core/overlay", ["require", "exports", "core/overlay_manager"], function (require, exports, overlay_manager_1) {
+define("core/types", ["require", "exports"], function (require, exports) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    var Point = /** @class */ (function () {
+        function Point(x, y) {
+            this.x = x;
+            this.y = y;
+        }
+        return Point;
+    }());
+    exports.Point = Point;
+    var Size = /** @class */ (function () {
+        function Size(width, height) {
+            this.width = width;
+            this.height = height;
+        }
+        return Size;
+    }());
+    exports.Size = Size;
+});
+define("core/overlay", ["require", "exports", "core/overlay_manager", "core/types"], function (require, exports, overlay_manager_1, types_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var Overlay = /** @class */ (function () {
@@ -631,6 +651,7 @@ define("core/overlay", ["require", "exports", "core/overlay_manager"], function 
             this.outerFrameEl.style.backgroundColor = "transparent";
             this.changePosition(70, 70);
             //this.outerFrameEl.style.display = "none";
+            this.outerFrameEl.addEventListener("selectstart", this.onSelectStart.bind(this));
             this.tabNaviFrontDetector = document.createElement("div");
             this.tabNaviFrontDetector.style.height = "0px";
             this.tabNaviFrontDetector.tabIndex = 0;
@@ -705,12 +726,36 @@ define("core/overlay", ["require", "exports", "core/overlay_manager"], function 
             if (this.isResizing) {
                 switch (this.resizePositionIndex) {
                     case 0: //左上
-                        this.changePosition(this.resizeStartX + (x - this.resizeStartMouseX), this.resizeStartY + (y - this.resizeStartMouseY));
-                        this.resize(this.resizeStartWidth - (x - this.resizeStartMouseX), this.resizeStartHeight - (y - this.resizeStartMouseY));
+                        this.changePosition(this.resizeStartPos.x + (x - this.resizeStartMousePos.x), this.resizeStartPos.y + (y - this.resizeStartMousePos.y));
+                        this.resize(this.resizeStartSize.width - (x - this.resizeStartMousePos.x), this.resizeStartSize.height - (y - this.resizeStartMousePos.y));
                         break;
                     case 1: //上
-                        this.changePosition(this.x, this.resizeStartY + (y - this.resizeStartMouseY));
-                        this.resize(this.width, this.resizeStartHeight - (y - this.resizeStartMouseY));
+                        this.changePosition(this.position.x, this.resizeStartPos.y + (y - this.resizeStartMousePos.y));
+                        this.resize(this.size.width, this.resizeStartSize.height - (y - this.resizeStartMousePos.y));
+                        break;
+                    case 2: //右上
+                        this.changePosition(this.position.x, this.resizeStartPos.y + (y - this.resizeStartMousePos.y));
+                        this.resize(this.resizeStartSize.width + (x - this.resizeStartMousePos.x), this.resizeStartSize.height - (y - this.resizeStartMousePos.y));
+                        break;
+                    case 3: //左
+                        this.changePosition(this.resizeStartPos.x + (x - this.resizeStartMousePos.x), this.position.y);
+                        this.resize(this.resizeStartSize.width - (x - this.resizeStartMousePos.x), this.size.height);
+                        break;
+                    case 4: //右
+                        this.changePosition(this.position.x, this.position.y);
+                        this.resize(this.resizeStartSize.width + (x - this.resizeStartMousePos.x), this.size.height);
+                        break;
+                    case 5: //左下
+                        this.changePosition(this.resizeStartPos.x + (x - this.resizeStartMousePos.x), this.position.y);
+                        this.resize(this.resizeStartSize.width - (x - this.resizeStartMousePos.x), this.resizeStartSize.height + (y - this.resizeStartMousePos.y));
+                        break;
+                    case 6: //下
+                        this.changePosition(this.position.x, this.position.y);
+                        this.resize(this.size.width, this.resizeStartSize.height + (y - this.resizeStartMousePos.y));
+                        break;
+                    case 7: //右下
+                        this.changePosition(this.position.x, this.position.y);
+                        this.resize(this.resizeStartSize.width + (x - this.resizeStartMousePos.x), this.resizeStartSize.height + (y - this.resizeStartMousePos.y));
                         break;
                 }
             }
@@ -721,12 +766,15 @@ define("core/overlay", ["require", "exports", "core/overlay_manager"], function 
         Overlay.prototype.onResizeHandleMouseDown = function (event) {
             this.isResizing = true;
             this.resizePositionIndex = parseInt(event.target.dataset["positionIndex"]);
-            this.resizeStartMouseX = event.x;
-            this.resizeStartMouseY = event.y;
-            this.resizeStartX = this.x;
-            this.resizeStartY = this.y;
-            this.resizeStartWidth = this.width;
-            this.resizeStartHeight = this.height;
+            this.resizeStartMousePos = new types_1.Point(event.x, event.y);
+            this.resizeStartPos = new types_1.Point(this.position.x, this.position.y);
+            this.resizeStartSize = new types_1.Size(this.size.width, this.size.height);
+            overlay_manager_1.default.getInstance().changeContentsSelectable(false);
+        };
+        Overlay.prototype.onSelectStart = function (event) {
+            //console.log(event);
+            //event.stopPropagation();
+            //event.preventDefault();
         };
         Overlay.prototype.onTabNaviFrontDetectorFocusIn = function (event) {
             if (!this.lastFocusIsDetector) {
@@ -756,20 +804,18 @@ define("core/overlay", ["require", "exports", "core/overlay_manager"], function 
             this.contentEl.style.zIndex = String(zIndex);
         };
         Overlay.prototype.changePosition = function (x, y) {
-            this.x = x;
-            this.y = y;
-            this.outerFrameEl.style.left = String(this.x - Overlay.resizeHandleThicknessPx) + "px";
-            this.outerFrameEl.style.top = String(this.y - Overlay.resizeHandleThicknessPx) + "px";
+            this.position = new types_1.Point(x, y);
+            this.outerFrameEl.style.left = String(this.position.x - Overlay.resizeHandleThicknessPx) + "px";
+            this.outerFrameEl.style.top = String(this.position.y - Overlay.resizeHandleThicknessPx) + "px";
         };
         Overlay.prototype.resize = function (width, height) {
-            this.width = width;
-            this.height = height;
+            this.size = new types_1.Size(width, height);
             this.outerFrameEl.style.width = String(width + Overlay.resizeHandleThicknessPx * 2) + "px";
             this.outerFrameEl.style.height = String(height + Overlay.resizeHandleThicknessPx * 2) + "px";
             this.contentEl.style.width = String(width) + "px";
             this.contentEl.style.height = String(height) + "px";
         };
-        Overlay.resizeHandleThicknessPx = 6;
+        Overlay.resizeHandleThicknessPx = 7;
         return Overlay;
     }());
     exports.default = Overlay;
@@ -789,21 +835,20 @@ define("core/window", ["require", "exports", "core/overlay", "core/container_man
             _this.wrapperEl.style.flexDirection = "column";
             _this.wrapperEl.style.width = "100%";
             _this.wrapperEl.style.height = "100%";
-            // this.wrapperEl.style.left = String(DialogWindow.resizeHandleThicknessPx) + "px";
-            // this.wrapperEl.style.top = String(DialogWindow.resizeHandleThicknessPx) + "px";
-            //this.wrapperEl.addEventListener("mouseup", this.onMouseUp.bind(this));
             _this.headerEl = document.createElement("div");
             _this.headerEl.className = "spa_dialog_window_header";
             _this.headerEl.style.position = "relative";
             _this.headerEl.style.width = "100%";
+            _this.headerEl.textContent = caption;
             _this.headerEl.addEventListener("mousedown", _this.onHeaderMouseDown.bind(_this));
+            _this.headerEl.addEventListener("dragstart", _this.onHeaderDragStart.bind(_this));
             _this.bodyEl = document.createElement("div");
             _this.bodyEl.className = "spa_dialog_window_body";
             _this.bodyEl.style.position = "relative";
             _this.bodyEl.style.flexGrow = "1";
             _this.bodyEl.style.flexShrink = "1";
             _this.bodyEl.style.width = "100%";
-            _this.container = containerManager.createContainer("_random_", "", _this.bodyEl);
+            _this.container = containerManager.createContainer("__window" + String(DialogWindow.instanceSequence++), "", _this.bodyEl);
             _this.footerEl = document.createElement("div");
             _this.footerEl.className = "spa_dialog_window_footer";
             _this.footerEl.style.position = "relative";
@@ -817,6 +862,9 @@ define("core/window", ["require", "exports", "core/overlay", "core/container_man
         DialogWindow.prototype.onHeaderMouseDown = function (event) {
             this.isDragging = true;
         };
+        DialogWindow.prototype.onHeaderDragStart = function (event) {
+            event.preventDefault();
+        };
         // private onMouseUp(event: MouseEvent) {
         //     this.isDragging = false;
         // }
@@ -825,7 +873,7 @@ define("core/window", ["require", "exports", "core/overlay", "core/container_man
             _super.prototype.__dispachMouseMoveEvent.call(this, x, y, deltaX, deltaY);
             if (!this.isDragging)
                 return;
-            this.changePosition(this.x + deltaX, this.y + deltaY);
+            this.changePosition(this.position.x + deltaX, this.position.y + deltaY);
         };
         //override
         DialogWindow.prototype.__dispachMouseUpEvent = function (x, y) {
@@ -844,6 +892,7 @@ define("core/window", ["require", "exports", "core/overlay", "core/container_man
         DialogWindow.prototype.hide = function () {
             this.outerFrameEl.style.display = "none";
         };
+        DialogWindow.instanceSequence = 0;
         return DialogWindow;
     }(overlay_1.default));
     exports.default = DialogWindow;
@@ -857,9 +906,8 @@ define("core/overlay_manager", ["require", "exports", "core/window"], function (
             this.overlayLastFocusedElement = null;
             this.previousMouseX = 0;
             this.previousMouseY = 0;
+            this.contentsSelectable = true;
             this.overlays = new Map();
-            window.addEventListener("mousemove", this.onMouseMove.bind(this));
-            window.addEventListener("mouseup", this.onMouseUp.bind(this));
         }
         OvarlayManager.getInstance = function () {
             return OvarlayManager.instance;
@@ -877,6 +925,12 @@ define("core/overlay_manager", ["require", "exports", "core/window"], function (
             this.overlays.forEach(function (overlay) {
                 overlay.__dispachMouseUpEvent(event.x, event.y);
             });
+            this.changeContentsSelectable(true);
+        };
+        OvarlayManager.prototype.onSelectStart = function (event) {
+            if (!this.contentsSelectable) {
+                event.preventDefault();
+            }
         };
         OvarlayManager.prototype.onFocusIn = function (event) {
             if (this.overlayLastFocusedElement) {
@@ -891,12 +945,18 @@ define("core/overlay_manager", ["require", "exports", "core/window"], function (
             }
             this.viewPortEl = element;
             this.viewPortEl.addEventListener("focusin", this.onFocusIn.bind(this));
+            this.viewPortEl.addEventListener("mousemove", this.onMouseMove.bind(this));
+            this.viewPortEl.addEventListener("mouseup", this.onMouseUp.bind(this));
+            this.viewPortEl.addEventListener("selectstart", this.onSelectStart.bind(this));
         };
         OvarlayManager.prototype.createWindow = function (overlayName, caption, options) {
             var overlay = new window_1.default(this.viewPortEl, caption, options);
             overlay.changeZIndex(1000);
             this.overlays.set(overlayName, overlay);
             return overlay;
+        };
+        OvarlayManager.prototype.changeContentsSelectable = function (selectable) {
+            this.contentsSelectable = selectable;
         };
         OvarlayManager.prototype.showPopupMenu = function (overlayName) {
             return null;
@@ -981,7 +1041,7 @@ define("core/module_manager", ["require", "exports", "core/native_component", "c
                             newModule = null;
                             //モジュールインスタンス生成
                             if (description.moduleType === ModuleType.Native || !description.moduleType) {
-                                newModule = new native_component_1.default(description.name, description.sourceUri, ModuleManager.moduleIndexCounter++);
+                                newModule = new native_component_1.default(description.name, description.sourceUri, ModuleManager.instanceSequence++);
                             }
                             else {
                                 throw new runtime_error_3.default("不明な種類のコンポーネント");
@@ -1094,7 +1154,7 @@ define("core/module_manager", ["require", "exports", "core/native_component", "c
         };
         ModuleManager.instance = new ModuleManager();
         ModuleManager.ROOT_NAME = "root";
-        ModuleManager.moduleIndexCounter = 0;
+        ModuleManager.instanceSequence = 0;
         return ModuleManager;
     }());
     exports.default = ModuleManager;

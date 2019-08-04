@@ -3,6 +3,8 @@ import Overlay from "./overlay";
 import ContainerManager from "./container_manager";
 
 export default class DialogWindow extends Overlay {
+    private static instanceSequence = 0;
+
     protected wrapperEl: HTMLDivElement;
     protected headerEl: HTMLDivElement;
     protected bodyEl: HTMLDivElement;
@@ -11,9 +13,6 @@ export default class DialogWindow extends Overlay {
     protected isDragging: boolean = false;
 
     protected container: Container;
-
-    private previousMouseX: number;
-    private previousMouseY: number;
 
     constructor(viewPortElement: HTMLElement, caption: string, options?: WindowOptions) {
         super(viewPortElement, 640, 480);
@@ -26,17 +25,16 @@ export default class DialogWindow extends Overlay {
         this.wrapperEl.style.flexDirection = "column";
         this.wrapperEl.style.width = "100%";
         this.wrapperEl.style.height = "100%";
-        // this.wrapperEl.style.left = String(DialogWindow.resizeHandleThicknessPx) + "px";
-        // this.wrapperEl.style.top = String(DialogWindow.resizeHandleThicknessPx) + "px";
-        //this.wrapperEl.addEventListener("mouseup", this.onMouseUp.bind(this));
 
         this.headerEl = document.createElement("div");
         this.headerEl.className = "spa_dialog_window_header";
         this.headerEl.style.position = "relative";
         this.headerEl.style.width = "100%";
+        this.headerEl.textContent = caption;
 
         this.headerEl.addEventListener("mousedown", this.onHeaderMouseDown.bind(this));
-        
+        this.headerEl.addEventListener("dragstart", this.onHeaderDragStart.bind(this));
+
         this.bodyEl = document.createElement("div");
         this.bodyEl.className = "spa_dialog_window_body";
         this.bodyEl.style.position = "relative";
@@ -44,7 +42,8 @@ export default class DialogWindow extends Overlay {
         this.bodyEl.style.flexShrink = "1";
         this.bodyEl.style.width = "100%";
 
-        this.container = containerManager.createContainer("_random_", "", this.bodyEl);
+        this.container = containerManager.createContainer(
+            "__window" + String(DialogWindow.instanceSequence++), "", this.bodyEl);
 
         this.footerEl = document.createElement("div");
         this.footerEl.className = "spa_dialog_window_footer";
@@ -62,6 +61,10 @@ export default class DialogWindow extends Overlay {
         this.isDragging = true;
     }
 
+    private onHeaderDragStart(event: MouseEvent) {
+        event.preventDefault();
+    }
+
     // private onMouseUp(event: MouseEvent) {
     //     this.isDragging = false;
     // }
@@ -70,7 +73,7 @@ export default class DialogWindow extends Overlay {
     public __dispachMouseMoveEvent(x: number, y: number, deltaX: number, deltaY: number) {
         super.__dispachMouseMoveEvent(x, y, deltaX, deltaY);
         if (!this.isDragging) return;
-        this.changePosition(this.x + deltaX, this.y + deltaY);
+        this.changePosition(this.position.x + deltaX, this.position.y + deltaY);
     }
 
     //override

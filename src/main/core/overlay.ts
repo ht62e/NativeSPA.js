@@ -1,8 +1,9 @@
 import Container from "./container";
 import OvarlayManager from "./overlay_manager";
+import { Point, Size } from "./types";
 
 export default abstract class Overlay {
-    public static resizeHandleThicknessPx: number = 6;
+    public static resizeHandleThicknessPx: number = 7;
 
     protected outerFrameEl: HTMLDivElement;
     protected contentEl: HTMLDivElement;
@@ -11,19 +12,14 @@ export default abstract class Overlay {
     protected lastFocusedEl: HTMLElement;
     protected lastFocusIsDetector: boolean = false;
 
-    protected x: number;
-    protected y: number;
-    protected width: number;
-    protected height: number;
+    protected position: Point;
+    protected size: Size;
 
     protected isResizing: boolean = false;
     protected resizePositionIndex: number;
-    protected resizeStartMouseX: number;
-    protected resizeStartMouseY: number;
-    protected resizeStartX: number;
-    protected resizeStartY: number;
-    protected resizeStartWidth: number;
-    protected resizeStartHeight: number;
+    protected resizeStartMousePos: Point;
+    protected resizeStartPos: Point;
+    protected resizeStartSize: Size;
 
     private resizeHandleEl = new Array<HTMLDivElement>();
 
@@ -35,6 +31,7 @@ export default abstract class Overlay {
         this.outerFrameEl.style.backgroundColor = "transparent";
         this.changePosition(70, 70);
         //this.outerFrameEl.style.display = "none";
+        this.outerFrameEl.addEventListener("selectstart", this.onSelectStart.bind(this));
 
         this.tabNaviFrontDetector = document.createElement("div");
         this.tabNaviFrontDetector.style.height = "0px";
@@ -76,6 +73,7 @@ export default abstract class Overlay {
             el.style.width = size + "px";
             el.style.height = size + "px";
             el.addEventListener("mousedown", this.onResizeHandleMouseDown.bind(this));
+            
             this.resizeHandleEl.push(el);
         }
         //左上
@@ -118,12 +116,36 @@ export default abstract class Overlay {
         if (this.isResizing) {
             switch (this.resizePositionIndex) {
                 case 0 : //左上
-                    this.changePosition(this.resizeStartX + (x - this.resizeStartMouseX), this.resizeStartY + (y - this.resizeStartMouseY));
-                    this.resize(this.resizeStartWidth - (x - this.resizeStartMouseX), this.resizeStartHeight - (y - this.resizeStartMouseY));
+                    this.changePosition(this.resizeStartPos.x + (x - this.resizeStartMousePos.x), this.resizeStartPos.y + (y - this.resizeStartMousePos.y));
+                    this.resize(this.resizeStartSize.width - (x - this.resizeStartMousePos.x), this.resizeStartSize.height - (y - this.resizeStartMousePos.y));
                     break;
                 case 1 : //上
-                    this.changePosition(this.x, this.resizeStartY + (y - this.resizeStartMouseY));
-                    this.resize(this.width, this.resizeStartHeight - (y - this.resizeStartMouseY));
+                    this.changePosition(this.position.x, this.resizeStartPos.y + (y - this.resizeStartMousePos.y));
+                    this.resize(this.size.width, this.resizeStartSize.height - (y - this.resizeStartMousePos.y));
+                    break;
+                case 2 : //右上
+                    this.changePosition(this.position.x, this.resizeStartPos.y + (y - this.resizeStartMousePos.y));
+                    this.resize(this.resizeStartSize.width + (x - this.resizeStartMousePos.x), this.resizeStartSize.height - (y - this.resizeStartMousePos.y));
+                    break;
+                case 3 : //左
+                    this.changePosition(this.resizeStartPos.x + (x - this.resizeStartMousePos.x), this.position.y);
+                    this.resize(this.resizeStartSize.width - (x - this.resizeStartMousePos.x), this.size.height);
+                    break;
+                case 4 : //右
+                    this.changePosition(this.position.x, this.position.y);
+                    this.resize(this.resizeStartSize.width + (x - this.resizeStartMousePos.x), this.size.height);
+                    break;
+                case 5 : //左下
+                    this.changePosition(this.resizeStartPos.x + (x - this.resizeStartMousePos.x), this.position.y);
+                    this.resize(this.resizeStartSize.width - (x - this.resizeStartMousePos.x), this.resizeStartSize.height + (y - this.resizeStartMousePos.y));
+                    break;
+                case 6 : //下
+                    this.changePosition(this.position.x, this.position.y);
+                    this.resize(this.size.width, this.resizeStartSize.height + (y - this.resizeStartMousePos.y));
+                    break;
+                case 7 : //右下
+                    this.changePosition(this.position.x, this.position.y);
+                    this.resize(this.resizeStartSize.width + (x - this.resizeStartMousePos.x), this.resizeStartSize.height + (y - this.resizeStartMousePos.y));
                     break;
             }
         }
@@ -136,12 +158,18 @@ export default abstract class Overlay {
     private onResizeHandleMouseDown(event: MouseEvent) {
         this.isResizing = true;
         this.resizePositionIndex = parseInt((event.target as HTMLElement).dataset["positionIndex"]);
-        this.resizeStartMouseX = event.x;
-        this.resizeStartMouseY = event.y;
-        this.resizeStartX = this.x;
-        this.resizeStartY = this.y;
-        this.resizeStartWidth = this.width;
-        this.resizeStartHeight = this.height;
+        this.resizeStartMousePos = new Point(event.x, event.y);
+        this.resizeStartPos = new Point(this.position.x, this.position.y);
+        this.resizeStartSize = new Size(this.size.width, this.size.height);
+
+        OvarlayManager.getInstance().changeContentsSelectable(false);
+    }
+
+    private onSelectStart(event: Event) {
+        //console.log(event);
+        
+        //event.stopPropagation();
+        //event.preventDefault();
     }
 
     private onTabNaviFrontDetectorFocusIn(event: FocusEvent) {
@@ -177,15 +205,13 @@ export default abstract class Overlay {
     }
 
     public changePosition(x: number, y: number): void {
-        this.x = x;
-        this.y = y;
-        this.outerFrameEl.style.left = String(this.x - Overlay.resizeHandleThicknessPx) + "px";
-        this.outerFrameEl.style.top = String(this.y - Overlay.resizeHandleThicknessPx) + "px";
+        this.position = new Point(x, y);
+        this.outerFrameEl.style.left = String(this.position.x - Overlay.resizeHandleThicknessPx) + "px";
+        this.outerFrameEl.style.top = String(this.position.y - Overlay.resizeHandleThicknessPx) + "px";
     }
 
     public resize(width: number, height: number): void {
-        this.width = width;
-        this.height = height;
+        this.size = new Size(width, height);
         this.outerFrameEl.style.width = String(width + Overlay.resizeHandleThicknessPx * 2) + "px";
         this.outerFrameEl.style.height = String(height + Overlay.resizeHandleThicknessPx * 2) + "px";
         this.contentEl.style.width = String(width) + "px";

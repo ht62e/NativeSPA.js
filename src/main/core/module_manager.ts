@@ -42,7 +42,7 @@ export enum ModuleType {
 export default class ModuleManager {
     private static instance = new ModuleManager();
     public static ROOT_NAME: string = "root";
-    private static moduleIndexCounter = 0;
+    private static instanceSequence = 0;
 
     private descriptions: Array<ModuleDescription>;
     private modules: Map<string, Module>;
@@ -103,7 +103,7 @@ export default class ModuleManager {
             //モジュールインスタンス生成
             if (description.moduleType === ModuleType.Native || !description.moduleType) {
                 newModule = new NativeComponent(description.name, description.sourceUri, 
-                                                ModuleManager.moduleIndexCounter++);
+                                                ModuleManager.instanceSequence++);
             } else {
                 throw new RuntimeError("不明な種類のコンポーネント");
             }

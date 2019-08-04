@@ -15,10 +15,10 @@ export default class OvarlayManager {
     private previousMouseX: number = 0;
     private previousMouseY: number = 0;
 
+    private contentsSelectable: boolean = true;
+
     constructor() {
         this.overlays = new Map<string, Overlay>();
-        window.addEventListener("mousemove", this.onMouseMove.bind(this));
-        window.addEventListener("mouseup", this.onMouseUp.bind(this));
     }
 
     public static getInstance(): OvarlayManager {
@@ -38,7 +38,14 @@ export default class OvarlayManager {
     private onMouseUp(event: MouseEvent) {
         this.overlays.forEach(overlay => {
             overlay.__dispachMouseUpEvent(event.x, event.y);
-        })        
+        });
+        this.changeContentsSelectable(true);
+    }
+
+    private onSelectStart(event: Event) {
+        if (!this.contentsSelectable) {
+            event.preventDefault();
+        }
     }
 
     private onFocusIn(event: FocusEvent) {
@@ -55,6 +62,10 @@ export default class OvarlayManager {
         }
         this.viewPortEl = element;
         this.viewPortEl.addEventListener("focusin", this.onFocusIn.bind(this));
+
+        this.viewPortEl.addEventListener("mousemove", this.onMouseMove.bind(this));
+        this.viewPortEl.addEventListener("mouseup", this.onMouseUp.bind(this));
+        this.viewPortEl.addEventListener("selectstart", this.onSelectStart.bind(this));
     }
     
     public createWindow(overlayName: string, caption: string, options?: DialogWindowOptions): DialogWindow {
@@ -62,6 +73,10 @@ export default class OvarlayManager {
         overlay.changeZIndex(1000);
         this.overlays.set(overlayName, overlay);
         return overlay;
+    }
+
+    public changeContentsSelectable(selectable: boolean) {
+        this.contentsSelectable = selectable;
     }
 
     public showPopupMenu(overlayName: string): DialogResult {
