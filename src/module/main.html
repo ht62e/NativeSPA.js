@@ -1,6 +1,8 @@
 <!-- <div id="\:all" class="module"> -->
     <div>This is main.html</div>
     <div><input type="button" id="\:show_main2" value="show main2"></div>
+    <div><input type="button" id="\:show_win1" value="show win1"></div>
+    <div><input type="button" id="\:show_win1_as_modal" value="show win1 as modal"></div>
     <div><input type="button" id="\:back" value="back"></div>
     <div><input type="button" id="\:close" value="close"></div>
     <div><input type="text" id="\:input1"></div>
@@ -18,14 +20,14 @@
 <style>
     #\:textarea1 {
         width: 400px;
-        height: 500px;
+        height: 200px;
     }
 </style>
 
 <script>
-    new Vue({
-        el: '#\:vue_test',
-    })
+    // new Vue({
+    //     el: '#\:vue_test',
+    // })
 
     setTimeout(() => {
         document.getElementById("\:input1").value = "実行完了1";
@@ -41,12 +43,24 @@
         });
     }).bind(this));
 
+    document.getElementById("\:show_win1").addEventListener("click", (function() {
+        this.showWindow("win1", null, null, function() {
+            alert("window is closed.")
+        });
+    }).bind(this));
+
+    document.getElementById("\:show_win1_as_modal").addEventListener("click", (function() {
+        this.showWindowAsModal("win1", null, null, null).then(result => {
+            alert("window is closed. (notified by promise)");
+        });
+    }).bind(this));
+
     document.getElementById("\:back").addEventListener("click", (function() {
         this.moduleRouter.back("base.body");
     }).bind(this));
 
     document.getElementById("\:close").addEventListener("click", (function() {
-        this.close("This is close object in main.html");
+        this.exit("This is close object in main.html");
     }).bind(this));
 
     setTimeout(() => {

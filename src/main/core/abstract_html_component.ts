@@ -1,9 +1,9 @@
 import Container, { ContainerInfo } from "./container";
 import Module from "./module";
 import SourceRepository from "./source_repository";
-import ForwardDto from "./forward_dto";
+import Parcel from "./parcel";
 import HTMLComponentAdapter from "./html_component_adapter";
-import ResultDto from "./result_dto";
+import Result from "./result";
 
 export default abstract class HTMLComponent implements Module {
     protected isFetched: boolean = false;
@@ -16,8 +16,8 @@ export default abstract class HTMLComponent implements Module {
 
     protected htmlAdapter: HTMLComponentAdapter = null;
 
-    private closeRequestResolver: (value?: boolean | PromiseLike<boolean>) => void;
-    private closeForWaitResolver: (value?: ResultDto | PromiseLike<ResultDto>) => void;
+    private exitRequestResolver: (value?: boolean | PromiseLike<boolean>) => void;
+    private exitForWaitResolver: (value?: Result | PromiseLike<Result>) => void;
 
     protected abstract onCreate(): void;
     protected abstract loadSubContainerInfos(): void;
@@ -47,7 +47,7 @@ export default abstract class HTMLComponent implements Module {
         return null;
     }
 
-    initialize(param: ForwardDto): void {
+    initialize(param: Parcel): void {
         this.htmlAdapter.triggerOnInitializeHandler(param);
     }
 
@@ -64,30 +64,36 @@ export default abstract class HTMLComponent implements Module {
         this.htmlAdapter.triggerOnHideHandler(null);
     }
 
-    waitForClose(): Promise<ResultDto> {
+    apply(): Result {
+        throw new Error("Method not implemented.");
+    }
+
+    waitForExit(): Promise<Result> {
         return new Promise(resolve => {
-            this.closeForWaitResolver = resolve;
+            this.exitForWaitResolver = resolve;
         });
     }
 
-    async closeRequest(): Promise<boolean> {
+    async exitRequest(): Promise<boolean> {
+        //通常、backナビゲーション時にcontainerオブジェクト経由でコールされる
         return new Promise(resolve => {
-            this.closeRequestResolver = resolve;
-            this.htmlAdapter.triggerOnCloseRequestHandler(false);
+            this.exitRequestResolver = resolve;
+            this.htmlAdapter.triggerOnExitRequestHandler(false);
         });
     }
 
-    close(result: ResultDto) {
-        if (this.closeRequestResolver) {
-            this.closeRequestResolver(true);
-            this.closeRequestResolver = null;
+    exit(result: Result) {
+        //backナビゲーション時にコールされるexitRequest内でexitRequestResolverがセットされる
+        if (this.exitRequestResolver) {
+            this.exitRequestResolver(true);
+            this.exitRequestResolver = null;
         } else {
-            //backナビゲーションではなく自身で閉じたとき
+            //backナビゲーションではなく自身で閉じたとき(exitRequestResolverがnull)
             this.currentContainer.backWithoutConfirmation();
         }
-        if (this.closeForWaitResolver) {
-            this.closeForWaitResolver(result);
-            this.closeForWaitResolver = null;
+        if (this.exitForWaitResolver) {
+            this.exitForWaitResolver(result);
+            this.exitForWaitResolver = null;
         }
     }
 
@@ -114,11 +120,7 @@ export default abstract class HTMLComponent implements Module {
     getCaption(): string {
         return this.name;
     }
-
-    isClosed(): boolean {
-        return !this.isInitialized;
-    }
-
+    
 }
 
 

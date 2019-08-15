@@ -1,9 +1,13 @@
 import Container from "./container";
 import OvarlayManager from "./overlay_manager";
 import { Point, Size } from "./types";
+import Result from "./result";
+import Parcel from "./parcel";
 
 export default abstract class Overlay {
     public static resizeHandleThicknessPx: number = 7;
+
+    protected viewPortElement: HTMLElement;
 
     protected outerFrameEl: HTMLDivElement;
     protected contentEl: HTMLDivElement;
@@ -24,29 +28,31 @@ export default abstract class Overlay {
     private resizeHandleEl = new Array<HTMLDivElement>();
 
     constructor(viewPortElement: HTMLElement, width: number, height: number) {
+        this.viewPortElement = viewPortElement;
+
+        //リサイズ可能領域のためのフレームを作成
         this.outerFrameEl = document.createElement("div");
         this.outerFrameEl.style.position = "absolute";
-        // this.outerFrameEl.style.width = String(width + Overlay.resizeHandleThicknessPx * 2) + "px";
-        // this.outerFrameEl.style.height = String(height + Overlay.resizeHandleThicknessPx * 2) + "px";
         this.outerFrameEl.style.backgroundColor = "transparent";
-        this.changePosition(70, 70);
-        //this.outerFrameEl.style.display = "none";
+        this.outerFrameEl.style.display = "none";
         this.outerFrameEl.addEventListener("selectstart", this.onSelectStart.bind(this));
 
+        //キーボードタブキーナビゲーションによってダイアログの外にフォーカスが移ることを
+        //防止（検知）するための非表示エレメントの作成（Shift+Tabキー対策）
         this.tabNaviFrontDetector = document.createElement("div");
         this.tabNaviFrontDetector.style.height = "0px";
         this.tabNaviFrontDetector.tabIndex = 0;
         this.tabNaviFrontDetector.addEventListener("focusin", this.onTabNaviFrontDetectorFocusIn.bind(this));
 
+        //コンテンツメインコンテナ生成
         this.contentEl = document.createElement("div");
         this.contentEl.className = "spa_overlay_container";
         this.contentEl.style.position = "absolute";
-        // this.contentEl.style.width = String(width) + "px";
-        // this.contentEl.style.height = String(height) + "px";
         this.contentEl.style.left = String(Overlay.resizeHandleThicknessPx) + "px";
         this.contentEl.style.top = String(Overlay.resizeHandleThicknessPx) + "px";
         this.resize(width, height);
 
+        //非表示エレメントの作成（Tabキー対策）
         this.tabNaviRearDetector = document.createElement("div");
         this.tabNaviRearDetector.style.height = "0px";
         this.tabNaviRearDetector.tabIndex = 0;
@@ -55,6 +61,7 @@ export default abstract class Overlay {
         this.contentEl.addEventListener("focusin", this.onFocusIn.bind(this));
         this.contentEl.addEventListener("focusout", this.onFocusOut.bind(this));
 
+        //outerFrameElの周囲にリサイズイベント検知用のエレメントを生成・配置
         this.createResizeHandleElements();
 
         this.outerFrameEl.appendChild(this.tabNaviFrontDetector);
@@ -220,7 +227,13 @@ export default abstract class Overlay {
 
     public abstract getContainer(): Container; 
     
-    public abstract show(x?: number, y?: number): void;
-    public abstract hide(): void;
+    public abstract async show(parcel?: Parcel, options?: ShowOptions): Promise<Result> ;
+    public abstract closeRequest(): void;
+    protected abstract async waitForOverlayClose(): Promise<Result>;
 
+}
+
+export interface ShowOptions {
+    x?: number;
+    y?: number;
 }

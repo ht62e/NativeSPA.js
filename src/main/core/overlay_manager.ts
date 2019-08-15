@@ -1,8 +1,7 @@
-import Container from "./container";
-import DialogResult from "./dialog_result";
-import DialogWindow, { WindowOptions as DialogWindowOptions } from "./window";
-import Overlay from "./overlay";
-import Module from "./module";
+import DialogWindow, { WindowOptions as DialogWindowOptions } from "./dialog_window";
+import Overlay, { ShowOptions } from "./overlay";
+import Result from "./result";
+import Parcel from "./parcel";
 
 export default class OvarlayManager {
     private static instance = new OvarlayManager();
@@ -79,17 +78,29 @@ export default class OvarlayManager {
         this.contentsSelectable = selectable;
     }
 
-    public showPopupMenu(overlayName: string): DialogResult {
+    public showPopupMenu(overlayName: string): Result {
         return null;
     }
 
 
-    public showDialogWindow(overlayName: string): DialogResult {
+    public showWindow(overlayName: string, parcel?: Parcel, options?: ShowOptions, callback?: (r: Result) => void): void {
         let overlay = this.overlays.get(overlayName);
-        return null;
+        overlay.show(parcel, options).then((r: Result) => {
+            //結果受け取りのためのcallback（Containerとは異なり、ES5互換専用ではない）
+            if (callback) callback(r);
+        });
     }
 
-    public showModalWindow(overlayName: string): DialogResult {
-        return null;
+    public async showWindowAsModal(overlayName: string, parcel?: Parcel, options?: ShowOptions, callback?: (r: Result) => void): Promise<Result> {
+        let overlay = this.overlays.get(overlayName);
+
+        const result = await overlay.show(parcel, options);
+        
+        if (callback) {
+            callback(result);
+        } else {
+            return result;
+        }
     }
+
 }

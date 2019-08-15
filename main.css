@@ -5,7 +5,12 @@
 
 .spa_dialog_window_header {
     height: 30px;
+    line-height: 30px;
+    box-sizing: border-box;
+    padding-left: 10px;
     background-color: #3d5885;
+    cursor: default;
+    color: #FFFFFF;
 }
 
 .spa_dialog_window_body {
@@ -13,6 +18,12 @@
 }
 
 .spa_dialog_window_footer {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    box-sizing: border-box;
     height: 50px;
+    padding-left: 15px;
+    padding-right: 15px;
     background-color: #F5F5F5;
 }

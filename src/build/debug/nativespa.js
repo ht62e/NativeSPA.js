@@ -60,42 +60,45 @@ define("core/runtime_error", ["require", "exports"], function (require, exports)
     }(Error));
     exports.default = RuntimeError;
 });
-define("core/result_dto", ["require", "exports"], function (require, exports) {
+define("core/result", ["require", "exports"], function (require, exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
-    var ResultDto = /** @class */ (function () {
-        function ResultDto(actionType, dataIsChanged, result) {
+    var Result = /** @class */ (function () {
+        function Result(actionType, isChanged, result) {
             this.actionType = actionType;
-            this.dataIsChanged = dataIsChanged;
+            this.isChanged = isChanged;
             this.result = result;
         }
-        return ResultDto;
+        return Result;
     }());
-    exports.default = ResultDto;
+    exports.default = Result;
     var ActionType;
     (function (ActionType) {
-        ActionType[ActionType["BACK_CANCEL"] = 0] = "BACK_CANCEL";
-        ActionType[ActionType["OK"] = 1] = "OK";
+        ActionType[ActionType["OK"] = 0] = "OK";
+        ActionType[ActionType["CANCEL"] = 1] = "CANCEL";
+        ActionType[ActionType["BACK"] = 2] = "BACK";
+        ActionType[ActionType["YES"] = 3] = "YES";
+        ActionType[ActionType["NO"] = 4] = "NO";
     })(ActionType = exports.ActionType || (exports.ActionType = {}));
 });
-define("core/forward_dto", ["require", "exports"], function (require, exports) {
+define("core/parcel", ["require", "exports"], function (require, exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
-    var ForwardDto = /** @class */ (function () {
-        function ForwardDto(forwardMode, params) {
-            this.forwardMode = forwardMode;
+    var Parcel = /** @class */ (function () {
+        function Parcel(requestMode, params) {
+            this.requestMode = requestMode;
             this.params = params;
         }
-        return ForwardDto;
+        return Parcel;
     }());
-    exports.default = ForwardDto;
-    var ForwardMode;
-    (function (ForwardMode) {
-        ForwardMode[ForwardMode["READONLY"] = 0] = "READONLY";
-        ForwardMode[ForwardMode["NEW"] = 1] = "NEW";
-        ForwardMode[ForwardMode["NEW_EDIT"] = 2] = "NEW_EDIT";
-        ForwardMode[ForwardMode["EDIT"] = 3] = "EDIT";
-    })(ForwardMode = exports.ForwardMode || (exports.ForwardMode = {}));
+    exports.default = Parcel;
+    var RequestMode;
+    (function (RequestMode) {
+        RequestMode[RequestMode["READONLY"] = 0] = "READONLY";
+        RequestMode[RequestMode["NEW"] = 1] = "NEW";
+        RequestMode[RequestMode["NEW_EDIT"] = 2] = "NEW_EDIT";
+        RequestMode[RequestMode["EDIT"] = 3] = "EDIT";
+    })(RequestMode = exports.RequestMode || (exports.RequestMode = {}));
 });
 define("core/container", ["require", "exports", "core/runtime_error"], function (require, exports, runtime_error_1) {
     "use strict";
@@ -130,6 +133,9 @@ define("core/container", ["require", "exports", "core/runtime_error"], function 
         Container.prototype.getElement = function () {
             return this.bindDomElement;
         };
+        Container.prototype.getActiveModule = function () {
+            return this.activeModule;
+        };
         Container.prototype.changeActiveModule = function (module) {
             var _this = this;
             if (!this.mountedModules.has(module.getName()))
@@ -154,7 +160,7 @@ define("core/container", ["require", "exports", "core/runtime_error"], function 
                 module.onResize(containerWidth, containerHeight);
             });
         };
-        Container.prototype.forward = function (module, params, callback) {
+        Container.prototype.forward = function (module, parcel, callback) {
             return __awaiter(this, void 0, void 0, function () {
                 var result;
                 return __generator(this, function (_a) {
@@ -163,7 +169,7 @@ define("core/container", ["require", "exports", "core/runtime_error"], function 
                             module.initialize(null);
                             this.changeActiveModule(module);
                             this.moduleChangeHistory.push(module);
-                            return [4 /*yield*/, module.waitForClose()];
+                            return [4 /*yield*/, module.waitForExit()];
                         case 1:
                             result = _a.sent();
                             if (callback) {
@@ -180,7 +186,7 @@ define("core/container", ["require", "exports", "core/runtime_error"], function 
         };
         Container.prototype.back = function () {
             var _this = this;
-            this.activeModule.closeRequest().then(function (closed) {
+            this.activeModule.exitRequest().then(function (exited) {
                 if (_this.moduleChangeHistory.length > 0) {
                     _this.moduleChangeHistory.pop();
                 }
@@ -330,292 +336,6 @@ define("core/module_router", ["require", "exports", "core/container_manager", "c
     }());
     exports.default = ModuleRouter;
 });
-define("core/html_component_adapter", ["require", "exports", "core/module_router"], function (require, exports, module_router_1) {
-    "use strict";
-    Object.defineProperty(exports, "__esModule", { value: true });
-    exports.htmlComponentAdapters = new Map();
-    var HTMLComponentAdapter = /** @class */ (function () {
-        function HTMLComponentAdapter() {
-            this.isModified = false;
-            this.moduleRouter = module_router_1.default.getInstance();
-        }
-        HTMLComponentAdapter.prototype.setHtmlComponent = function (htmlComponent) {
-            this.htmlComponent = htmlComponent;
-        };
-        HTMLComponentAdapter.prototype.triggerOnLoadHandler = function (param) {
-            if (this.onLoad)
-                this.onLoad(param);
-        };
-        HTMLComponentAdapter.prototype.triggerOnInitializeHandler = function (param) {
-            if (this.onInitialize)
-                this.onInitialize(param);
-        };
-        HTMLComponentAdapter.prototype.triggerOnShowHandler = function (isFirst, param) {
-            if (this.onShow)
-                this.onShow(isFirst, param);
-        };
-        HTMLComponentAdapter.prototype.triggerOnHideHandler = function (param) {
-            if (this.onHide)
-                this.onHide(param);
-        };
-        HTMLComponentAdapter.prototype.triggerOnCloseRequestHandler = function (force) {
-            if (this.onCloseRequest) {
-                this.onCloseRequest(force);
-            }
-            else {
-                this.close(null);
-            }
-        };
-        HTMLComponentAdapter.prototype.close = function (result) {
-            this.htmlComponent.close(result);
-        };
-        return HTMLComponentAdapter;
-    }());
-    exports.default = HTMLComponentAdapter;
-    var __global = window;
-    __global.__HTMLComponentAdapter = HTMLComponentAdapter;
-    __global.__registerHTMLComponentAdapter = function (moduleIndex, componentClass) {
-        exports.htmlComponentAdapters.set(moduleIndex, componentClass);
-    };
-});
-define("core/abstract_html_component", ["require", "exports", "core/source_repository"], function (require, exports, source_repository_1) {
-    "use strict";
-    Object.defineProperty(exports, "__esModule", { value: true });
-    var HTMLComponent = /** @class */ (function () {
-        function HTMLComponent(name, sourceUri, moduleIndex) {
-            this.name = name;
-            this.sourceUri = sourceUri;
-            this.moduleIndex = moduleIndex;
-            this.isFetched = false;
-            this.isMounted = false;
-            this.isInitialized = false;
-            this.subContainerInfos = new Map();
-            this.htmlAdapter = null;
-            this.onCreate();
-        }
-        HTMLComponent.prototype.onResize = function (containerWidth, containerHeight) {
-            if (!this.wrapperElement)
-                return;
-            //this.wrapperElement.style.width = containerWidth.toString() + "px";
-            //this.wrapperElement.style.height = containerHeight.toString() + "px";
-            this.subContainerInfos.forEach(function (containerInfo) {
-                containerInfo.container.onResize();
-            });
-        };
-        HTMLComponent.prototype.fetch = function () {
-            return __awaiter(this, void 0, void 0, function () {
-                var repository, _a;
-                return __generator(this, function (_b) {
-                    switch (_b.label) {
-                        case 0:
-                            repository = source_repository_1.default.getInstance();
-                            _a = this;
-                            return [4 /*yield*/, repository.fetch(this.sourceUri)];
-                        case 1:
-                            _a.source = _b.sent();
-                            this.loadSubContainerInfos();
-                            this.isFetched = true;
-                            return [2 /*return*/, null];
-                    }
-                });
-            });
-        };
-        HTMLComponent.prototype.initialize = function (param) {
-            this.htmlAdapter.triggerOnInitializeHandler(param);
-        };
-        HTMLComponent.prototype.show = function () {
-            this.wrapperElement.style.display = "";
-            this.wrapperElement.style.visibility = "";
-            this.htmlAdapter.triggerOnShowHandler(false, null);
-        };
-        HTMLComponent.prototype.hide = function () {
-            if (this.wrapperElement.style.visibility !== "hidden") {
-                this.wrapperElement.style.display = "none";
-            }
-            this.htmlAdapter.triggerOnHideHandler(null);
-        };
-        HTMLComponent.prototype.waitForClose = function () {
-            var _this = this;
-            return new Promise(function (resolve) {
-                _this.closeForWaitResolver = resolve;
-            });
-        };
-        HTMLComponent.prototype.closeRequest = function () {
-            return __awaiter(this, void 0, void 0, function () {
-                var _this = this;
-                return __generator(this, function (_a) {
-                    return [2 /*return*/, new Promise(function (resolve) {
-                            _this.closeRequestResolver = resolve;
-                            _this.htmlAdapter.triggerOnCloseRequestHandler(false);
-                        })];
-                });
-            });
-        };
-        HTMLComponent.prototype.close = function (result) {
-            if (this.closeRequestResolver) {
-                this.closeRequestResolver(true);
-                this.closeRequestResolver = null;
-            }
-            else {
-                //backナビゲーションではなく自身で閉じたとき
-                this.currentContainer.backWithoutConfirmation();
-            }
-            if (this.closeForWaitResolver) {
-                this.closeForWaitResolver(result);
-                this.closeForWaitResolver = null;
-            }
-        };
-        HTMLComponent.prototype.getElement = function () {
-            throw this.wrapperElement;
-        };
-        HTMLComponent.prototype.getCurrentContainer = function () {
-            return this.currentContainer;
-        };
-        HTMLComponent.prototype.getSubContainerNames = function () {
-            var ary = new Array();
-            this.subContainerInfos.forEach(function (c) {
-                ary.push(c.name);
-            });
-            return ary;
-        };
-        HTMLComponent.prototype.getName = function () {
-            return this.name;
-        };
-        HTMLComponent.prototype.getCaption = function () {
-            return this.name;
-        };
-        HTMLComponent.prototype.isClosed = function () {
-            return !this.isInitialized;
-        };
-        return HTMLComponent;
-    }());
-    exports.default = HTMLComponent;
-});
-define("core/native_component", ["require", "exports", "core/abstract_html_component", "core/container_manager", "core/html_component_adapter"], function (require, exports, abstract_html_component_1, container_manager_2, html_component_adapter_1) {
-    "use strict";
-    Object.defineProperty(exports, "__esModule", { value: true });
-    var NativeComponent = /** @class */ (function (_super) {
-        __extends(NativeComponent, _super);
-        function NativeComponent() {
-            return _super !== null && _super.apply(this, arguments) || this;
-        }
-        NativeComponent.prototype.onCreate = function () {
-            this.prototypeTemplateBegin =
-                "(function() {\n            var Com = function(moduleIndex) {\n                this.super = __HTMLComponentAdapter.prototype;\n                __HTMLComponentAdapter.call(this, moduleIndex);\n        ";
-            this.prototypeTemplateEnd =
-                "   }\n            Object.setPrototypeOf(Com.prototype, __HTMLComponentAdapter.prototype);\n            __registerHTMLComponentAdapter(" + this.moduleIndex + ", new Com(" + this.moduleIndex + "));\n         })();\n        ";
-        };
-        NativeComponent.prototype.loadSubContainerInfos = function () {
-            var regExp = /<div *id *= *["'](.+)["'] *.*data-container-name *= *["'](.+)["'].*>/g;
-            var match;
-            while (match = regExp.exec(this.source)) {
-                this.subContainerInfos.set(match[1], {
-                    name: match[2],
-                    container: null
-                });
-            }
-        };
-        NativeComponent.prototype.mount = function (container) {
-            return __awaiter(this, void 0, void 0, function () {
-                var localPrefix, localizeRegExp, containerManager;
-                var _this = this;
-                return __generator(this, function (_a) {
-                    switch (_a.label) {
-                        case 0:
-                            if (!!this.isFetched) return [3 /*break*/, 2];
-                            return [4 /*yield*/, this.fetch()];
-                        case 1:
-                            _a.sent();
-                            _a.label = 2;
-                        case 2:
-                            localPrefix = "_" + this.moduleIndex.toString() + "_";
-                            this.currentContainer = container;
-                            localizeRegExp = /\\:/g;
-                            this.source = this.source.replace(localizeRegExp, localPrefix);
-                            //引数で与えられたコンテナDOMに対して自身をロード
-                            this.wrapperElement = document.createElement("div");
-                            this.wrapperElement.id = localPrefix + "module";
-                            this.wrapperElement.style.position = "absolute";
-                            this.wrapperElement.style.overflow = "auto";
-                            this.wrapperElement.style.width = "100%";
-                            this.wrapperElement.style.height = "100%";
-                            this.wrapperElement.style.visibility = "hidden";
-                            this.wrapperElement.innerHTML = this.source;
-                            container.addModuleElement(this.wrapperElement);
-                            //scriptタグを実行
-                            this.evalScripts();
-                            containerManager = container_manager_2.default.getInstance();
-                            this.subContainerInfos.forEach(function (containerInfo, domId) {
-                                var localElementId = domId.replace(localizeRegExp, localPrefix);
-                                var containerEl = document.getElementById(localElementId);
-                                var containerId = _this.name + "." + containerInfo.name;
-                                containerInfo.container = containerManager.createContainer(containerId, "", containerEl);
-                            });
-                            this.isMounted = true;
-                            this.htmlAdapter = html_component_adapter_1.htmlComponentAdapters.get(this.moduleIndex);
-                            this.htmlAdapter.setHtmlComponent(this);
-                            this.htmlAdapter.triggerOnLoadHandler("name is " + this.name);
-                            return [2 /*return*/, true];
-                    }
-                });
-            });
-        };
-        NativeComponent.prototype.evalScripts = function () {
-            var nativeScript = "";
-            var prototypeScript = "";
-            var classScript = "";
-            var initialScriptElements = new Array();
-            this.wrapperElement.querySelectorAll("script").forEach(function (element) {
-                var scopeMode = element.dataset["scopeMode"];
-                if (!scopeMode || scopeMode === "native") {
-                    nativeScript += element.textContent;
-                }
-                else if (scopeMode === "prototype") {
-                    prototypeScript += element.textContent;
-                }
-                else if (scopeMode === "class") {
-                    classScript += element.textContent;
-                }
-                initialScriptElements.push(element);
-            });
-            var nativeScriptElement = document.createElement("script");
-            nativeScriptElement.textContent = nativeScript;
-            this.wrapperElement.appendChild(nativeScriptElement);
-            var prototypeScriptElement = document.createElement("script");
-            prototypeScript = this.prototypeTemplateBegin +
-                prototypeScript +
-                this.prototypeTemplateEnd;
-            prototypeScriptElement.textContent = prototypeScript;
-            this.wrapperElement.appendChild(prototypeScriptElement);
-            var classScriptElement = document.createElement("script");
-            classScriptElement.textContent = classScript;
-            this.wrapperElement.appendChild(classScriptElement);
-            for (var _i = 0, initialScriptElements_1 = initialScriptElements; _i < initialScriptElements_1.length; _i++) {
-                var element = initialScriptElements_1[_i];
-                this.wrapperElement.removeChild(element);
-            }
-        };
-        return NativeComponent;
-    }(abstract_html_component_1.default));
-    exports.default = NativeComponent;
-});
-define("core/dialog_result", ["require", "exports"], function (require, exports) {
-    "use strict";
-    Object.defineProperty(exports, "__esModule", { value: true });
-    var DialogResult = /** @class */ (function () {
-        function DialogResult() {
-        }
-        return DialogResult;
-    }());
-    exports.default = DialogResult;
-    var DialogResultAction;
-    (function (DialogResultAction) {
-        DialogResultAction[DialogResultAction["OK"] = 0] = "OK";
-        DialogResultAction[DialogResultAction["CANCEL"] = 1] = "CANCEL";
-        DialogResultAction[DialogResultAction["YES"] = 2] = "YES";
-        DialogResultAction[DialogResultAction["NO"] = 3] = "NO";
-    })(DialogResultAction = exports.DialogResultAction || (exports.DialogResultAction = {}));
-});
 define("core/types", ["require", "exports"], function (require, exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -644,32 +364,34 @@ define("core/overlay", ["require", "exports", "core/overlay_manager", "core/type
             this.lastFocusIsDetector = false;
             this.isResizing = false;
             this.resizeHandleEl = new Array();
+            this.viewPortElement = viewPortElement;
+            //リサイズ可能領域のためのフレームを作成
             this.outerFrameEl = document.createElement("div");
             this.outerFrameEl.style.position = "absolute";
-            // this.outerFrameEl.style.width = String(width + Overlay.resizeHandleThicknessPx * 2) + "px";
-            // this.outerFrameEl.style.height = String(height + Overlay.resizeHandleThicknessPx * 2) + "px";
             this.outerFrameEl.style.backgroundColor = "transparent";
-            this.changePosition(70, 70);
-            //this.outerFrameEl.style.display = "none";
+            this.outerFrameEl.style.display = "none";
             this.outerFrameEl.addEventListener("selectstart", this.onSelectStart.bind(this));
+            //キーボードタブキーナビゲーションによってダイアログの外にフォーカスが移ることを
+            //防止（検知）するための非表示エレメントの作成（Shift+Tabキー対策）
             this.tabNaviFrontDetector = document.createElement("div");
             this.tabNaviFrontDetector.style.height = "0px";
             this.tabNaviFrontDetector.tabIndex = 0;
             this.tabNaviFrontDetector.addEventListener("focusin", this.onTabNaviFrontDetectorFocusIn.bind(this));
+            //コンテンツメインコンテナ生成
             this.contentEl = document.createElement("div");
             this.contentEl.className = "spa_overlay_container";
             this.contentEl.style.position = "absolute";
-            // this.contentEl.style.width = String(width) + "px";
-            // this.contentEl.style.height = String(height) + "px";
             this.contentEl.style.left = String(Overlay.resizeHandleThicknessPx) + "px";
             this.contentEl.style.top = String(Overlay.resizeHandleThicknessPx) + "px";
             this.resize(width, height);
+            //非表示エレメントの作成（Tabキー対策）
             this.tabNaviRearDetector = document.createElement("div");
             this.tabNaviRearDetector.style.height = "0px";
             this.tabNaviRearDetector.tabIndex = 0;
             this.tabNaviRearDetector.addEventListener("focusin", this.onTabNaviRearDetectorFocusIn.bind(this));
             this.contentEl.addEventListener("focusin", this.onFocusIn.bind(this));
             this.contentEl.addEventListener("focusout", this.onFocusOut.bind(this));
+            //outerFrameElの周囲にリサイズイベント検知用のエレメントを生成・配置
             this.createResizeHandleElements();
             this.outerFrameEl.appendChild(this.tabNaviFrontDetector);
             this.outerFrameEl.appendChild(this.contentEl);
@@ -820,7 +542,7 @@ define("core/overlay", ["require", "exports", "core/overlay_manager", "core/type
     }());
     exports.default = Overlay;
 });
-define("core/window", ["require", "exports", "core/overlay", "core/container_manager"], function (require, exports, overlay_1, container_manager_3) {
+define("core/dialog_window", ["require", "exports", "core/overlay", "core/container_manager"], function (require, exports, overlay_1, container_manager_2) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var DialogWindow = /** @class */ (function (_super) {
@@ -828,7 +550,7 @@ define("core/window", ["require", "exports", "core/overlay", "core/container_man
         function DialogWindow(viewPortElement, caption, options) {
             var _this = _super.call(this, viewPortElement, 640, 480) || this;
             _this.isDragging = false;
-            var containerManager = container_manager_3.default.getInstance();
+            var containerManager = container_manager_2.default.getInstance();
             _this.wrapperEl = document.createElement("div");
             _this.wrapperEl.style.position = "absolute";
             _this.wrapperEl.style.display = "flex";
@@ -853,6 +575,19 @@ define("core/window", ["require", "exports", "core/overlay", "core/container_man
             _this.footerEl.className = "spa_dialog_window_footer";
             _this.footerEl.style.position = "relative";
             _this.footerEl.style.width = "100%";
+            _this.okButtonEl = document.createElement("input");
+            _this.okButtonEl.type = "button";
+            _this.okButtonEl.value = "OK";
+            _this.okButtonEl.addEventListener("click", _this.onOkButtonClick.bind(_this));
+            _this.cancelButtonEl = document.createElement("input");
+            _this.cancelButtonEl.type = "button";
+            _this.cancelButtonEl.value = "キャンセル";
+            _this.cancelButtonEl.addEventListener("click", _this.onCancelButtonClick.bind(_this));
+            _this.applyButtonEl = document.createElement("input");
+            _this.applyButtonEl.type = "button";
+            _this.applyButtonEl.value = "適用";
+            _this.footerEl.appendChild(_this.okButtonEl);
+            _this.footerEl.appendChild(_this.cancelButtonEl);
             _this.wrapperEl.appendChild(_this.headerEl);
             _this.wrapperEl.appendChild(_this.bodyEl);
             _this.wrapperEl.appendChild(_this.footerEl);
@@ -868,6 +603,20 @@ define("core/window", ["require", "exports", "core/overlay", "core/container_man
         // private onMouseUp(event: MouseEvent) {
         //     this.isDragging = false;
         // }
+        DialogWindow.prototype.onOkButtonClick = function (event) {
+            this.close();
+        };
+        DialogWindow.prototype.onCancelButtonClick = function (event) {
+            this.close();
+        };
+        DialogWindow.prototype.onApplyButtonClick = function (event) {
+        };
+        DialogWindow.prototype.waitForOverlayClose = function () {
+            var _this = this;
+            return new Promise(function (resolve) {
+                _this.closeForWaitResolver = resolve;
+            });
+        };
         //override
         DialogWindow.prototype.__dispachMouseMoveEvent = function (x, y, deltaX, deltaY) {
             _super.prototype.__dispachMouseMoveEvent.call(this, x, y, deltaX, deltaY);
@@ -883,13 +632,33 @@ define("core/window", ["require", "exports", "core/overlay", "core/container_man
         DialogWindow.prototype.getContainer = function () {
             return this.container;
         };
-        DialogWindow.prototype.show = function (x, y) {
-            if (x !== undefined && y !== undefined) {
-                this.changePosition(x, y);
-            }
-            this.outerFrameEl.style.display = "block";
+        DialogWindow.prototype.show = function (parcel, options) {
+            return __awaiter(this, void 0, void 0, function () {
+                var px, py;
+                return __generator(this, function (_a) {
+                    switch (_a.label) {
+                        case 0:
+                            if (options && options.x !== undefined && options.y !== undefined) {
+                                px = options.x;
+                                py = options.y;
+                            }
+                            else {
+                                //デフォルト表示位置は表示領域（ビューポート）の中央
+                                px = Math.round((this.viewPortElement.offsetWidth - this.size.width) / 2);
+                                py = Math.round((this.viewPortElement.offsetHeight - this.size.height) / 2);
+                            }
+                            this.changePosition(px, py);
+                            this.outerFrameEl.style.display = "block";
+                            return [4 /*yield*/, this.waitForOverlayClose()];
+                        case 1: return [2 /*return*/, _a.sent()];
+                    }
+                });
+            });
         };
-        DialogWindow.prototype.hide = function () {
+        DialogWindow.prototype.close = function () {
+            if (this.closeForWaitResolver) {
+                this.closeForWaitResolver(null);
+            }
             this.outerFrameEl.style.display = "none";
         };
         DialogWindow.instanceSequence = 0;
@@ -897,7 +666,7 @@ define("core/window", ["require", "exports", "core/overlay", "core/container_man
     }(overlay_1.default));
     exports.default = DialogWindow;
 });
-define("core/overlay_manager", ["require", "exports", "core/window"], function (require, exports, window_1) {
+define("core/overlay_manager", ["require", "exports", "core/dialog_window"], function (require, exports, dialog_window_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var OvarlayManager = /** @class */ (function () {
@@ -950,7 +719,7 @@ define("core/overlay_manager", ["require", "exports", "core/window"], function (
             this.viewPortEl.addEventListener("selectstart", this.onSelectStart.bind(this));
         };
         OvarlayManager.prototype.createWindow = function (overlayName, caption, options) {
-            var overlay = new window_1.default(this.viewPortEl, caption, options);
+            var overlay = new dialog_window_1.default(this.viewPortEl, caption, options);
             overlay.changeZIndex(1000);
             this.overlays.set(overlayName, overlay);
             return overlay;
@@ -961,19 +730,327 @@ define("core/overlay_manager", ["require", "exports", "core/window"], function (
         OvarlayManager.prototype.showPopupMenu = function (overlayName) {
             return null;
         };
-        OvarlayManager.prototype.showDialogWindow = function (overlayName) {
+        OvarlayManager.prototype.showWindow = function (overlayName, parcel, options, callback) {
             var overlay = this.overlays.get(overlayName);
-            return null;
+            overlay.show(parcel, options).then(function (r) {
+                //結果受け取りのためのcallback（Containerとは異なり、ES5互換専用ではない）
+                if (callback)
+                    callback(r);
+            });
         };
-        OvarlayManager.prototype.showModalWindow = function (overlayName) {
-            return null;
+        OvarlayManager.prototype.showWindowAsModal = function (overlayName, parcel, options, callback) {
+            return __awaiter(this, void 0, void 0, function () {
+                var overlay, result;
+                return __generator(this, function (_a) {
+                    switch (_a.label) {
+                        case 0:
+                            overlay = this.overlays.get(overlayName);
+                            return [4 /*yield*/, overlay.show(parcel, options)];
+                        case 1:
+                            result = _a.sent();
+                            if (callback) {
+                                callback(result);
+                            }
+                            else {
+                                return [2 /*return*/, result];
+                            }
+                            return [2 /*return*/];
+                    }
+                });
+            });
         };
         OvarlayManager.instance = new OvarlayManager();
         return OvarlayManager;
     }());
     exports.default = OvarlayManager;
 });
-define("core/module_manager", ["require", "exports", "core/native_component", "core/runtime_error", "core/container_manager", "core/overlay_manager"], function (require, exports, native_component_1, runtime_error_3, container_manager_4, overlay_manager_2) {
+define("core/html_component_adapter", ["require", "exports", "core/module_router", "core/overlay_manager"], function (require, exports, module_router_1, overlay_manager_2) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    exports.htmlComponentAdapters = new Map();
+    var HTMLComponentAdapter = /** @class */ (function () {
+        function HTMLComponentAdapter() {
+            this.isModified = false;
+            this.moduleRouter = module_router_1.default.getInstance();
+            this.overlayManager = overlay_manager_2.default.getInstance();
+        }
+        HTMLComponentAdapter.prototype.setHtmlComponent = function (htmlComponent) {
+            this.htmlComponent = htmlComponent;
+        };
+        HTMLComponentAdapter.prototype.triggerOnLoadHandler = function (param) {
+            if (this.onLoad)
+                this.onLoad(param);
+        };
+        HTMLComponentAdapter.prototype.triggerOnInitializeHandler = function (param) {
+            if (this.onInitialize)
+                this.onInitialize(param);
+        };
+        HTMLComponentAdapter.prototype.triggerOnShowHandler = function (isFirst, param) {
+            if (this.onShow)
+                this.onShow(isFirst, param);
+        };
+        HTMLComponentAdapter.prototype.triggerOnHideHandler = function (param) {
+            if (this.onHide)
+                this.onHide(param);
+        };
+        HTMLComponentAdapter.prototype.triggerOnExitRequestHandler = function (force) {
+            if (this.onExitRequest) {
+                this.onExitRequest(force);
+            }
+            else {
+                this.exit(null);
+            }
+        };
+        HTMLComponentAdapter.prototype.exit = function (result) {
+            this.htmlComponent.exit(result);
+        };
+        HTMLComponentAdapter.prototype.showWindow = function (overlayName, parcel, options, callback) {
+            var overlayManager = overlay_manager_2.default.getInstance();
+            overlayManager.showWindow(overlayName, parcel, options, callback);
+        };
+        HTMLComponentAdapter.prototype.showWindowAsModal = function (overlayName, parcel, options, callback) {
+            return __awaiter(this, void 0, void 0, function () {
+                var overlayManager;
+                return __generator(this, function (_a) {
+                    switch (_a.label) {
+                        case 0:
+                            overlayManager = overlay_manager_2.default.getInstance();
+                            return [4 /*yield*/, overlayManager.showWindowAsModal(overlayName, parcel, options, callback)];
+                        case 1: return [2 /*return*/, _a.sent()];
+                    }
+                });
+            });
+        };
+        return HTMLComponentAdapter;
+    }());
+    exports.default = HTMLComponentAdapter;
+    var __global = window;
+    __global.__HTMLComponentAdapter = HTMLComponentAdapter;
+    __global.__registerHTMLComponentAdapter = function (moduleIndex, componentClass) {
+        exports.htmlComponentAdapters.set(moduleIndex, componentClass);
+    };
+});
+define("core/abstract_html_component", ["require", "exports", "core/source_repository"], function (require, exports, source_repository_1) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    var HTMLComponent = /** @class */ (function () {
+        function HTMLComponent(name, sourceUri, moduleIndex) {
+            this.name = name;
+            this.sourceUri = sourceUri;
+            this.moduleIndex = moduleIndex;
+            this.isFetched = false;
+            this.isMounted = false;
+            this.isInitialized = false;
+            this.subContainerInfos = new Map();
+            this.htmlAdapter = null;
+            this.onCreate();
+        }
+        HTMLComponent.prototype.onResize = function (containerWidth, containerHeight) {
+            if (!this.wrapperElement)
+                return;
+            //this.wrapperElement.style.width = containerWidth.toString() + "px";
+            //this.wrapperElement.style.height = containerHeight.toString() + "px";
+            this.subContainerInfos.forEach(function (containerInfo) {
+                containerInfo.container.onResize();
+            });
+        };
+        HTMLComponent.prototype.fetch = function () {
+            return __awaiter(this, void 0, void 0, function () {
+                var repository, _a;
+                return __generator(this, function (_b) {
+                    switch (_b.label) {
+                        case 0:
+                            repository = source_repository_1.default.getInstance();
+                            _a = this;
+                            return [4 /*yield*/, repository.fetch(this.sourceUri)];
+                        case 1:
+                            _a.source = _b.sent();
+                            this.loadSubContainerInfos();
+                            this.isFetched = true;
+                            return [2 /*return*/, null];
+                    }
+                });
+            });
+        };
+        HTMLComponent.prototype.initialize = function (param) {
+            this.htmlAdapter.triggerOnInitializeHandler(param);
+        };
+        HTMLComponent.prototype.show = function () {
+            this.wrapperElement.style.display = "";
+            this.wrapperElement.style.visibility = "";
+            this.htmlAdapter.triggerOnShowHandler(false, null);
+        };
+        HTMLComponent.prototype.hide = function () {
+            if (this.wrapperElement.style.visibility !== "hidden") {
+                this.wrapperElement.style.display = "none";
+            }
+            this.htmlAdapter.triggerOnHideHandler(null);
+        };
+        HTMLComponent.prototype.waitForExit = function () {
+            var _this = this;
+            return new Promise(function (resolve) {
+                _this.exitForWaitResolver = resolve;
+            });
+        };
+        HTMLComponent.prototype.exitRequest = function () {
+            return __awaiter(this, void 0, void 0, function () {
+                var _this = this;
+                return __generator(this, function (_a) {
+                    //通常、backナビゲーション時にcontainerオブジェクト経由でコールされる
+                    return [2 /*return*/, new Promise(function (resolve) {
+                            _this.exitRequestResolver = resolve;
+                            _this.htmlAdapter.triggerOnExitRequestHandler(false);
+                        })];
+                });
+            });
+        };
+        HTMLComponent.prototype.exit = function (result) {
+            //backナビゲーション時にコールされるexitRequest内でexitRequestResolverがセットされる
+            if (this.exitRequestResolver) {
+                this.exitRequestResolver(true);
+                this.exitRequestResolver = null;
+            }
+            else {
+                //backナビゲーションではなく自身で閉じたとき(exitRequestResolverがnull)
+                this.currentContainer.backWithoutConfirmation();
+            }
+            if (this.exitForWaitResolver) {
+                this.exitForWaitResolver(result);
+                this.exitForWaitResolver = null;
+            }
+        };
+        HTMLComponent.prototype.getElement = function () {
+            throw this.wrapperElement;
+        };
+        HTMLComponent.prototype.getCurrentContainer = function () {
+            return this.currentContainer;
+        };
+        HTMLComponent.prototype.getSubContainerNames = function () {
+            var ary = new Array();
+            this.subContainerInfos.forEach(function (c) {
+                ary.push(c.name);
+            });
+            return ary;
+        };
+        HTMLComponent.prototype.getName = function () {
+            return this.name;
+        };
+        HTMLComponent.prototype.getCaption = function () {
+            return this.name;
+        };
+        return HTMLComponent;
+    }());
+    exports.default = HTMLComponent;
+});
+define("core/native_component", ["require", "exports", "core/abstract_html_component", "core/container_manager", "core/html_component_adapter"], function (require, exports, abstract_html_component_1, container_manager_3, html_component_adapter_1) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    var NativeComponent = /** @class */ (function (_super) {
+        __extends(NativeComponent, _super);
+        function NativeComponent() {
+            return _super !== null && _super.apply(this, arguments) || this;
+        }
+        NativeComponent.prototype.onCreate = function () {
+            this.prototypeTemplateBegin =
+                "(function() {\n            var Com = function(moduleIndex) {\n                this.super = __HTMLComponentAdapter.prototype;\n                __HTMLComponentAdapter.call(this, moduleIndex);\n        ";
+            this.prototypeTemplateEnd =
+                "   }\n            Object.setPrototypeOf(Com.prototype, __HTMLComponentAdapter.prototype);\n            __registerHTMLComponentAdapter(" + this.moduleIndex + ", new Com(" + this.moduleIndex + "));\n         })();\n        ";
+        };
+        NativeComponent.prototype.loadSubContainerInfos = function () {
+            var regExp = /<div *id *= *["'](.+)["'] *.*data-container-name *= *["'](.+)["'].*>/g;
+            var match;
+            while (match = regExp.exec(this.source)) {
+                this.subContainerInfos.set(match[1], {
+                    name: match[2],
+                    container: null
+                });
+            }
+        };
+        NativeComponent.prototype.mount = function (container) {
+            return __awaiter(this, void 0, void 0, function () {
+                var localPrefix, localizeRegExp, containerManager;
+                var _this = this;
+                return __generator(this, function (_a) {
+                    switch (_a.label) {
+                        case 0:
+                            if (!!this.isFetched) return [3 /*break*/, 2];
+                            return [4 /*yield*/, this.fetch()];
+                        case 1:
+                            _a.sent();
+                            _a.label = 2;
+                        case 2:
+                            localPrefix = "_" + this.moduleIndex.toString() + "_";
+                            this.currentContainer = container;
+                            localizeRegExp = /\\:/g;
+                            this.source = this.source.replace(localizeRegExp, localPrefix);
+                            //引数で与えられたコンテナDOMに対して自身をロード
+                            this.wrapperElement = document.createElement("div");
+                            this.wrapperElement.id = localPrefix + "module";
+                            this.wrapperElement.style.position = "absolute";
+                            this.wrapperElement.style.overflow = "auto";
+                            this.wrapperElement.style.width = "100%";
+                            this.wrapperElement.style.height = "100%";
+                            this.wrapperElement.style.visibility = "hidden";
+                            this.wrapperElement.innerHTML = this.source;
+                            container.addModuleElement(this.wrapperElement);
+                            //scriptタグを実行
+                            this.evalScripts();
+                            containerManager = container_manager_3.default.getInstance();
+                            this.subContainerInfos.forEach(function (containerInfo, domId) {
+                                var localElementId = domId.replace(localizeRegExp, localPrefix);
+                                var containerEl = document.getElementById(localElementId);
+                                var containerId = _this.name + "." + containerInfo.name;
+                                containerInfo.container = containerManager.createContainer(containerId, "", containerEl);
+                            });
+                            this.isMounted = true;
+                            this.htmlAdapter = html_component_adapter_1.htmlComponentAdapters.get(this.moduleIndex);
+                            this.htmlAdapter.setHtmlComponent(this);
+                            this.htmlAdapter.triggerOnLoadHandler("name is " + this.name);
+                            return [2 /*return*/, true];
+                    }
+                });
+            });
+        };
+        NativeComponent.prototype.evalScripts = function () {
+            var nativeScript = "";
+            var prototypeScript = "";
+            var classScript = "";
+            var initialScriptElements = new Array();
+            this.wrapperElement.querySelectorAll("script").forEach(function (element) {
+                var scopeMode = element.dataset["scopeMode"];
+                if (!scopeMode || scopeMode === "native") {
+                    nativeScript += element.textContent;
+                }
+                else if (scopeMode === "prototype") {
+                    prototypeScript += element.textContent;
+                }
+                else if (scopeMode === "class") {
+                    classScript += element.textContent;
+                }
+                initialScriptElements.push(element);
+            });
+            var nativeScriptElement = document.createElement("script");
+            nativeScriptElement.textContent = nativeScript;
+            this.wrapperElement.appendChild(nativeScriptElement);
+            var prototypeScriptElement = document.createElement("script");
+            prototypeScript = this.prototypeTemplateBegin +
+                prototypeScript +
+                this.prototypeTemplateEnd;
+            prototypeScriptElement.textContent = prototypeScript;
+            this.wrapperElement.appendChild(prototypeScriptElement);
+            var classScriptElement = document.createElement("script");
+            classScriptElement.textContent = classScript;
+            this.wrapperElement.appendChild(classScriptElement);
+            for (var _i = 0, initialScriptElements_1 = initialScriptElements; _i < initialScriptElements_1.length; _i++) {
+                var element = initialScriptElements_1[_i];
+                this.wrapperElement.removeChild(element);
+            }
+        };
+        return NativeComponent;
+    }(abstract_html_component_1.default));
+    exports.default = NativeComponent;
+});
+define("core/module_manager", ["require", "exports", "core/native_component", "core/runtime_error", "core/container_manager", "core/overlay_manager"], function (require, exports, native_component_1, runtime_error_3, container_manager_4, overlay_manager_3) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var DisplayMode;
@@ -1107,7 +1184,7 @@ define("core/module_manager", ["require", "exports", "core/native_component", "c
                     switch (_b.label) {
                         case 0:
                             containerManager = container_manager_4.default.getInstance();
-                            overlayManager = overlay_manager_2.default.getInstance();
+                            overlayManager = overlay_manager_3.default.getInstance();
                             if (dependencyInfo.isProcessed)
                                 throw new runtime_error_3.default("コンテナの循環参照発生");
                             dependencyInfo.isProcessed = true;
@@ -1177,13 +1254,13 @@ define("core/module_manager", ["require", "exports", "core/native_component", "c
         return ModuleDependencyInfo;
     }());
 });
-define("nativespa", ["require", "exports", "core/module_manager", "core/container_manager", "core/overlay_manager"], function (require, exports, module_manager_2, container_manager_5, overlay_manager_3) {
+define("nativespa", ["require", "exports", "core/module_manager", "core/container_manager", "core/overlay_manager"], function (require, exports, module_manager_2, container_manager_5, overlay_manager_4) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     console.log("******** start ********");
     var moduleManager = module_manager_2.default.getInstance();
     var containerManager = container_manager_5.default.getInstance();
-    var overlayManager = overlay_manager_3.default.getInstance();
+    var overlayManager = overlay_manager_4.default.getInstance();
     var rootElement = document.getElementById("app");
     var rootContainer = containerManager.createRootContainer(rootElement);
     overlayManager.setViewPortElement(rootElement);

@@ -1,6 +1,8 @@
 import Container from "./container";
-import Overlay from "./overlay";
+import Overlay, { ShowOptions } from "./overlay";
 import ContainerManager from "./container_manager";
+import Result from "./result";
+import Parcel from "./parcel";
 
 export default class DialogWindow extends Overlay {
     private static instanceSequence = 0;
@@ -10,9 +12,15 @@ export default class DialogWindow extends Overlay {
     protected bodyEl: HTMLDivElement;
     protected footerEl: HTMLDivElement;
 
+    protected okButtonEl:  HTMLInputElement;
+    protected cancelButtonEl:  HTMLInputElement;
+    protected applyButtonEl:  HTMLInputElement;
+
     protected isDragging: boolean = false;
 
     protected container: Container;
+
+    protected closeForWaitResolver: (value?: Result | PromiseLike<Result>) => void;
 
     constructor(viewPortElement: HTMLElement, caption: string, options?: WindowOptions) {
         super(viewPortElement, 640, 480);
@@ -48,7 +56,24 @@ export default class DialogWindow extends Overlay {
         this.footerEl = document.createElement("div");
         this.footerEl.className = "spa_dialog_window_footer";
         this.footerEl.style.position = "relative";
-        this.footerEl.style.width = "100%";  
+        this.footerEl.style.width = "100%";
+
+        this.okButtonEl = document.createElement("input");
+        this.okButtonEl.type = "button";
+        this.okButtonEl.value = "OK";
+        this.okButtonEl.addEventListener("click", this.onOkButtonClick.bind(this));
+
+        this.cancelButtonEl = document.createElement("input");
+        this.cancelButtonEl.type = "button";
+        this.cancelButtonEl.value = "キャンセル";
+        this.cancelButtonEl.addEventListener("click", this.onCancelButtonClick.bind(this));
+
+        this.applyButtonEl = document.createElement("input");
+        this.applyButtonEl.type = "button";
+        this.applyButtonEl.value = "適用";        
+
+        this.footerEl.appendChild(this.okButtonEl);
+        this.footerEl.appendChild(this.cancelButtonEl);
         
         this.wrapperEl.appendChild(this.headerEl);
         this.wrapperEl.appendChild(this.bodyEl);
@@ -69,6 +94,24 @@ export default class DialogWindow extends Overlay {
     //     this.isDragging = false;
     // }
 
+    protected onOkButtonClick(event: MouseEvent) {
+        this.close();
+    }
+
+    protected onCancelButtonClick(event: MouseEvent) {
+        this.close();
+    }
+
+    protected onApplyButtonClick(event: MouseEvent) {
+
+    }
+
+    protected waitForOverlayClose(): Promise<Result> {
+        return new Promise(resolve => {
+            this.closeForWaitResolver = resolve;
+        });
+    }
+
     //override
     public __dispachMouseMoveEvent(x: number, y: number, deltaX: number, deltaY: number) {
         super.__dispachMouseMoveEvent(x, y, deltaX, deltaY);
@@ -86,13 +129,25 @@ export default class DialogWindow extends Overlay {
         return this.container;
     }
 
-    public show(x?: number, y?: number): void {
-        if (x !== undefined && y !== undefined) {
-            this.changePosition(x, y);
+    public async show(parcel?: Parcel, options?: ShowOptions): Promise<Result> {
+        let px: number, py: number;
+        if (options && options.x !== undefined && options.y !== undefined) {
+            px = options.x; py = options.y;
+        } else {
+            //デフォルト表示位置は表示領域（ビューポート）の中央
+            px = Math.round((this.viewPortElement.offsetWidth - this.size.width) / 2);
+            py = Math.round((this.viewPortElement.offsetHeight - this.size.height) / 2);
         }
+        this.changePosition(px, py);
         this.outerFrameEl.style.display = "block";
+        
+        return await this.waitForOverlayClose();
     }
-    public hide(): void {
+
+    public closeRequest(): void {
+        if (this.closeForWaitResolver) {
+            this.closeForWaitResolver(null);
+        }
         this.outerFrameEl.style.display = "none";
     }
 }

@@ -2,8 +2,8 @@ import ContainerManager from "./container_manager";
 import ModuleManager from "./module_manager";
 import Container from "./container";
 import Module from "./module";
-import ForwardDto from "./forward_dto";
-import ResultDto from "./result_dto";
+import Parcel from "./parcel";
+import Result from "./result";
 
 export default class ModuleRouter {
     private static instance = new ModuleRouter();
@@ -16,7 +16,7 @@ export default class ModuleRouter {
 
     }
 
-    public async forward(targetIdentifier: string, params?: ForwardDto, callback?: (moduleDto: ResultDto) => void): Promise<ResultDto> {
+    public async forward(targetIdentifier: string, params?: Parcel, callback?: (moduleDto: Result) => void): Promise<Result> {
         const s = targetIdentifier.split("::");
         const targetContainerId = s[0];
         const moduleName = s[1];

@@ -4,7 +4,7 @@ import RuntimeError from "./runtime_error";
 import ContainerManager from "./container_manager";
 import Container from "./container";
 import OvarlayManager from "./overlay_manager";
-import DialogWindow from "./window";
+import DialogWindow from "./dialog_window";
 
 export interface ModuleDescription {
     name: string;

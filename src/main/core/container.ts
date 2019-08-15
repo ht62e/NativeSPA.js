@@ -1,7 +1,7 @@
 import Module from "./module";
 import RuntimeError from "./runtime_error";
-import ResultDto from "./result_dto";
-import ForwardDto from "./forward_dto";
+import Result from "./result";
+import Parcel from "./parcel";
 
 export default class Container {
     private activeModule: Module;
@@ -31,6 +31,10 @@ export default class Container {
         return this.bindDomElement;
     }
 
+    public getActiveModule(): Module {
+        return this.activeModule;
+    }
+
     public changeActiveModule(module: Module): void {
         if (!this.mountedModules.has(module.getName())) throw new RuntimeError("指定されたモジュールはマウントされていません。");
         this.mountedModules.forEach((eachModule: Module) => {
@@ -56,13 +60,13 @@ export default class Container {
         })
     }
 
-    public async forward(module: Module, params?: ForwardDto, callback?: (moduleDto: ResultDto) => void): Promise<ResultDto> {
+    public async forward(module: Module, parcel?: Parcel, callback?: (r: Result) => void): Promise<Result> {
         module.initialize(null);
 
         this.changeActiveModule(module);
         this.moduleChangeHistory.push(module);
 
-        const result: ResultDto = await module.waitForClose();
+        const result: Result = await module.waitForExit();
 
         if (callback) {
             //for ES5
@@ -74,7 +78,7 @@ export default class Container {
     }
 
     public back(): void {
-        this.activeModule.closeRequest().then(closed => {
+        this.activeModule.exitRequest().then(exited => {
             if (this.moduleChangeHistory.length > 0) {
                 this.moduleChangeHistory.pop();
             }

@@ -1,7 +1,9 @@
 import ModuleRouter from "./module_router";
 import HTMLComponent from "./abstract_html_component";
-import ForwardDto from "./forward_dto";
-import ResultDto from "./result_dto";
+import Parcel from "./parcel";
+import Result from "./result";
+import OvarlayManager from "./overlay_manager";
+import { ShowOptions } from "./overlay";
 
 export const htmlComponentAdapters = new Map<number, HTMLComponentAdapter>();
 
@@ -10,6 +12,7 @@ export default abstract class HTMLComponentAdapter {
     protected isModified: boolean = false;
 
     protected moduleRouter: ModuleRouter = ModuleRouter.getInstance();
+    protected overlayManager: OvarlayManager = OvarlayManager.getInstance();
 
     constructor() {
 
@@ -20,10 +23,10 @@ export default abstract class HTMLComponentAdapter {
     }
 
     protected abstract onLoad(param: any): void;
-    protected abstract onInitialize(param: ForwardDto): void;
+    protected abstract onInitialize(param: Parcel): void;
     protected abstract onShow(isFirst: boolean, param: any): void;
     protected abstract onHide(param: any): void;
-    protected abstract onCloseRequest(force: boolean): void;
+    protected abstract onExitRequest(force: boolean): void;
     
 
     public triggerOnLoadHandler(param: any): void {
@@ -42,16 +45,26 @@ export default abstract class HTMLComponentAdapter {
         if (this.onHide) this.onHide(param);
     }
 
-    public triggerOnCloseRequestHandler(force: boolean): void {
-        if (this.onCloseRequest) {
-            this.onCloseRequest(force)
+    public triggerOnExitRequestHandler(force: boolean): void {
+        if (this.onExitRequest) {
+            this.onExitRequest(force);
         } else {
-            this.close(null);
+            this.exit(null);
         }
     }
 
-    private close(result: ResultDto) {
-        this.htmlComponent.close(result);
+    private exit(result: Result) {
+        this.htmlComponent.exit(result);
+    }
+
+    private showWindow(overlayName: string, parcel?: Parcel, options?: ShowOptions, callback?: (r: Result) => void): void {
+        const overlayManager = OvarlayManager.getInstance();
+        overlayManager.showWindow(overlayName, parcel, options, callback);
+    }
+
+    private async showWindowAsModal(overlayName: string, parcel?: Parcel, options?: ShowOptions, callback?: (r: Result) => void): Promise<Result> {
+        const overlayManager = OvarlayManager.getInstance();
+        return await overlayManager.showWindowAsModal(overlayName, parcel, options, callback);
     }
 }
 

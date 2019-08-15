@@ -23,7 +23,7 @@ export default class NativeComponent extends HTMLComponent {
             __registerHTMLComponentAdapter(${this.moduleIndex}, new Com(${this.moduleIndex}));
          })();
         `;
-    }    
+    }
 
     protected loadSubContainerInfos(): void {
         const regExp = /<div *id *= *["'](.+)["'] *.*data-container-name *= *["'](.+)["'].*>/g;

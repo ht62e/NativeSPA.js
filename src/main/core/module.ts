@@ -1,17 +1,19 @@
 import Container from "./container";
-import ForwardDto from "./forward_dto";
-import ResultDto from "./result_dto";
+import Parcel from "./parcel";
+import Result from "./result";
 
 export default interface Module {
     fetch(): Promise<boolean>;
     mount(container: Container): Promise<boolean>;
-    initialize(param: ForwardDto): void;
-    closeRequest(): Promise<boolean>;
+    initialize(param: Parcel): void;
+    exitRequest(): Promise<boolean>;
 
-    waitForClose(): Promise<ResultDto>;
+    waitForExit(): Promise<Result>;
     
     show(): void;
     hide(): void;
+
+    apply(): Result;
     
 
     onResize(containerWidth: number, containerHeight: number): void;
@@ -21,7 +23,7 @@ export default interface Module {
     getElement(): HTMLDivElement;
     getCurrentContainer(): Container;
     getSubContainerNames(): Array<string>;
-    isClosed(): boolean;
+
 }
 
 
