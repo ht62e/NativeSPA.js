@@ -1,7 +1,7 @@
 import Container from "./container";
 import Overlay, { ShowOptions } from "./overlay";
 import ContainerManager from "./container_manager";
-import Result from "./result";
+import Result, { ActionType } from "./result";
 import Parcel from "./parcel";
 
 export default class DialogWindow extends Overlay {
@@ -94,12 +94,18 @@ export default class DialogWindow extends Overlay {
     //     this.isDragging = false;
     // }
 
+    
+
     protected onOkButtonClick(event: MouseEvent) {
-        this.close();
+        this.container.getActiveModule().exit(ActionType.OK).then(exited => {
+            if (exited) this.close();
+        });
     }
 
     protected onCancelButtonClick(event: MouseEvent) {
-        this.close();
+        this.container.getActiveModule().exit(ActionType.CANCEL).then(exited => {
+            if (exited) this.close();
+        });
     }
 
     protected onApplyButtonClick(event: MouseEvent) {
@@ -140,14 +146,16 @@ export default class DialogWindow extends Overlay {
         }
         this.changePosition(px, py);
         this.outerFrameEl.style.display = "block";
+
+        this.container.getActiveModule().waitForExit().then(result => {
+            this.closeForWaitResolver(result);
+            this.close();
+        })
         
         return await this.waitForOverlayClose();
     }
 
-    public closeRequest(): void {
-        if (this.closeForWaitResolver) {
-            this.closeForWaitResolver(null);
-        }
+    public close(): void {
         this.outerFrameEl.style.display = "none";
     }
 }

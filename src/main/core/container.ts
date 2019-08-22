@@ -1,6 +1,6 @@
 import Module from "./module";
 import RuntimeError from "./runtime_error";
-import Result from "./result";
+import Result, { ActionType } from "./result";
 import Parcel from "./parcel";
 
 export default class Container {
@@ -35,7 +35,7 @@ export default class Container {
         return this.activeModule;
     }
 
-    public changeActiveModule(module: Module): void {
+    public activateModule(module: Module): void {
         if (!this.mountedModules.has(module.getName())) throw new RuntimeError("指定されたモジュールはマウントされていません。");
         this.mountedModules.forEach((eachModule: Module) => {
             if (eachModule === module) {
@@ -63,7 +63,7 @@ export default class Container {
     public async forward(module: Module, parcel?: Parcel, callback?: (r: Result) => void): Promise<Result> {
         module.initialize(null);
 
-        this.changeActiveModule(module);
+        this.activateModule(module);
         this.moduleChangeHistory.push(module);
 
         const result: Result = await module.waitForExit();
@@ -78,12 +78,12 @@ export default class Container {
     }
 
     public back(): void {
-        this.activeModule.exitRequest().then(exited => {
+        this.activeModule.exit(ActionType.BACK).then(exited => {
             if (this.moduleChangeHistory.length > 0) {
                 this.moduleChangeHistory.pop();
             }
             if (this.moduleChangeHistory.length > 0) {
-                this.changeActiveModule(this.moduleChangeHistory[this.moduleChangeHistory.length - 1]);
+                this.activateModule(this.moduleChangeHistory[this.moduleChangeHistory.length - 1]);
             } else {
                 this.hideModule();
             }
@@ -95,7 +95,7 @@ export default class Container {
             this.moduleChangeHistory.pop();
         }
         if (this.moduleChangeHistory.length > 0) {
-            this.changeActiveModule(this.moduleChangeHistory[this.moduleChangeHistory.length - 1]);
+            this.activateModule(this.moduleChangeHistory[this.moduleChangeHistory.length - 1]);
         } else {
             this.hideModule();
         }

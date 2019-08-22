@@ -1,7 +1,7 @@
 import ModuleRouter from "./module_router";
 import HTMLComponent from "./abstract_html_component";
 import Parcel from "./parcel";
-import Result from "./result";
+import Result, { ActionType } from "./result";
 import OvarlayManager from "./overlay_manager";
 import { ShowOptions } from "./overlay";
 
@@ -14,8 +14,13 @@ export default abstract class HTMLComponentAdapter {
     protected moduleRouter: ModuleRouter = ModuleRouter.getInstance();
     protected overlayManager: OvarlayManager = OvarlayManager.getInstance();
 
-    constructor() {
+    private exitCallbackReturnFunctionsObject: ReturnFunctions;
 
+    constructor() {
+        this.exitCallbackReturnFunctionsObject = {
+            cancelExit: this.cancelExit.bind(this),
+            continueExit: this.continueExit.bind(this)
+        };
     }
 
     public setHtmlComponent(htmlComponent: HTMLComponent) {
@@ -26,7 +31,7 @@ export default abstract class HTMLComponentAdapter {
     protected abstract onInitialize(param: Parcel): void;
     protected abstract onShow(isFirst: boolean, param: any): void;
     protected abstract onHide(param: any): void;
-    protected abstract onExitRequest(force: boolean): void;
+    protected abstract onExit(actionType: ActionType, returnFunctions: ReturnFunctions): void;
     
 
     public triggerOnLoadHandler(param: any): void {
@@ -45,27 +50,42 @@ export default abstract class HTMLComponentAdapter {
         if (this.onHide) this.onHide(param);
     }
 
-    public triggerOnExitRequestHandler(force: boolean): void {
-        if (this.onExitRequest) {
-            this.onExitRequest(force);
+    public triggerOnExitHandler(actionType: ActionType): void {
+        if (this.onExit) {
+            this.onExit(actionType, this.exitCallbackReturnFunctionsObject);
         } else {
-            this.exit(null);
+            this.continueExit(new Result(actionType, true));
         }
     }
 
-    private exit(result: Result) {
-        this.htmlComponent.exit(result);
+    private continueExit(result: Result): void {
+        this.htmlComponent.continueExitProcess(result);
     }
 
-    private showWindow(overlayName: string, parcel?: Parcel, options?: ShowOptions, callback?: (r: Result) => void): void {
-        const overlayManager = OvarlayManager.getInstance();
-        overlayManager.showWindow(overlayName, parcel, options, callback);
+    private cancelExit(): void {
+        this.htmlComponent.cancelExitProcess();
     }
 
-    private async showWindowAsModal(overlayName: string, parcel?: Parcel, options?: ShowOptions, callback?: (r: Result) => void): Promise<Result> {
+
+
+    // private exit(result: Result) {
+    //     this.htmlComponent.exit(result);
+    // }
+
+    private async showWindow(overlayName: string, parcel?: Parcel, options?: ShowOptions): Promise<Result> {
         const overlayManager = OvarlayManager.getInstance();
-        return await overlayManager.showWindowAsModal(overlayName, parcel, options, callback);
+        return await overlayManager.showWindow(overlayName, parcel, options);
     }
+
+    private async showWindowAsModal(overlayName: string, parcel?: Parcel, options?: ShowOptions): Promise<Result> {
+        const overlayManager = OvarlayManager.getInstance();
+        return await overlayManager.showWindowAsModal(overlayName, parcel, options);
+    }
+}
+
+interface ReturnFunctions {
+    cancelExit: () => void;
+    continueExit: (result: Result) => void;
 }
 
 const __global = window as any;

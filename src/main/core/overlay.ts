@@ -27,6 +27,12 @@ export default abstract class Overlay {
 
     private resizeHandleEl = new Array<HTMLDivElement>();
 
+    public abstract getContainer(): Container; 
+    
+    public abstract async show(parcel?: Parcel, options?: ShowOptions): Promise<Result> ;
+    public abstract close(): void;
+    protected abstract async waitForOverlayClose(): Promise<Result>;
+
     constructor(viewPortElement: HTMLElement, width: number, height: number) {
         this.viewPortElement = viewPortElement;
 
@@ -225,11 +231,7 @@ export default abstract class Overlay {
         this.contentEl.style.height = String(height) + "px";
     }
 
-    public abstract getContainer(): Container; 
     
-    public abstract async show(parcel?: Parcel, options?: ShowOptions): Promise<Result> ;
-    public abstract closeRequest(): void;
-    protected abstract async waitForOverlayClose(): Promise<Result>;
 
 }
 

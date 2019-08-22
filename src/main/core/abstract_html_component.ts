@@ -3,7 +3,7 @@ import Module from "./module";
 import SourceRepository from "./source_repository";
 import Parcel from "./parcel";
 import HTMLComponentAdapter from "./html_component_adapter";
-import Result from "./result";
+import Result, { ActionType } from "./result";
 
 export default abstract class HTMLComponent implements Module {
     protected isFetched: boolean = false;
@@ -64,25 +64,21 @@ export default abstract class HTMLComponent implements Module {
         this.htmlAdapter.triggerOnHideHandler(null);
     }
 
-    apply(): Result {
-        throw new Error("Method not implemented.");
-    }
-
     waitForExit(): Promise<Result> {
         return new Promise(resolve => {
             this.exitForWaitResolver = resolve;
         });
     }
 
-    async exitRequest(): Promise<boolean> {
+    async exit(actionType: ActionType): Promise<boolean> {
         //通常、backナビゲーション時にcontainerオブジェクト経由でコールされる
         return new Promise(resolve => {
             this.exitRequestResolver = resolve;
-            this.htmlAdapter.triggerOnExitRequestHandler(false);
+            this.htmlAdapter.triggerOnExitHandler(actionType);
         });
     }
 
-    exit(result: Result) {
+    continueExitProcess(result: Result) {
         //backナビゲーション時にコールされるexitRequest内でexitRequestResolverがセットされる
         if (this.exitRequestResolver) {
             this.exitRequestResolver(true);
@@ -95,6 +91,13 @@ export default abstract class HTMLComponent implements Module {
             this.exitForWaitResolver(result);
             this.exitForWaitResolver = null;
         }
+    }
+
+    cancelExitProcess() {
+        if (this.exitRequestResolver) {
+            this.exitRequestResolver(false);
+            this.exitRequestResolver = null;
+        }        
     }
 
     getElement(): HTMLDivElement {

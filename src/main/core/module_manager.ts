@@ -178,7 +178,7 @@ export default class ModuleManager {
                 if (targetContainer) {
                     await targetContainer.addModule(module);
                     if (dependencyInfo.moduleDescription.isContainerDefault) {
-                        module.show();
+                        targetContainer.activateModule(module);
                     }
                 } else {
                     throw new RuntimeError("ターゲットコンテナが存在しないか、未ロード");
@@ -186,7 +186,7 @@ export default class ModuleManager {
             } else if (displayMode === DisplayMode.Window) {
                 const dWindow: DialogWindow = overlayManager.createWindow(module.getName(), "test");
                 await dWindow.getContainer().addModule(module);
-                module.show();
+                dWindow.getContainer().activateModule(module);
             }
         }
 

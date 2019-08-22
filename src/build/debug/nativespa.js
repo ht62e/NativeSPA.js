@@ -77,8 +77,9 @@ define("core/result", ["require", "exports"], function (require, exports) {
         ActionType[ActionType["OK"] = 0] = "OK";
         ActionType[ActionType["CANCEL"] = 1] = "CANCEL";
         ActionType[ActionType["BACK"] = 2] = "BACK";
-        ActionType[ActionType["YES"] = 3] = "YES";
-        ActionType[ActionType["NO"] = 4] = "NO";
+        ActionType[ActionType["FORCE_CANCEL"] = 3] = "FORCE_CANCEL";
+        ActionType[ActionType["YES"] = 4] = "YES";
+        ActionType[ActionType["NO"] = 5] = "NO";
     })(ActionType = exports.ActionType || (exports.ActionType = {}));
 });
 define("core/parcel", ["require", "exports"], function (require, exports) {
@@ -100,7 +101,7 @@ define("core/parcel", ["require", "exports"], function (require, exports) {
         RequestMode[RequestMode["EDIT"] = 3] = "EDIT";
     })(RequestMode = exports.RequestMode || (exports.RequestMode = {}));
 });
-define("core/container", ["require", "exports", "core/runtime_error"], function (require, exports, runtime_error_1) {
+define("core/container", ["require", "exports", "core/runtime_error", "core/result"], function (require, exports, runtime_error_1, result_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var Container = /** @class */ (function () {
@@ -136,7 +137,7 @@ define("core/container", ["require", "exports", "core/runtime_error"], function 
         Container.prototype.getActiveModule = function () {
             return this.activeModule;
         };
-        Container.prototype.changeActiveModule = function (module) {
+        Container.prototype.activateModule = function (module) {
             var _this = this;
             if (!this.mountedModules.has(module.getName()))
                 throw new runtime_error_1.default("指定されたモジュールはマウントされていません。");
@@ -167,7 +168,7 @@ define("core/container", ["require", "exports", "core/runtime_error"], function 
                     switch (_a.label) {
                         case 0:
                             module.initialize(null);
-                            this.changeActiveModule(module);
+                            this.activateModule(module);
                             this.moduleChangeHistory.push(module);
                             return [4 /*yield*/, module.waitForExit()];
                         case 1:
@@ -186,12 +187,12 @@ define("core/container", ["require", "exports", "core/runtime_error"], function 
         };
         Container.prototype.back = function () {
             var _this = this;
-            this.activeModule.exitRequest().then(function (exited) {
+            this.activeModule.exit(result_1.ActionType.BACK).then(function (exited) {
                 if (_this.moduleChangeHistory.length > 0) {
                     _this.moduleChangeHistory.pop();
                 }
                 if (_this.moduleChangeHistory.length > 0) {
-                    _this.changeActiveModule(_this.moduleChangeHistory[_this.moduleChangeHistory.length - 1]);
+                    _this.activateModule(_this.moduleChangeHistory[_this.moduleChangeHistory.length - 1]);
                 }
                 else {
                     _this.hideModule();
@@ -203,7 +204,7 @@ define("core/container", ["require", "exports", "core/runtime_error"], function 
                 this.moduleChangeHistory.pop();
             }
             if (this.moduleChangeHistory.length > 0) {
-                this.changeActiveModule(this.moduleChangeHistory[this.moduleChangeHistory.length - 1]);
+                this.activateModule(this.moduleChangeHistory[this.moduleChangeHistory.length - 1]);
             }
             else {
                 this.hideModule();
@@ -542,7 +543,7 @@ define("core/overlay", ["require", "exports", "core/overlay_manager", "core/type
     }());
     exports.default = Overlay;
 });
-define("core/dialog_window", ["require", "exports", "core/overlay", "core/container_manager"], function (require, exports, overlay_1, container_manager_2) {
+define("core/dialog_window", ["require", "exports", "core/overlay", "core/container_manager", "core/result"], function (require, exports, overlay_1, container_manager_2, result_2) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var DialogWindow = /** @class */ (function (_super) {
@@ -604,10 +605,18 @@ define("core/dialog_window", ["require", "exports", "core/overlay", "core/contai
         //     this.isDragging = false;
         // }
         DialogWindow.prototype.onOkButtonClick = function (event) {
-            this.close();
+            var _this = this;
+            this.container.getActiveModule().exit(result_2.ActionType.OK).then(function (exited) {
+                if (exited)
+                    _this.close();
+            });
         };
         DialogWindow.prototype.onCancelButtonClick = function (event) {
-            this.close();
+            var _this = this;
+            this.container.getActiveModule().exit(result_2.ActionType.CANCEL).then(function (exited) {
+                if (exited)
+                    _this.close();
+            });
         };
         DialogWindow.prototype.onApplyButtonClick = function (event) {
         };
@@ -635,6 +644,7 @@ define("core/dialog_window", ["require", "exports", "core/overlay", "core/contai
         DialogWindow.prototype.show = function (parcel, options) {
             return __awaiter(this, void 0, void 0, function () {
                 var px, py;
+                var _this = this;
                 return __generator(this, function (_a) {
                     switch (_a.label) {
                         case 0:
@@ -649,6 +659,10 @@ define("core/dialog_window", ["require", "exports", "core/overlay", "core/contai
                             }
                             this.changePosition(px, py);
                             this.outerFrameEl.style.display = "block";
+                            this.container.getActiveModule().waitForExit().then(function (result) {
+                                _this.closeForWaitResolver(result);
+                                _this.close();
+                            });
                             return [4 /*yield*/, this.waitForOverlayClose()];
                         case 1: return [2 /*return*/, _a.sent()];
                     }
@@ -656,9 +670,6 @@ define("core/dialog_window", ["require", "exports", "core/overlay", "core/contai
             });
         };
         DialogWindow.prototype.close = function () {
-            if (this.closeForWaitResolver) {
-                this.closeForWaitResolver(null);
-            }
             this.outerFrameEl.style.display = "none";
         };
         DialogWindow.instanceSequence = 0;
@@ -730,31 +741,28 @@ define("core/overlay_manager", ["require", "exports", "core/dialog_window"], fun
         OvarlayManager.prototype.showPopupMenu = function (overlayName) {
             return null;
         };
-        OvarlayManager.prototype.showWindow = function (overlayName, parcel, options, callback) {
-            var overlay = this.overlays.get(overlayName);
-            overlay.show(parcel, options).then(function (r) {
-                //結果受け取りのためのcallback（Containerとは異なり、ES5互換専用ではない）
-                if (callback)
-                    callback(r);
-            });
-        };
-        OvarlayManager.prototype.showWindowAsModal = function (overlayName, parcel, options, callback) {
+        OvarlayManager.prototype.showWindow = function (overlayName, parcel, options) {
             return __awaiter(this, void 0, void 0, function () {
-                var overlay, result;
+                var overlay;
                 return __generator(this, function (_a) {
                     switch (_a.label) {
                         case 0:
                             overlay = this.overlays.get(overlayName);
                             return [4 /*yield*/, overlay.show(parcel, options)];
-                        case 1:
-                            result = _a.sent();
-                            if (callback) {
-                                callback(result);
-                            }
-                            else {
-                                return [2 /*return*/, result];
-                            }
-                            return [2 /*return*/];
+                        case 1: return [2 /*return*/, _a.sent()];
+                    }
+                });
+            });
+        };
+        OvarlayManager.prototype.showWindowAsModal = function (overlayName, parcel, options) {
+            return __awaiter(this, void 0, void 0, function () {
+                var overlay;
+                return __generator(this, function (_a) {
+                    switch (_a.label) {
+                        case 0:
+                            overlay = this.overlays.get(overlayName);
+                            return [4 /*yield*/, overlay.show(parcel, options)];
+                        case 1: return [2 /*return*/, _a.sent()];
                     }
                 });
             });
@@ -764,7 +772,7 @@ define("core/overlay_manager", ["require", "exports", "core/dialog_window"], fun
     }());
     exports.default = OvarlayManager;
 });
-define("core/html_component_adapter", ["require", "exports", "core/module_router", "core/overlay_manager"], function (require, exports, module_router_1, overlay_manager_2) {
+define("core/html_component_adapter", ["require", "exports", "core/module_router", "core/result", "core/overlay_manager"], function (require, exports, module_router_1, result_3, overlay_manager_2) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.htmlComponentAdapters = new Map();
@@ -773,6 +781,10 @@ define("core/html_component_adapter", ["require", "exports", "core/module_router
             this.isModified = false;
             this.moduleRouter = module_router_1.default.getInstance();
             this.overlayManager = overlay_manager_2.default.getInstance();
+            this.exitCallbackReturnFunctionsObject = {
+                cancelExit: this.cancelExit.bind(this),
+                continueExit: this.continueExit.bind(this)
+            };
         }
         HTMLComponentAdapter.prototype.setHtmlComponent = function (htmlComponent) {
             this.htmlComponent = htmlComponent;
@@ -793,29 +805,44 @@ define("core/html_component_adapter", ["require", "exports", "core/module_router
             if (this.onHide)
                 this.onHide(param);
         };
-        HTMLComponentAdapter.prototype.triggerOnExitRequestHandler = function (force) {
-            if (this.onExitRequest) {
-                this.onExitRequest(force);
+        HTMLComponentAdapter.prototype.triggerOnExitHandler = function (actionType) {
+            if (this.onExit) {
+                this.onExit(actionType, this.exitCallbackReturnFunctionsObject);
             }
             else {
-                this.exit(null);
+                this.continueExit(new result_3.default(actionType, true));
             }
         };
-        HTMLComponentAdapter.prototype.exit = function (result) {
-            this.htmlComponent.exit(result);
+        HTMLComponentAdapter.prototype.continueExit = function (result) {
+            this.htmlComponent.continueExitProcess(result);
         };
-        HTMLComponentAdapter.prototype.showWindow = function (overlayName, parcel, options, callback) {
-            var overlayManager = overlay_manager_2.default.getInstance();
-            overlayManager.showWindow(overlayName, parcel, options, callback);
+        HTMLComponentAdapter.prototype.cancelExit = function () {
+            this.htmlComponent.cancelExitProcess();
         };
-        HTMLComponentAdapter.prototype.showWindowAsModal = function (overlayName, parcel, options, callback) {
+        // private exit(result: Result) {
+        //     this.htmlComponent.exit(result);
+        // }
+        HTMLComponentAdapter.prototype.showWindow = function (overlayName, parcel, options) {
             return __awaiter(this, void 0, void 0, function () {
                 var overlayManager;
                 return __generator(this, function (_a) {
                     switch (_a.label) {
                         case 0:
                             overlayManager = overlay_manager_2.default.getInstance();
-                            return [4 /*yield*/, overlayManager.showWindowAsModal(overlayName, parcel, options, callback)];
+                            return [4 /*yield*/, overlayManager.showWindow(overlayName, parcel, options)];
+                        case 1: return [2 /*return*/, _a.sent()];
+                    }
+                });
+            });
+        };
+        HTMLComponentAdapter.prototype.showWindowAsModal = function (overlayName, parcel, options) {
+            return __awaiter(this, void 0, void 0, function () {
+                var overlayManager;
+                return __generator(this, function (_a) {
+                    switch (_a.label) {
+                        case 0:
+                            overlayManager = overlay_manager_2.default.getInstance();
+                            return [4 /*yield*/, overlayManager.showWindowAsModal(overlayName, parcel, options)];
                         case 1: return [2 /*return*/, _a.sent()];
                     }
                 });
@@ -892,19 +919,19 @@ define("core/abstract_html_component", ["require", "exports", "core/source_repos
                 _this.exitForWaitResolver = resolve;
             });
         };
-        HTMLComponent.prototype.exitRequest = function () {
+        HTMLComponent.prototype.exit = function (actionType) {
             return __awaiter(this, void 0, void 0, function () {
                 var _this = this;
                 return __generator(this, function (_a) {
                     //通常、backナビゲーション時にcontainerオブジェクト経由でコールされる
                     return [2 /*return*/, new Promise(function (resolve) {
                             _this.exitRequestResolver = resolve;
-                            _this.htmlAdapter.triggerOnExitRequestHandler(false);
+                            _this.htmlAdapter.triggerOnExitHandler(actionType);
                         })];
                 });
             });
         };
-        HTMLComponent.prototype.exit = function (result) {
+        HTMLComponent.prototype.continueExitProcess = function (result) {
             //backナビゲーション時にコールされるexitRequest内でexitRequestResolverがセットされる
             if (this.exitRequestResolver) {
                 this.exitRequestResolver(true);
@@ -917,6 +944,12 @@ define("core/abstract_html_component", ["require", "exports", "core/source_repos
             if (this.exitForWaitResolver) {
                 this.exitForWaitResolver(result);
                 this.exitForWaitResolver = null;
+            }
+        };
+        HTMLComponent.prototype.cancelExitProcess = function () {
+            if (this.exitRequestResolver) {
+                this.exitRequestResolver(false);
+                this.exitRequestResolver = null;
             }
         };
         HTMLComponent.prototype.getElement = function () {
@@ -1198,7 +1231,7 @@ define("core/module_manager", ["require", "exports", "core/native_component", "c
                         case 1:
                             _b.sent();
                             if (dependencyInfo.moduleDescription.isContainerDefault) {
-                                module.show();
+                                targetContainer.activateModule(module);
                             }
                             return [3 /*break*/, 3];
                         case 2: throw new runtime_error_3.default("ターゲットコンテナが存在しないか、未ロード");
@@ -1209,7 +1242,7 @@ define("core/module_manager", ["require", "exports", "core/native_component", "c
                             return [4 /*yield*/, dWindow.getContainer().addModule(module)];
                         case 5:
                             _b.sent();
-                            module.show();
+                            dWindow.getContainer().activateModule(module);
                             _b.label = 6;
                         case 6:
                             _i = 0, _a = dependencyInfo.subModuleNames;

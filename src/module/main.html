@@ -29,6 +29,7 @@
     //     el: '#\:vue_test',
     // })
 
+
     setTimeout(() => {
         document.getElementById("\:input1").value = "実行完了1";
     }, 1000);
@@ -44,14 +45,14 @@
     }).bind(this));
 
     document.getElementById("\:show_win1").addEventListener("click", (function() {
-        this.showWindow("win1", null, null, function() {
-            alert("window is closed.")
+        this.showWindow("win1", null, null).then(result => {
+            alert(JSON.stringify(result));
         });
     }).bind(this));
 
     document.getElementById("\:show_win1_as_modal").addEventListener("click", (function() {
-        this.showWindowAsModal("win1", null, null, null).then(result => {
-            alert("window is closed. (notified by promise)");
+        this.showWindowAsModal("win1", null, null).then(result => {
+            alert(JSON.stringify(result));
         });
     }).bind(this));
 
@@ -84,6 +85,18 @@
 
     this.onHide = function(param) {
         this.textArea1.value += "onHide is called." + "\n";
+    }
+
+    this.onExit = function(actionType, returnFunctions) {
+        if (actionType === 0) {
+            returnFunctions.continueExit({data: "ok is pushed."});
+        } else {
+            if (window.confirm("cancel?")) {
+                returnFunctions.continueExit({data: "cancel is pushed."});
+            } else {
+                returnFunctions.cancelExit();
+            }
+        }
     }
 </script>
 

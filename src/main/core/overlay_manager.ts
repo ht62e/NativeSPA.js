@@ -83,24 +83,14 @@ export default class OvarlayManager {
     }
 
 
-    public showWindow(overlayName: string, parcel?: Parcel, options?: ShowOptions, callback?: (r: Result) => void): void {
+    public async showWindow(overlayName: string, parcel?: Parcel, options?: ShowOptions): Promise<Result> {
         let overlay = this.overlays.get(overlayName);
-        overlay.show(parcel, options).then((r: Result) => {
-            //結果受け取りのためのcallback（Containerとは異なり、ES5互換専用ではない）
-            if (callback) callback(r);
-        });
+        return await overlay.show(parcel, options);
     }
 
-    public async showWindowAsModal(overlayName: string, parcel?: Parcel, options?: ShowOptions, callback?: (r: Result) => void): Promise<Result> {
+    public async showWindowAsModal(overlayName: string, parcel?: Parcel, options?: ShowOptions): Promise<Result> {
         let overlay = this.overlays.get(overlayName);
-
-        const result = await overlay.show(parcel, options);
-        
-        if (callback) {
-            callback(result);
-        } else {
-            return result;
-        }
+        return await overlay.show(parcel, options);
     }
 
 }

@@ -14,6 +14,7 @@ export enum ActionType {
     OK,
     CANCEL,
     BACK,
+    FORCE_CANCEL,
     YES,
     NO
 }
