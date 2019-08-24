@@ -12,6 +12,9 @@ export default class DialogWindow extends Overlay {
     protected bodyEl: HTMLDivElement;
     protected footerEl: HTMLDivElement;
 
+    protected headerTitleEl: HTMLDivElement;
+    protected headerCloseButtonEl: HTMLDivElement;
+
     protected okButtonEl:  HTMLInputElement;
     protected cancelButtonEl:  HTMLInputElement;
     protected applyButtonEl:  HTMLInputElement;
@@ -22,8 +25,8 @@ export default class DialogWindow extends Overlay {
 
     protected closeForWaitResolver: (value?: Result | PromiseLike<Result>) => void;
 
-    constructor(viewPortElement: HTMLElement, caption: string, options?: WindowOptions) {
-        super(viewPortElement, 640, 480);
+    constructor(viewPortElement: HTMLElement, name: string, caption: string, options?: WindowOptions) {
+        super(viewPortElement, name, 640, 480);
 
         const containerManager = ContainerManager.getInstance();
 
@@ -37,8 +40,20 @@ export default class DialogWindow extends Overlay {
         this.headerEl = document.createElement("div");
         this.headerEl.className = "spa_dialog_window_header";
         this.headerEl.style.position = "relative";
+        this.headerEl.style.display = "flex";
         this.headerEl.style.width = "100%";
-        this.headerEl.textContent = caption;
+
+        this.headerTitleEl = document.createElement("div");
+        this.headerTitleEl.className = "caption";
+        this.headerTitleEl.textContent = caption;
+
+        this.headerCloseButtonEl = document.createElement("div");
+        this.headerCloseButtonEl.className = "close_button";
+        this.headerCloseButtonEl.textContent = "×";
+        this.headerCloseButtonEl.addEventListener("click", this.onHeaderCloseButtonClick.bind(this));
+
+        this.headerEl.appendChild(this.headerTitleEl);
+        this.headerEl.appendChild(this.headerCloseButtonEl);
 
         this.headerEl.addEventListener("mousedown", this.onHeaderMouseDown.bind(this));
         this.headerEl.addEventListener("dragstart", this.onHeaderDragStart.bind(this));
@@ -82,12 +97,18 @@ export default class DialogWindow extends Overlay {
         this.contentEl.appendChild(this.wrapperEl);
     }
 
-    private onHeaderMouseDown(event: MouseEvent) {
+    protected onHeaderMouseDown(event: MouseEvent) {
         this.isDragging = true;
     }
 
-    private onHeaderDragStart(event: MouseEvent) {
+    protected onHeaderDragStart(event: MouseEvent) {
         event.preventDefault();
+    }
+
+    protected onHeaderCloseButtonClick(event: MouseEvent) {
+        this.container.getActiveModule().exit(ActionType.CANCEL).then(exited => {
+            if (exited) this.close();
+        });        
     }
 
     // private onMouseUp(event: MouseEvent) {
@@ -95,6 +116,7 @@ export default class DialogWindow extends Overlay {
     // }
 
     
+
 
     protected onOkButtonClick(event: MouseEvent) {
         this.container.getActiveModule().exit(ActionType.OK).then(exited => {
@@ -152,12 +174,30 @@ export default class DialogWindow extends Overlay {
             this.close();
         })
         
-        return await this.waitForOverlayClose();
+        return this.waitForOverlayClose();
+    }
+
+    public async showAsModal(parcel?: Parcel, options?: ShowOptions): Promise<Result> {
+        return this.show(parcel, options);
     }
 
     public close(): void {
         this.outerFrameEl.style.display = "none";
     }
+
+    //override
+    public activate(): void {
+        super.activate();
+
+        this.headerEl.classList.remove("inactive");
+    }
+
+    //override
+    public inactivate(withModal: boolean): void {
+        super.inactivate(withModal);
+
+        this.headerEl.classList.add("inactive");
+    }     
 }
 
 export interface WindowOptions {

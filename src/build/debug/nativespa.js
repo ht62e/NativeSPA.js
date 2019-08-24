@@ -361,30 +361,43 @@ define("core/overlay", ["require", "exports", "core/overlay_manager", "core/type
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var Overlay = /** @class */ (function () {
-        function Overlay(viewPortElement, width, height) {
+        function Overlay(viewPortElement, name, width, height) {
             this.lastFocusIsDetector = false;
+            this.inactiveModalMode = false;
             this.isResizing = false;
             this.resizeHandleEl = new Array();
             this.viewPortElement = viewPortElement;
+            this.name = name;
             //リサイズ可能領域のためのフレームを作成
             this.outerFrameEl = document.createElement("div");
             this.outerFrameEl.style.position = "absolute";
             this.outerFrameEl.style.backgroundColor = "transparent";
             this.outerFrameEl.style.display = "none";
             this.outerFrameEl.addEventListener("selectstart", this.onSelectStart.bind(this));
+            this.outerFrameEl.addEventListener("mousedown", this.onOuterMouseDown.bind(this));
             //キーボードタブキーナビゲーションによってダイアログの外にフォーカスが移ることを
             //防止（検知）するための非表示エレメントの作成（Shift+Tabキー対策）
             this.tabNaviFrontDetector = document.createElement("div");
             this.tabNaviFrontDetector.style.height = "0px";
             this.tabNaviFrontDetector.tabIndex = 0;
             this.tabNaviFrontDetector.addEventListener("focusin", this.onTabNaviFrontDetectorFocusIn.bind(this));
-            //コンテンツメインコンテナ生成
+            //コンテンツコンテナ生成
             this.contentEl = document.createElement("div");
             this.contentEl.className = "spa_overlay_container";
             this.contentEl.style.position = "absolute";
             this.contentEl.style.left = String(Overlay.resizeHandleThicknessPx) + "px";
             this.contentEl.style.top = String(Overlay.resizeHandleThicknessPx) + "px";
             this.resize(width, height);
+            //overlayのモーダル表示によって非アクティブ化したときに表示するレイヤー
+            this.modalInactiveLayer = document.createElement("div");
+            this.modalInactiveLayer.className = "spa_modal_background_layer";
+            this.modalInactiveLayer.style.position = "absolute";
+            this.modalInactiveLayer.style.overflow = "hidden";
+            this.modalInactiveLayer.style.left = String(Overlay.resizeHandleThicknessPx) + "px";
+            this.modalInactiveLayer.style.top = String(Overlay.resizeHandleThicknessPx) + "px";
+            this.modalInactiveLayer.style.width = String(width) + "px";
+            this.modalInactiveLayer.style.height = String(height) + "px";
+            this.modalInactiveLayer.style.display = "none";
             //非表示エレメントの作成（Tabキー対策）
             this.tabNaviRearDetector = document.createElement("div");
             this.tabNaviRearDetector.style.height = "0px";
@@ -397,6 +410,7 @@ define("core/overlay", ["require", "exports", "core/overlay_manager", "core/type
             this.outerFrameEl.appendChild(this.tabNaviFrontDetector);
             this.outerFrameEl.appendChild(this.contentEl);
             this.outerFrameEl.appendChild(this.tabNaviRearDetector);
+            this.outerFrameEl.appendChild(this.modalInactiveLayer);
             viewPortElement.appendChild(this.outerFrameEl);
         }
         Overlay.prototype.createResizeHandleElements = function () {
@@ -513,6 +527,11 @@ define("core/overlay", ["require", "exports", "core/overlay_manager", "core/type
             }
             event.stopPropagation();
         };
+        Overlay.prototype.onOuterMouseDown = function (event) {
+            if (this.inactiveModalMode)
+                return;
+            overlay_manager_1.default.getInstance().overlayMouseDownEventHandler(this.name);
+        };
         Overlay.prototype.onFocusIn = function (event) {
             this.lastFocusIsDetector = false;
             overlay_manager_1.default.getInstance().overlayLastFocusedElement = null;
@@ -524,7 +543,14 @@ define("core/overlay", ["require", "exports", "core/overlay_manager", "core/type
                 event.target;
         };
         Overlay.prototype.changeZIndex = function (zIndex) {
-            this.contentEl.style.zIndex = String(zIndex);
+            this.zIndex = zIndex;
+            this.outerFrameEl.style.zIndex = String(zIndex);
+        };
+        Overlay.prototype.getName = function () {
+            return this.name;
+        };
+        Overlay.prototype.getZIndex = function () {
+            return this.zIndex;
         };
         Overlay.prototype.changePosition = function (x, y) {
             this.position = new types_1.Point(x, y);
@@ -538,6 +564,16 @@ define("core/overlay", ["require", "exports", "core/overlay_manager", "core/type
             this.contentEl.style.width = String(width) + "px";
             this.contentEl.style.height = String(height) + "px";
         };
+        Overlay.prototype.activate = function () {
+            this.inactiveModalMode = false;
+            this.modalInactiveLayer.style.display = "none";
+        };
+        Overlay.prototype.inactivate = function (withModal) {
+            this.inactiveModalMode = withModal;
+            if (withModal) {
+                this.modalInactiveLayer.style.display = "block";
+            }
+        };
         Overlay.resizeHandleThicknessPx = 7;
         return Overlay;
     }());
@@ -548,8 +584,8 @@ define("core/dialog_window", ["require", "exports", "core/overlay", "core/contai
     Object.defineProperty(exports, "__esModule", { value: true });
     var DialogWindow = /** @class */ (function (_super) {
         __extends(DialogWindow, _super);
-        function DialogWindow(viewPortElement, caption, options) {
-            var _this = _super.call(this, viewPortElement, 640, 480) || this;
+        function DialogWindow(viewPortElement, name, caption, options) {
+            var _this = _super.call(this, viewPortElement, name, 640, 480) || this;
             _this.isDragging = false;
             var containerManager = container_manager_2.default.getInstance();
             _this.wrapperEl = document.createElement("div");
@@ -561,8 +597,17 @@ define("core/dialog_window", ["require", "exports", "core/overlay", "core/contai
             _this.headerEl = document.createElement("div");
             _this.headerEl.className = "spa_dialog_window_header";
             _this.headerEl.style.position = "relative";
+            _this.headerEl.style.display = "flex";
             _this.headerEl.style.width = "100%";
-            _this.headerEl.textContent = caption;
+            _this.headerTitleEl = document.createElement("div");
+            _this.headerTitleEl.className = "caption";
+            _this.headerTitleEl.textContent = caption;
+            _this.headerCloseButtonEl = document.createElement("div");
+            _this.headerCloseButtonEl.className = "close_button";
+            _this.headerCloseButtonEl.textContent = "×";
+            _this.headerCloseButtonEl.addEventListener("click", _this.onHeaderCloseButtonClick.bind(_this));
+            _this.headerEl.appendChild(_this.headerTitleEl);
+            _this.headerEl.appendChild(_this.headerCloseButtonEl);
             _this.headerEl.addEventListener("mousedown", _this.onHeaderMouseDown.bind(_this));
             _this.headerEl.addEventListener("dragstart", _this.onHeaderDragStart.bind(_this));
             _this.bodyEl = document.createElement("div");
@@ -600,6 +645,13 @@ define("core/dialog_window", ["require", "exports", "core/overlay", "core/contai
         };
         DialogWindow.prototype.onHeaderDragStart = function (event) {
             event.preventDefault();
+        };
+        DialogWindow.prototype.onHeaderCloseButtonClick = function (event) {
+            var _this = this;
+            this.container.getActiveModule().exit(result_2.ActionType.CANCEL).then(function (exited) {
+                if (exited)
+                    _this.close();
+            });
         };
         // private onMouseUp(event: MouseEvent) {
         //     this.isDragging = false;
@@ -646,31 +698,44 @@ define("core/dialog_window", ["require", "exports", "core/overlay", "core/contai
                 var px, py;
                 var _this = this;
                 return __generator(this, function (_a) {
-                    switch (_a.label) {
-                        case 0:
-                            if (options && options.x !== undefined && options.y !== undefined) {
-                                px = options.x;
-                                py = options.y;
-                            }
-                            else {
-                                //デフォルト表示位置は表示領域（ビューポート）の中央
-                                px = Math.round((this.viewPortElement.offsetWidth - this.size.width) / 2);
-                                py = Math.round((this.viewPortElement.offsetHeight - this.size.height) / 2);
-                            }
-                            this.changePosition(px, py);
-                            this.outerFrameEl.style.display = "block";
-                            this.container.getActiveModule().waitForExit().then(function (result) {
-                                _this.closeForWaitResolver(result);
-                                _this.close();
-                            });
-                            return [4 /*yield*/, this.waitForOverlayClose()];
-                        case 1: return [2 /*return*/, _a.sent()];
+                    if (options && options.x !== undefined && options.y !== undefined) {
+                        px = options.x;
+                        py = options.y;
                     }
+                    else {
+                        //デフォルト表示位置は表示領域（ビューポート）の中央
+                        px = Math.round((this.viewPortElement.offsetWidth - this.size.width) / 2);
+                        py = Math.round((this.viewPortElement.offsetHeight - this.size.height) / 2);
+                    }
+                    this.changePosition(px, py);
+                    this.outerFrameEl.style.display = "block";
+                    this.container.getActiveModule().waitForExit().then(function (result) {
+                        _this.closeForWaitResolver(result);
+                        _this.close();
+                    });
+                    return [2 /*return*/, this.waitForOverlayClose()];
+                });
+            });
+        };
+        DialogWindow.prototype.showAsModal = function (parcel, options) {
+            return __awaiter(this, void 0, void 0, function () {
+                return __generator(this, function (_a) {
+                    return [2 /*return*/, this.show(parcel, options)];
                 });
             });
         };
         DialogWindow.prototype.close = function () {
             this.outerFrameEl.style.display = "none";
+        };
+        //override
+        DialogWindow.prototype.activate = function () {
+            _super.prototype.activate.call(this);
+            this.headerEl.classList.remove("inactive");
+        };
+        //override
+        DialogWindow.prototype.inactivate = function (withModal) {
+            _super.prototype.inactivate.call(this, withModal);
+            this.headerEl.classList.add("inactive");
         };
         DialogWindow.instanceSequence = 0;
         return DialogWindow;
@@ -684,10 +749,26 @@ define("core/overlay_manager", ["require", "exports", "core/dialog_window"], fun
         function OvarlayManager() {
             this.viewPortEl = null;
             this.overlayLastFocusedElement = null;
+            this.modalEnabled = false;
             this.previousMouseX = 0;
             this.previousMouseY = 0;
             this.contentsSelectable = true;
+            this.OVERLAY_START_Z_INDEX = 10;
+            this.MODAL_START_Z_INDEX = 1000;
             this.overlays = new Map();
+            this.overlayManagementTable = new Map();
+            this.modalBackgroundLayer = document.createElement("div");
+            this.modalBackgroundLayer.className = "spa_modal_background_layer";
+            this.modalBackgroundLayer.style.position = "absolute";
+            this.modalBackgroundLayer.style.overflow = "hidden";
+            this.modalBackgroundLayer.style.width = "100%";
+            this.modalBackgroundLayer.style.height = "100%";
+            this.modalBackgroundLayer.style.display = "none";
+            this.modalBackgroundLayer.style.zIndex = String(this.MODAL_START_Z_INDEX);
+            this.onFocusInBindedThis = this.onFocusIn.bind(this);
+            this.onMouseMoveBindedThis = this.onMouseMove.bind(this);
+            this.onMouseUpBindedThis = this.onMouseUp.bind(this);
+            this.onSelectStartBindedThis = this.onSelectStart.bind(this);
         }
         OvarlayManager.getInstance = function () {
             return OvarlayManager.instance;
@@ -713,64 +794,157 @@ define("core/overlay_manager", ["require", "exports", "core/dialog_window"], fun
             }
         };
         OvarlayManager.prototype.onFocusIn = function (event) {
-            if (this.overlayLastFocusedElement) {
-                //TODO 仮実装
-                //this.overlayLastFocusedElement.focus();
-            }
             this.overlayLastFocusedElement = null;
         };
         OvarlayManager.prototype.setViewPortElement = function (element) {
             if (this.viewPortEl !== null) {
-                this.viewPortEl.removeEventListener("focusin", this.onFocusIn);
+                this.viewPortEl.removeEventListener("focusin", this.onFocusInBindedThis);
+                this.viewPortEl.removeEventListener("mousemove", this.onMouseMoveBindedThis);
+                this.viewPortEl.removeEventListener("mouseup", this.onMouseUpBindedThis);
+                this.viewPortEl.removeEventListener("selectstart", this.onSelectStartBindedThis);
             }
             this.viewPortEl = element;
-            this.viewPortEl.addEventListener("focusin", this.onFocusIn.bind(this));
-            this.viewPortEl.addEventListener("mousemove", this.onMouseMove.bind(this));
-            this.viewPortEl.addEventListener("mouseup", this.onMouseUp.bind(this));
-            this.viewPortEl.addEventListener("selectstart", this.onSelectStart.bind(this));
+            this.viewPortEl.addEventListener("focusin", this.onFocusInBindedThis);
+            this.viewPortEl.addEventListener("mousemove", this.onMouseMoveBindedThis);
+            this.viewPortEl.addEventListener("mouseup", this.onMouseUpBindedThis);
+            this.viewPortEl.addEventListener("selectstart", this.onSelectStartBindedThis);
+            this.viewPortEl.appendChild(this.modalBackgroundLayer);
         };
         OvarlayManager.prototype.createWindow = function (overlayName, caption, options) {
-            var overlay = new dialog_window_1.default(this.viewPortEl, caption, options);
-            overlay.changeZIndex(1000);
+            var overlay = new dialog_window_1.default(this.viewPortEl, overlayName, caption, options);
             this.overlays.set(overlayName, overlay);
+            this.overlayManagementTable.set(overlayName, new OverlayManagementData());
             return overlay;
         };
         OvarlayManager.prototype.changeContentsSelectable = function (selectable) {
             this.contentsSelectable = selectable;
         };
-        OvarlayManager.prototype.showPopupMenu = function (overlayName) {
-            return null;
+        OvarlayManager.prototype.beginModalMode = function () {
+            this.modalBackgroundLayer.style.display = "";
         };
-        OvarlayManager.prototype.showWindow = function (overlayName, parcel, options) {
+        OvarlayManager.prototype.endModalMode = function () {
+            var existModalOverlay = false;
+            this.overlayManagementTable.forEach(function (value, key) {
+                if (value.isVisible && value.isModal)
+                    existModalOverlay = true;
+            });
+            if (!existModalOverlay) {
+                this.modalBackgroundLayer.style.display = "none";
+            }
+        };
+        OvarlayManager.prototype.show = function (overlayName, parcel, options) {
             return __awaiter(this, void 0, void 0, function () {
-                var overlay;
+                var overlay, result;
                 return __generator(this, function (_a) {
                     switch (_a.label) {
                         case 0:
                             overlay = this.overlays.get(overlayName);
+                            this.overlayManagementTable.get(overlayName).isVisible = true;
+                            this.activateSpecificOverlay(overlayName);
                             return [4 /*yield*/, overlay.show(parcel, options)];
-                        case 1: return [2 /*return*/, _a.sent()];
+                        case 1:
+                            result = _a.sent();
+                            this.overlayManagementTable.get(overlayName).reset();
+                            this.activateTopOverlay();
+                            return [2 /*return*/, result];
                     }
                 });
             });
         };
-        OvarlayManager.prototype.showWindowAsModal = function (overlayName, parcel, options) {
+        OvarlayManager.prototype.showAsModal = function (overlayName, parcel, options) {
             return __awaiter(this, void 0, void 0, function () {
-                var overlay;
+                var result;
                 return __generator(this, function (_a) {
                     switch (_a.label) {
                         case 0:
-                            overlay = this.overlays.get(overlayName);
-                            return [4 /*yield*/, overlay.show(parcel, options)];
-                        case 1: return [2 /*return*/, _a.sent()];
+                            this.overlayManagementTable.get(overlayName).isModal = true;
+                            this.beginModalMode();
+                            return [4 /*yield*/, this.show(overlayName, parcel, options)];
+                        case 1:
+                            result = _a.sent();
+                            this.endModalMode();
+                            return [2 /*return*/, result];
                     }
                 });
             });
+        };
+        OvarlayManager.prototype.overlayMouseDownEventHandler = function (overlayName) {
+            //TODO 要モーダル状態チェック
+            this.activateSpecificOverlay(overlayName);
+        };
+        OvarlayManager.prototype.activateSpecificOverlay = function (overlayName) {
+            var _this = this;
+            var overlayList = new Array();
+            var targetOverlay = this.overlays.get(overlayName);
+            this.overlays.forEach(function (value, key) {
+                if (key !== overlayName)
+                    overlayList.push(value);
+            });
+            overlayList.sort(function (a, b) {
+                return b.getZIndex() - a.getZIndex();
+            });
+            overlayList.unshift(targetOverlay);
+            var visibleCount = 0;
+            this.overlayManagementTable.forEach(function (value, key) {
+                if (value.isVisible)
+                    ++visibleCount;
+            });
+            var i = 0;
+            overlayList.forEach(function (overlay) {
+                var mgrData = _this.overlayManagementTable.get(overlay.getName());
+                if (mgrData.isVisible) {
+                    if (mgrData.isModal) {
+                        overlay.changeZIndex(_this.MODAL_START_Z_INDEX + visibleCount--);
+                    }
+                    else {
+                        overlay.changeZIndex(_this.OVERLAY_START_Z_INDEX + visibleCount--);
+                    }
+                    if (i === 0) {
+                        overlay.activate();
+                    }
+                    else {
+                        overlay.inactivate(mgrData.isModal);
+                    }
+                    ++i;
+                }
+            });
+        };
+        OvarlayManager.prototype.activateTopOverlay = function () {
+            var _this = this;
+            //zindexが一番大きいoverlayを有効化する
+            var maxZIndex = -1;
+            var targetOverlayName;
+            this.overlays.forEach(function (overlay, name) {
+                if (_this.overlayManagementTable.get(name).isVisible) {
+                    if (overlay.getZIndex() > maxZIndex) {
+                        maxZIndex = overlay.getZIndex();
+                        targetOverlayName = name;
+                    }
+                }
+            });
+            if (maxZIndex > -1) {
+                this.activateSpecificOverlay(targetOverlayName);
+            }
         };
         OvarlayManager.instance = new OvarlayManager();
         return OvarlayManager;
     }());
     exports.default = OvarlayManager;
+    var OverlayManagementData = /** @class */ (function () {
+        function OverlayManagementData(isVisible, isModal) {
+            this.isVisible = false;
+            this.isModal = false;
+            if (isVisible)
+                this.isVisible = isVisible;
+            if (isModal)
+                this.isModal = isModal;
+        }
+        OverlayManagementData.prototype.reset = function () {
+            this.isVisible = false;
+            this.isModal = false;
+        };
+        return OverlayManagementData;
+    }());
 });
 define("core/html_component_adapter", ["require", "exports", "core/module_router", "core/result", "core/overlay_manager"], function (require, exports, module_router_1, result_3, overlay_manager_2) {
     "use strict";
@@ -829,7 +1003,7 @@ define("core/html_component_adapter", ["require", "exports", "core/module_router
                     switch (_a.label) {
                         case 0:
                             overlayManager = overlay_manager_2.default.getInstance();
-                            return [4 /*yield*/, overlayManager.showWindow(overlayName, parcel, options)];
+                            return [4 /*yield*/, overlayManager.show(overlayName, parcel, options)];
                         case 1: return [2 /*return*/, _a.sent()];
                     }
                 });
@@ -842,7 +1016,7 @@ define("core/html_component_adapter", ["require", "exports", "core/module_router
                     switch (_a.label) {
                         case 0:
                             overlayManager = overlay_manager_2.default.getInstance();
-                            return [4 /*yield*/, overlayManager.showWindowAsModal(overlayName, parcel, options)];
+                            return [4 /*yield*/, overlayManager.showAsModal(overlayName, parcel, options)];
                         case 1: return [2 /*return*/, _a.sent()];
                     }
                 });
@@ -1307,6 +1481,8 @@ define("nativespa", ["require", "exports", "core/module_manager", "core/containe
     moduleManager.register("main", "src/module/main.html", "base.body", false);
     moduleManager.register("main2", "src/module/main2.html", "base.body", false);
     moduleManager.registerWindow("win1", "src/module/main.html", {});
+    moduleManager.registerWindow("win2", "src/module/main.html", {});
+    moduleManager.registerWindow("win3", "src/module/main.html", {});
     moduleManager.initialize().then(function () {
         window.dispatchEvent(new Event("resize"));
     });

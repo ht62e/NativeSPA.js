@@ -7,6 +7,8 @@ import Parcel from "./parcel";
 export default abstract class Overlay {
     public static resizeHandleThicknessPx: number = 7;
 
+    protected name: string;
+
     protected viewPortElement: HTMLElement;
 
     protected outerFrameEl: HTMLDivElement;
@@ -16,8 +18,13 @@ export default abstract class Overlay {
     protected lastFocusedEl: HTMLElement;
     protected lastFocusIsDetector: boolean = false;
 
+    protected modalInactiveLayer: HTMLDivElement;
+
     protected position: Point;
     protected size: Size;
+    protected zIndex: number;
+
+    protected inactiveModalMode: boolean = false;
 
     protected isResizing: boolean = false;
     protected resizePositionIndex: number;
@@ -30,11 +37,13 @@ export default abstract class Overlay {
     public abstract getContainer(): Container; 
     
     public abstract async show(parcel?: Parcel, options?: ShowOptions): Promise<Result> ;
+    public abstract async showAsModal(parcel?: Parcel, options?: ShowOptions): Promise<Result> ;
     public abstract close(): void;
     protected abstract async waitForOverlayClose(): Promise<Result>;
 
-    constructor(viewPortElement: HTMLElement, width: number, height: number) {
+    constructor(viewPortElement: HTMLElement, name: string, width: number, height: number) {
         this.viewPortElement = viewPortElement;
+        this.name = name;
 
         //リサイズ可能領域のためのフレームを作成
         this.outerFrameEl = document.createElement("div");
@@ -42,6 +51,8 @@ export default abstract class Overlay {
         this.outerFrameEl.style.backgroundColor = "transparent";
         this.outerFrameEl.style.display = "none";
         this.outerFrameEl.addEventListener("selectstart", this.onSelectStart.bind(this));
+        this.outerFrameEl.addEventListener("mousedown", this.onOuterMouseDown.bind(this));
+        
 
         //キーボードタブキーナビゲーションによってダイアログの外にフォーカスが移ることを
         //防止（検知）するための非表示エレメントの作成（Shift+Tabキー対策）
@@ -50,13 +61,24 @@ export default abstract class Overlay {
         this.tabNaviFrontDetector.tabIndex = 0;
         this.tabNaviFrontDetector.addEventListener("focusin", this.onTabNaviFrontDetectorFocusIn.bind(this));
 
-        //コンテンツメインコンテナ生成
+        //コンテンツコンテナ生成
         this.contentEl = document.createElement("div");
         this.contentEl.className = "spa_overlay_container";
         this.contentEl.style.position = "absolute";
         this.contentEl.style.left = String(Overlay.resizeHandleThicknessPx) + "px";
         this.contentEl.style.top = String(Overlay.resizeHandleThicknessPx) + "px";
         this.resize(width, height);
+
+        //overlayのモーダル表示によって非アクティブ化したときに表示するレイヤー
+        this.modalInactiveLayer = document.createElement("div");
+        this.modalInactiveLayer.className = "spa_modal_background_layer";
+        this.modalInactiveLayer.style.position = "absolute";
+        this.modalInactiveLayer.style.overflow = "hidden";
+        this.modalInactiveLayer.style.left = String(Overlay.resizeHandleThicknessPx) + "px";
+        this.modalInactiveLayer.style.top = String(Overlay.resizeHandleThicknessPx) + "px";
+        this.modalInactiveLayer.style.width = String(width) + "px";
+        this.modalInactiveLayer.style.height = String(height) + "px";
+        this.modalInactiveLayer.style.display = "none";
 
         //非表示エレメントの作成（Tabキー対策）
         this.tabNaviRearDetector = document.createElement("div");
@@ -73,6 +95,7 @@ export default abstract class Overlay {
         this.outerFrameEl.appendChild(this.tabNaviFrontDetector);
         this.outerFrameEl.appendChild(this.contentEl);
         this.outerFrameEl.appendChild(this.tabNaviRearDetector);
+        this.outerFrameEl.appendChild(this.modalInactiveLayer);
         viewPortElement.appendChild(this.outerFrameEl);
     }
 
@@ -201,6 +224,11 @@ export default abstract class Overlay {
         event.stopPropagation();
     }
 
+    private onOuterMouseDown(event: MouseEvent) {
+        if (this.inactiveModalMode) return;
+        OvarlayManager.getInstance().overlayMouseDownEventHandler(this.name);
+    }
+
     private onFocusIn(event: FocusEvent) {
         this.lastFocusIsDetector = false;
         OvarlayManager.getInstance().overlayLastFocusedElement = null;
@@ -214,7 +242,16 @@ export default abstract class Overlay {
     }
 
     public changeZIndex(zIndex: number): void {
-        this.contentEl.style.zIndex = String(zIndex);
+        this.zIndex = zIndex;
+        this.outerFrameEl.style.zIndex = String(zIndex);
+    }
+
+    public getName(): string {
+        return this.name;
+    }
+
+    public getZIndex(): number {
+        return this.zIndex;
     }
 
     public changePosition(x: number, y: number): void {
@@ -231,7 +268,17 @@ export default abstract class Overlay {
         this.contentEl.style.height = String(height) + "px";
     }
 
-    
+    public activate(): void {
+        this.inactiveModalMode = false;
+        this.modalInactiveLayer.style.display = "none";
+    }
+
+    public inactivate(withModal: boolean): void {
+        this.inactiveModalMode = withModal;
+        if (withModal) {
+            this.modalInactiveLayer.style.display = "block";
+        }
+    }    
 
 }
 

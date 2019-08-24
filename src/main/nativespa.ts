@@ -26,6 +26,8 @@ moduleManager.register("main", "src/module/main.html", "base.body", false);
 moduleManager.register("main2", "src/module/main2.html", "base.body", false);
 
 moduleManager.registerWindow("win1", "src/module/main.html", {});
+moduleManager.registerWindow("win2", "src/module/main.html", {});
+moduleManager.registerWindow("win3", "src/module/main.html", {});
 
 
 moduleManager.initialize().then(() => {

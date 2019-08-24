@@ -74,12 +74,12 @@ export default abstract class HTMLComponentAdapter {
 
     private async showWindow(overlayName: string, parcel?: Parcel, options?: ShowOptions): Promise<Result> {
         const overlayManager = OvarlayManager.getInstance();
-        return await overlayManager.showWindow(overlayName, parcel, options);
+        return await overlayManager.show(overlayName, parcel, options);
     }
 
     private async showWindowAsModal(overlayName: string, parcel?: Parcel, options?: ShowOptions): Promise<Result> {
         const overlayManager = OvarlayManager.getInstance();
-        return await overlayManager.showWindowAsModal(overlayName, parcel, options);
+        return await overlayManager.showAsModal(overlayName, parcel, options);
     }
 }
 
