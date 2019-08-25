@@ -1,8 +1,14 @@
 import Container from "./container";
 import Overlay, { ShowOptions } from "./overlay";
+import OvarlayManager from "./overlay_manager";
 import ContainerManager from "./container_manager";
 import Result, { ActionType } from "./result";
 import Parcel from "./parcel";
+import { Size } from "./types";
+
+export interface WindowOptions {
+    size?: Size;
+}
 
 export default class DialogWindow extends Overlay {
     private static instanceSequence = 0;
@@ -26,7 +32,7 @@ export default class DialogWindow extends Overlay {
     protected closeForWaitResolver: (value?: Result | PromiseLike<Result>) => void;
 
     constructor(viewPortElement: HTMLElement, name: string, caption: string, options?: WindowOptions) {
-        super(viewPortElement, name, 640, 480);
+        super(viewPortElement, name, options ? options.size : null);
 
         const containerManager = ContainerManager.getInstance();
 
@@ -99,6 +105,7 @@ export default class DialogWindow extends Overlay {
 
     protected onHeaderMouseDown(event: MouseEvent) {
         this.isDragging = true;
+        OvarlayManager.getInstance().changeContentsSelectable(false);
     }
 
     protected onHeaderDragStart(event: MouseEvent) {
@@ -170,9 +177,11 @@ export default class DialogWindow extends Overlay {
         this.outerFrameEl.style.display = "block";
 
         this.container.getActiveModule().waitForExit().then(result => {
-            this.closeForWaitResolver(result);
             this.close();
-        })
+            //自身のdisplay:noneが反映した後にコールバックさせるためsetTimeoutを介して呼び出す
+            window.setTimeout(this.closeForWaitResolver.bind(this), 0, result);
+        });
+
         
         return this.waitForOverlayClose();
     }
@@ -200,6 +209,3 @@ export default class DialogWindow extends Overlay {
     }     
 }
 
-export interface WindowOptions {
-
-}

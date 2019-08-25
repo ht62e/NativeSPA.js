@@ -7,6 +7,7 @@ export default class Container {
     private activeModule: Module;
     private mountedModules: Map<string, Module> = new Map<string, Module>();
     private moduleChangeHistory = new Array<Module>();
+    private inBackProcess: boolean = false;
 
     constructor(private id: string, private bindDomElement: HTMLDivElement) {
         this.bindDomElement.style.position = "relative";
@@ -37,12 +38,12 @@ export default class Container {
 
     public activateModule(module: Module): void {
         if (!this.mountedModules.has(module.getName())) throw new RuntimeError("指定されたモジュールはマウントされていません。");
-        this.mountedModules.forEach((eachModule: Module) => {
-            if (eachModule === module) {
-                eachModule.show();
-                this.activeModule = eachModule;
+        this.mountedModules.forEach((m: Module) => {
+            if (m === module) {
+                m.show();
+                this.activeModule = m;
             } else {
-                eachModule.hide();
+                m.hide();
             }
         })
     }
@@ -51,46 +52,41 @@ export default class Container {
         this.activeModule.hide();
     }
 
-    public onResize(): void {
-        const containerWidth = this.bindDomElement.clientWidth;
-        const containerHeight = this.bindDomElement.clientHeight;
-        
+    public onResize(): void {       
         this.mountedModules.forEach((module: Module) => {
-            module.onResize(containerWidth, containerHeight);
+            module.dispachResizeEvent();
         })
     }
 
-    public async forward(module: Module, parcel?: Parcel, callback?: (r: Result) => void): Promise<Result> {
-        module.initialize(null);
+    public async forward(module: Module, parcel?: Parcel): Promise<Result> {
+        if (this.moduleChangeHistory.indexOf(module) !== -1) return;
+
+        module.initialize(parcel);
 
         this.activateModule(module);
         this.moduleChangeHistory.push(module);
 
-        const result: Result = await module.waitForExit();
+        const result = await module.waitForExit();
 
-        if (callback) {
-            //for ES5
-            callback(result);
-        } else {
-            return result;
+        if (!this.inBackProcess) {
+            //backメソッドではなく、モジュールの自主的な終了の場合はページを前に戻す
+            this.showPreviousModule();
         }
-        
+
+        this.inBackProcess = false;
+
+        return result;
     }
 
     public back(): void {
+        this.inBackProcess = true;
         this.activeModule.exit(ActionType.BACK).then(exited => {
-            if (this.moduleChangeHistory.length > 0) {
-                this.moduleChangeHistory.pop();
-            }
-            if (this.moduleChangeHistory.length > 0) {
-                this.activateModule(this.moduleChangeHistory[this.moduleChangeHistory.length - 1]);
-            } else {
-                this.hideModule();
-            }
+            if (!exited) return;
+            this.showPreviousModule();
         })
     }
 
-    public backWithoutConfirmation(): void {
+    private showPreviousModule(): void {
         if (this.moduleChangeHistory.length > 0) {
             this.moduleChangeHistory.pop();
         }

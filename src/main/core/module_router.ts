@@ -16,7 +16,7 @@ export default class ModuleRouter {
 
     }
 
-    public async forward(targetIdentifier: string, params?: Parcel, callback?: (moduleDto: Result) => void): Promise<Result> {
+    public async forward(targetIdentifier: string, params?: Parcel): Promise<Result> {
         const s = targetIdentifier.split("::");
         const targetContainerId = s[0];
         const moduleName = s[1];
@@ -24,7 +24,7 @@ export default class ModuleRouter {
         const target: Container = ContainerManager.getInstance().getContainer(targetContainerId);
         const module: Module = ModuleManager.getInstance().getModule(moduleName);
 
-        return target.forward(module, params, callback);       
+        return target.forward(module, params);       
     }
 
     public back(targetContainerId: string): void {

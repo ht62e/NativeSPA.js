@@ -4,6 +4,7 @@ import SourceRepository from "./source_repository";
 import Parcel from "./parcel";
 import HTMLComponentAdapter from "./html_component_adapter";
 import Result, { ActionType } from "./result";
+import MessageResponse from "./message_response";
 
 export default abstract class HTMLComponent implements Module {
     protected isFetched: boolean = false;
@@ -16,8 +17,9 @@ export default abstract class HTMLComponent implements Module {
 
     protected htmlAdapter: HTMLComponentAdapter = null;
 
-    private exitRequestResolver: (value?: boolean | PromiseLike<boolean>) => void;
+    private exitResolver: (value?: boolean | PromiseLike<boolean>) => void;
     private exitForWaitResolver: (value?: Result | PromiseLike<Result>) => void;
+    private passMessageResolver: (value?: MessageResponse | PromiseLike<MessageResponse>) => void;
 
     protected abstract onCreate(): void;
     protected abstract loadSubContainerInfos(): void;
@@ -27,10 +29,8 @@ export default abstract class HTMLComponent implements Module {
         this.onCreate();
     }
 
-    onResize(containerWidth: number, containerHeight: number): void {
+    dispachResizeEvent(): void {
         if (!this.wrapperElement) return;
-        //this.wrapperElement.style.width = containerWidth.toString() + "px";
-        //this.wrapperElement.style.height = containerHeight.toString() + "px";
 
         this.subContainerInfos.forEach((containerInfo: ContainerInfo) => {
             containerInfo.container.onResize();
@@ -73,19 +73,15 @@ export default abstract class HTMLComponent implements Module {
     async exit(actionType: ActionType): Promise<boolean> {
         //通常、backナビゲーション時にcontainerオブジェクト経由でコールされる
         return new Promise(resolve => {
-            this.exitRequestResolver = resolve;
+            this.exitResolver = resolve;
             this.htmlAdapter.triggerOnExitHandler(actionType);
         });
     }
 
     continueExitProcess(result: Result) {
-        //backナビゲーション時にコールされるexitRequest内でexitRequestResolverがセットされる
-        if (this.exitRequestResolver) {
-            this.exitRequestResolver(true);
-            this.exitRequestResolver = null;
-        } else {
-            //backナビゲーションではなく自身で閉じたとき(exitRequestResolverがnull)
-            this.currentContainer.backWithoutConfirmation();
+        if (this.exitResolver) {
+            this.exitResolver(true);
+            this.exitResolver = null;
         }
         if (this.exitForWaitResolver) {
             this.exitForWaitResolver(result);
@@ -94,10 +90,24 @@ export default abstract class HTMLComponent implements Module {
     }
 
     cancelExitProcess() {
-        if (this.exitRequestResolver) {
-            this.exitRequestResolver(false);
-            this.exitRequestResolver = null;
+        if (this.exitResolver) {
+            this.exitResolver(false);
+            this.exitResolver = null;
         }        
+    }
+
+    async passMessage(command: string, message?: any): Promise<MessageResponse> {
+        return new Promise(resolve => {
+            this.passMessageResolver = resolve;
+            this.htmlAdapter.triggerOnReceiveMessage(command, message);
+        });
+    }
+
+    returnMessageResponse(messageResponse: MessageResponse) {
+        if (this.passMessage) {
+            this.passMessageResolver(messageResponse);
+            this.passMessageResolver = null;
+        }
     }
 
     getElement(): HTMLDivElement {

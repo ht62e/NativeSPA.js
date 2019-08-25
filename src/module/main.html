@@ -89,7 +89,7 @@
     }).bind(this));
 
     document.getElementById("\:close").addEventListener("click", (function() {
-        this.exit("This is close object in main.html");
+        this.startExitProcess(0);
     }).bind(this));
 
     setTimeout(() => {
@@ -102,7 +102,7 @@
 
     this.onInitialize = function(param) {
         this.textArea1.value = "onInitialize is called." + "\n";
-        if (param !== null) {
+        if (param) {
             this.textArea1.value = param.toString() + "\n";
         }
     }

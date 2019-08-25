@@ -7,6 +7,9 @@ import Parcel from "./parcel";
 export default abstract class Overlay {
     public static resizeHandleThicknessPx: number = 7;
 
+    public static DEFAULT_OVERLAY_SIZE_WIDTH: number = 640;
+    public static DEFAULT_OVERLAY_SIZE_HEIGHT: number = 480;
+
     protected name: string;
 
     protected viewPortElement: HTMLElement;
@@ -41,9 +44,12 @@ export default abstract class Overlay {
     public abstract close(): void;
     protected abstract async waitForOverlayClose(): Promise<Result>;
 
-    constructor(viewPortElement: HTMLElement, name: string, width: number, height: number) {
+    constructor(viewPortElement: HTMLElement, name: string, size: Size) {
         this.viewPortElement = viewPortElement;
         this.name = name;
+
+        const width = size ? size.width : Overlay.DEFAULT_OVERLAY_SIZE_WIDTH;
+        const height = size ? size.height : Overlay.DEFAULT_OVERLAY_SIZE_HEIGHT;
 
         //リサイズ可能領域のためのフレームを作成
         this.outerFrameEl = document.createElement("div");

@@ -4,6 +4,7 @@ import Parcel from "./parcel";
 import Result, { ActionType } from "./result";
 import OvarlayManager from "./overlay_manager";
 import { ShowOptions } from "./overlay";
+import MessageResponse from "./message_response";
 
 export const htmlComponentAdapters = new Map<number, HTMLComponentAdapter>();
 
@@ -14,7 +15,7 @@ export default abstract class HTMLComponentAdapter {
     protected moduleRouter: ModuleRouter = ModuleRouter.getInstance();
     protected overlayManager: OvarlayManager = OvarlayManager.getInstance();
 
-    private exitCallbackReturnFunctionsObject: ReturnFunctions;
+    private exitCallbackReturnFunctionsObject: ExitReturnFunctions;
 
     constructor() {
         this.exitCallbackReturnFunctionsObject = {
@@ -31,7 +32,8 @@ export default abstract class HTMLComponentAdapter {
     protected abstract onInitialize(param: Parcel): void;
     protected abstract onShow(isFirst: boolean, param: any): void;
     protected abstract onHide(param: any): void;
-    protected abstract onExit(actionType: ActionType, returnFunctions: ReturnFunctions): void;
+    protected abstract onExit(actionType: ActionType, returnFunctions: ExitReturnFunctions): void;
+    protected abstract onReceiveMessage(command: string, doResponse: ResponseFunction, message?: any): void;
     
 
     public triggerOnLoadHandler(param: any): void {
@@ -58,6 +60,14 @@ export default abstract class HTMLComponentAdapter {
         }
     }
 
+    public triggerOnReceiveMessage(command: string, message?: any): void {
+        if (this.onReceiveMessage) {
+            this.onReceiveMessage(command, this.returnMessageResponse.bind(this), message);
+        } else {
+
+        }
+    }
+
     private continueExit(result: Result): void {
         this.htmlComponent.continueExitProcess(result);
     }
@@ -66,11 +76,13 @@ export default abstract class HTMLComponentAdapter {
         this.htmlComponent.cancelExitProcess();
     }
 
+    private returnMessageResponse(response: MessageResponse): void {
+        this.htmlComponent.returnMessageResponse(response);
+    }
 
-
-    // private exit(result: Result) {
-    //     this.htmlComponent.exit(result);
-    // }
+    private startExitProcess(actionType: ActionType) {
+        this.htmlComponent.exit(actionType);
+    }
 
     private async showWindow(overlayName: string, parcel?: Parcel, options?: ShowOptions): Promise<Result> {
         const overlayManager = OvarlayManager.getInstance();
@@ -83,9 +95,13 @@ export default abstract class HTMLComponentAdapter {
     }
 }
 
-interface ReturnFunctions {
-    cancelExit: () => void;
-    continueExit: (result: Result) => void;
+interface ExitReturnFunctions {
+    readonly cancelExit: () => void;
+    readonly continueExit: (result: Result) => void;
+}
+
+interface ResponseFunction {
+    (response: MessageResponse): void;
 }
 
 const __global = window as any;
