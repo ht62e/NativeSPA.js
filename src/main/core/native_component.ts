@@ -88,8 +88,11 @@ export default class NativeComponent extends HTMLComponent {
 
         let initialScriptElements = new Array<HTMLScriptElement>();
 
-        this.wrapperElement.querySelectorAll("script").forEach((element: HTMLScriptElement) => {
+        const nodeList: NodeList = this.wrapperElement.querySelectorAll("script");
+        for (let i = 0; i < nodeList.length; i++) {
+            const element: HTMLScriptElement = nodeList[i] as HTMLScriptElement;
             const scopeMode: string = element.dataset["scopeMode"];
+
             if (!scopeMode || scopeMode === "native") {
                 nativeScript += element.textContent;
             } else if (scopeMode === "prototype")  {
@@ -97,8 +100,20 @@ export default class NativeComponent extends HTMLComponent {
             } else if (scopeMode === "class") {
                 classScript += element.textContent;
             }
-            initialScriptElements.push(element);
-        })
+            initialScriptElements.push(element);            
+        }
+
+        // this.wrapperElement.querySelectorAll("script").forEach((element: HTMLScriptElement) => {
+        //     const scopeMode: string = element.dataset["scopeMode"];
+        //     if (!scopeMode || scopeMode === "native") {
+        //         nativeScript += element.textContent;
+        //     } else if (scopeMode === "prototype")  {
+        //         prototypeScript += element.textContent;
+        //     } else if (scopeMode === "class") {
+        //         classScript += element.textContent;
+        //     }
+        //     initialScriptElements.push(element);
+        // })
 
         const nativeScriptElement = document.createElement("script");
         nativeScriptElement.textContent = nativeScript;

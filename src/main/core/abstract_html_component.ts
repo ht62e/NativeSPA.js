@@ -1,10 +1,8 @@
 import Container, { ContainerInfo } from "./container";
 import Module from "./module";
 import SourceRepository from "./source_repository";
-import Parcel from "./parcel";
 import HTMLComponentAdapter from "./html_component_adapter";
-import Result, { ActionType } from "./result";
-import MessageResponse from "./message_response";
+import { Result, ActionType, Parcel } from "./dto";
 
 export default abstract class HTMLComponent implements Module {
     protected isFetched: boolean = false;
@@ -19,7 +17,7 @@ export default abstract class HTMLComponent implements Module {
 
     private exitResolver: (value?: boolean | PromiseLike<boolean>) => void;
     private exitForWaitResolver: (value?: Result | PromiseLike<Result>) => void;
-    private passMessageResolver: (value?: MessageResponse | PromiseLike<MessageResponse>) => void;
+    private passMessageResolver: (value?: any | PromiseLike<any>) => void;
 
     protected abstract onCreate(): void;
     protected abstract loadSubContainerInfos(): void;
@@ -96,14 +94,14 @@ export default abstract class HTMLComponent implements Module {
         }        
     }
 
-    async passMessage(command: string, message?: any): Promise<MessageResponse> {
+    async passMessage(command: string, message?: any): Promise<any> {
         return new Promise(resolve => {
             this.passMessageResolver = resolve;
             this.htmlAdapter.triggerOnReceiveMessage(command, message);
         });
     }
 
-    returnMessageResponse(messageResponse: MessageResponse) {
+    returnMessageResponse(messageResponse: any) {
         if (this.passMessage) {
             this.passMessageResolver(messageResponse);
             this.passMessageResolver = null;

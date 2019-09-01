@@ -195,6 +195,9 @@ export default class ModuleManager {
         }
     }
 
+    public dispatchMessage(destination: string, command: string, message?: any): Promise<any> {
+        return this.getModule(destination).passMessage(command, message);
+    }
 }
 
 class ModuleDependencyInfo {
@@ -206,7 +209,12 @@ class ModuleDependencyInfo {
 
     constructor(moduleDescription: ModuleDescription, subContainerNames: Array<string>) {
         this.moduleDescription = moduleDescription;
-        this.subContainerNames = new Set(subContainerNames);
+        //this.subContainerNames = new Set(subContainerNames); //IE11非対応
+        this.subContainerNames = new Set();
+        subContainerNames.forEach(name => {
+            this.subContainerNames.add(name);
+        });
+
         this.isRoot = moduleDescription === null;
     }
 

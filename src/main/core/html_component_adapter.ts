@@ -1,10 +1,9 @@
 import ModuleRouter from "./module_router";
 import HTMLComponent from "./abstract_html_component";
-import Parcel from "./parcel";
-import Result, { ActionType } from "./result";
 import OvarlayManager from "./overlay_manager";
 import { ShowOptions } from "./overlay";
-import MessageResponse from "./message_response";
+import { Parcel, ActionType, Result } from "./dto";
+import ModuleManager from "./module_manager";
 
 export const htmlComponentAdapters = new Map<number, HTMLComponentAdapter>();
 
@@ -13,6 +12,7 @@ export default abstract class HTMLComponentAdapter {
     protected isModified: boolean = false;
 
     protected moduleRouter: ModuleRouter = ModuleRouter.getInstance();
+    protected moduleManager: ModuleManager = ModuleManager.getInstance();
     protected overlayManager: OvarlayManager = OvarlayManager.getInstance();
 
     private exitCallbackReturnFunctionsObject: ExitReturnFunctions;
@@ -76,9 +76,12 @@ export default abstract class HTMLComponentAdapter {
         this.htmlComponent.cancelExitProcess();
     }
 
-    private returnMessageResponse(response: MessageResponse): void {
+    private returnMessageResponse(response: any): void {
         this.htmlComponent.returnMessageResponse(response);
     }
+
+
+
 
     private startExitProcess(actionType: ActionType) {
         this.htmlComponent.exit(actionType);
@@ -93,6 +96,10 @@ export default abstract class HTMLComponentAdapter {
         const overlayManager = OvarlayManager.getInstance();
         return await overlayManager.showAsModal(overlayName, parcel, options);
     }
+
+    private async sendMessage(destination: string, command: string, message?: any): Promise<any> {
+        return this.moduleManager.dispatchMessage(destination, command, message);
+    }
 }
 
 interface ExitReturnFunctions {
@@ -101,7 +108,7 @@ interface ExitReturnFunctions {
 }
 
 interface ResponseFunction {
-    (response: MessageResponse): void;
+    (response: any): void;
 }
 
 const __global = window as any;

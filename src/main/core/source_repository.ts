@@ -2,9 +2,15 @@ export default class SourceRepository {
     private static instance: SourceRepository  = new SourceRepository();
 
     private cache: Map<string, string>
+    private msIeMode: boolean = false;
 
     constructor () {
         this.cache = new Map<string, string>();
+        let userAgent = window.navigator.userAgent.toLowerCase();
+
+        if (userAgent.indexOf("msie") != -1 || userAgent.indexOf("trident") != -1) {
+            this.msIeMode = true;
+        }
     }
 
     public static getInstance(): SourceRepository {
@@ -25,9 +31,12 @@ export default class SourceRepository {
 
                 httpRequest.onreadystatechange = () => {
                     if (httpRequest.readyState === 4) {
-                        const isLocalAccessSuccess = 
-                            (httpRequest.responseURL.indexOf("file:///") > -1) && httpRequest.responseText !== null;
-                        
+                        let isLocalAccessSuccess = false;
+                        if (!this.msIeMode) {
+                            isLocalAccessSuccess = 
+                                (httpRequest.responseURL.indexOf("file:///") > -1) && httpRequest.responseText !== null;
+                        }
+
                         if (httpRequest.status === 200 || isLocalAccessSuccess) {
                             const res = httpRequest.responseText;
                             this.cache.set(sourceUri, res);
@@ -38,7 +47,7 @@ export default class SourceRepository {
                     }
                 }
     
-                httpRequest.open("POST", sourceUri + "?ver=" + Date.now().toString(), true);
+                httpRequest.open("GET", sourceUri + "?ver=" + Date.now().toString(), true);
                 httpRequest.send(null);                
             });
 

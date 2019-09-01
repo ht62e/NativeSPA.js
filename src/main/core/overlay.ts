@@ -1,8 +1,13 @@
 import Container from "./container";
 import OvarlayManager from "./overlay_manager";
 import { Point, Size } from "./types";
-import Result from "./result";
-import Parcel from "./parcel";
+import CssTransitionDriver from "./css_transition_driver";
+import { Parcel, Result } from "./dto";
+
+export interface ShowOptions {
+    x?: number;
+    y?: number;
+}
 
 export default abstract class Overlay {
     public static resizeHandleThicknessPx: number = 7;
@@ -12,16 +17,29 @@ export default abstract class Overlay {
 
     protected name: string;
 
-    protected viewPortElement: HTMLElement;
+    protected viewPortEl: HTMLElement;
 
     protected outerFrameEl: HTMLDivElement;
     protected contentEl: HTMLDivElement;
-    protected tabNaviFrontDetector: HTMLDivElement;
-    protected tabNaviRearDetector: HTMLDivElement;
+
+    protected outerFrameTransitionDriver: CssTransitionDriver;
+
+    //MEMO フォーカス移動検知パターン
+    //(1) 最後のDOM→[tab]→tabFocusMoveTailDetector→(onfocusイベント内で)→tabFocusMoveHeadDetector
+    //(2) 最初のDOM→[Shift+tab]→tabFocusMoveHeadDetector(onfocusイベント内で)→tabFocusMoveTailDetector
+    //(3) tabFocusMoveHeadDetector(※1の直後)→[Shift+tab]→tabFocusMoveHeadStopper→(onfocusイベント内で)→最後のDOM(lastFocusedEl)
+    //(4) tabFocusMoveTailDetector(※2の直後)→[tab]→tabFocusMoveTailStopper→(onfocusイベント内で)→最初のDOM(lastFocusedEl)
+    //※3,4でlastFocusedElがnullの場合は反対側のDetectorにフォーカスを移動する
+    protected tabFocusMoveHeadStopper: HTMLDivElement;
+    protected tabFocusMoveHeadDetector: HTMLDivElement;
+    protected tabFocusMoveTailDetector: HTMLDivElement;
+    protected tabFocusMoveTailStopper: HTMLDivElement;
+
     protected lastFocusedEl: HTMLElement;
     protected lastFocusIsDetector: boolean = false;
 
     protected modalInactiveLayer: HTMLDivElement;
+    protected modalInactiveLayerTransitionDriver: CssTransitionDriver;
 
     protected position: Point;
     protected size: Size;
@@ -45,7 +63,7 @@ export default abstract class Overlay {
     protected abstract async waitForOverlayClose(): Promise<Result>;
 
     constructor(viewPortElement: HTMLElement, name: string, size: Size) {
-        this.viewPortElement = viewPortElement;
+        this.viewPortEl = viewPortElement;
         this.name = name;
 
         const width = size ? size.width : Overlay.DEFAULT_OVERLAY_SIZE_WIDTH;
@@ -62,35 +80,51 @@ export default abstract class Overlay {
 
         //キーボードタブキーナビゲーションによってダイアログの外にフォーカスが移ることを
         //防止（検知）するための非表示エレメントの作成（Shift+Tabキー対策）
-        this.tabNaviFrontDetector = document.createElement("div");
-        this.tabNaviFrontDetector.style.height = "0px";
-        this.tabNaviFrontDetector.tabIndex = 0;
-        this.tabNaviFrontDetector.addEventListener("focusin", this.onTabNaviFrontDetectorFocusIn.bind(this));
+        this.tabFocusMoveHeadStopper = document.createElement("div");
+        this.tabFocusMoveHeadStopper.className = "fivestage_tabfocus_move_stopper";
+        this.tabFocusMoveHeadStopper.style.height = "0px";
+        this.tabFocusMoveHeadStopper.tabIndex = 0;
+        this.tabFocusMoveHeadStopper.addEventListener("focusin", this.onTabFocusMoveHeadStopperFocusIn.bind(this));
+
+        this.tabFocusMoveHeadDetector = document.createElement("div");
+        this.tabFocusMoveHeadDetector.className = "fivestage_tabfocus_move_detector";
+        this.tabFocusMoveHeadDetector.style.height = "0px";
+        this.tabFocusMoveHeadDetector.tabIndex = 0;
+        this.tabFocusMoveHeadDetector.addEventListener("focusin", this.onTabFocusMoveHeadDetectorFocusIn.bind(this));
 
         //コンテンツコンテナ生成
         this.contentEl = document.createElement("div");
-        this.contentEl.className = "spa_overlay_container";
+        this.contentEl.className = "fivestage_overlay_container";
         this.contentEl.style.position = "absolute";
         this.contentEl.style.left = String(Overlay.resizeHandleThicknessPx) + "px";
         this.contentEl.style.top = String(Overlay.resizeHandleThicknessPx) + "px";
-        this.resize(width, height);
 
         //overlayのモーダル表示によって非アクティブ化したときに表示するレイヤー
         this.modalInactiveLayer = document.createElement("div");
-        this.modalInactiveLayer.className = "spa_modal_background_layer";
+        this.modalInactiveLayer.className = "fivestage_modal_background_layer";
         this.modalInactiveLayer.style.position = "absolute";
         this.modalInactiveLayer.style.overflow = "hidden";
         this.modalInactiveLayer.style.left = String(Overlay.resizeHandleThicknessPx) + "px";
         this.modalInactiveLayer.style.top = String(Overlay.resizeHandleThicknessPx) + "px";
-        this.modalInactiveLayer.style.width = String(width) + "px";
-        this.modalInactiveLayer.style.height = String(height) + "px";
         this.modalInactiveLayer.style.display = "none";
 
+        this.modalInactiveLayerTransitionDriver = new CssTransitionDriver(this.modalInactiveLayer);
+
+        this.resize(width, height);
+
         //非表示エレメントの作成（Tabキー対策）
-        this.tabNaviRearDetector = document.createElement("div");
-        this.tabNaviRearDetector.style.height = "0px";
-        this.tabNaviRearDetector.tabIndex = 0;
-        this.tabNaviRearDetector.addEventListener("focusin", this.onTabNaviRearDetectorFocusIn.bind(this));
+        this.tabFocusMoveTailDetector = document.createElement("div");
+        this.tabFocusMoveTailDetector.className = "fivestage_tabfocus_move_detector";
+        this.tabFocusMoveTailDetector.style.height = "0px";
+        this.tabFocusMoveTailDetector.tabIndex = 0;
+        this.tabFocusMoveTailDetector.addEventListener("focusin", this.onTabFocusMoveTailDetectorFocusIn.bind(this));
+        
+        this.tabFocusMoveTailStopper = document.createElement("div");
+        this.tabFocusMoveTailStopper.className = "fivestage_tabfocus_move_stopper";
+        this.tabFocusMoveTailStopper.style.height = "0px";
+        this.tabFocusMoveTailStopper.tabIndex = 0;
+        this.tabFocusMoveTailStopper.addEventListener("focusin", this.onTabFocusMoveTailStopperFocusIn.bind(this));
+
 
         this.contentEl.addEventListener("focusin", this.onFocusIn.bind(this));
         this.contentEl.addEventListener("focusout", this.onFocusOut.bind(this));
@@ -98,11 +132,15 @@ export default abstract class Overlay {
         //outerFrameElの周囲にリサイズイベント検知用のエレメントを生成・配置
         this.createResizeHandleElements();
 
-        this.outerFrameEl.appendChild(this.tabNaviFrontDetector);
+        this.outerFrameEl.appendChild(this.tabFocusMoveHeadStopper);
+        this.outerFrameEl.appendChild(this.tabFocusMoveHeadDetector);
         this.outerFrameEl.appendChild(this.contentEl);
-        this.outerFrameEl.appendChild(this.tabNaviRearDetector);
+        this.outerFrameEl.appendChild(this.tabFocusMoveTailDetector);
+        this.outerFrameEl.appendChild(this.tabFocusMoveTailStopper);
         this.outerFrameEl.appendChild(this.modalInactiveLayer);
         viewPortElement.appendChild(this.outerFrameEl);
+
+        this.outerFrameTransitionDriver = new CssTransitionDriver(this.outerFrameEl);
     }
 
     private createResizeHandleElements() {
@@ -149,9 +187,9 @@ export default abstract class Overlay {
         this.resizeHandleEl[7].style.bottom = "0px";
         this.resizeHandleEl[7].style.cursor = "nwse-resize";
 
-        for (let i = 0; i < 8; i++) {
-            this.outerFrameEl.appendChild(this.resizeHandleEl[i]);
-        }
+        this.resizeHandleEl.forEach(element => {
+            this.outerFrameEl.appendChild(element);
+        })
     }
 
     public __dispachMouseMoveEvent(x: number, y: number, deltaX: number, deltaY: number) {
@@ -200,7 +238,7 @@ export default abstract class Overlay {
     private onResizeHandleMouseDown(event: MouseEvent) {
         this.isResizing = true;
         this.resizePositionIndex = parseInt((event.target as HTMLElement).dataset["positionIndex"]);
-        this.resizeStartMousePos = new Point(event.x, event.y);
+        this.resizeStartMousePos = new Point(event.screenX, event.screenY);
         this.resizeStartPos = new Point(this.position.x, this.position.y);
         this.resizeStartSize = new Size(this.size.width, this.size.height);
 
@@ -208,26 +246,39 @@ export default abstract class Overlay {
     }
 
     private onSelectStart(event: Event) {
-        //console.log(event);
-        
-        //event.stopPropagation();
-        //event.preventDefault();
+
     }
 
-    private onTabNaviFrontDetectorFocusIn(event: FocusEvent) {
+    private onTabFocusMoveHeadStopperFocusIn(event: FocusEvent) {
+        if (this.lastFocusedEl) {
+            this.lastFocusedEl.focus();
+        } else {
+            this.tabFocusMoveHeadDetector.focus();
+        }
+    }
+
+    private onTabFocusMoveHeadDetectorFocusIn(event: FocusEvent) {
         if (!this.lastFocusIsDetector) {
             this.lastFocusIsDetector = true;
-            this.tabNaviRearDetector.focus();
+            this.tabFocusMoveTailDetector.focus();
         }
         event.stopPropagation();
     }
 
-    private onTabNaviRearDetectorFocusIn(event: FocusEvent) {
+    private onTabFocusMoveTailDetectorFocusIn(event: FocusEvent) {
         if (!this.lastFocusIsDetector) {
             this.lastFocusIsDetector = true;
-            this.tabNaviFrontDetector.focus();
+            this.tabFocusMoveHeadDetector.focus();
         }
         event.stopPropagation();
+    }
+
+    private onTabFocusMoveTailStopperFocusIn(event: FocusEvent) {
+        if (this.lastFocusedEl) {
+            this.lastFocusedEl.focus();
+        } else {
+            this.tabFocusMoveTailDetector.focus();
+        }
     }
 
     private onOuterMouseDown(event: MouseEvent) {
@@ -272,23 +323,27 @@ export default abstract class Overlay {
         this.outerFrameEl.style.height = String(height + Overlay.resizeHandleThicknessPx * 2) + "px";
         this.contentEl.style.width = String(width) + "px";
         this.contentEl.style.height = String(height) + "px";
+        this.modalInactiveLayer.style.width = String(width) + "px";
+        this.modalInactiveLayer.style.height = String(height) + "px";
     }
 
     public activate(): void {
         this.inactiveModalMode = false;
-        this.modalInactiveLayer.style.display = "none";
+        this.modalInactiveLayerTransitionDriver.hide();
+        this.resizeHandleEl.forEach(element => {
+            element.style.display = "";
+        })
     }
 
     public inactivate(withModal: boolean): void {
         this.inactiveModalMode = withModal;
         if (withModal) {
-            this.modalInactiveLayer.style.display = "block";
+            this.modalInactiveLayerTransitionDriver.show();
+            this.resizeHandleEl.forEach(element => {
+                element.style.display = "none";
+            })
         }
     }    
 
 }
 
-export interface ShowOptions {
-    x?: number;
-    y?: number;
-}

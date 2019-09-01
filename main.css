@@ -1,9 +1,39 @@
-.spa_overlay_container {
+.fivestage_overlay_container {
     overflow: hidden;
-    box-shadow: 8px 8px 25px -5px rgba(0,0,0,0.4);
+    box-shadow: 6px 6px 25px -5px rgba(0,0,0,0.4);
 }
 
-.spa_dialog_window_header {
+.fivestage_tabfocus_move_stopper:focus,
+.fivestage_tabfocus_move_detector:focus {
+    outline: none;
+}
+
+
+
+
+
+.fivestage_dialog_window_standy_state {
+    opacity: 0;
+    transform: scale(0.98, 0.98) translateY(1.5%);
+}
+
+.fivestage_dialog_window_enter_transition {
+    transition-property: transform, opacity;
+    transition-duration: 150ms;
+}
+
+.fivestage_dialog_window_leave_transition {
+	transition-property: opacity, transform;
+	transition-duration: 150ms;
+	transition-timing-function: ease-in;
+}
+
+.fivestage_dialog_window_end_state {
+    opacity: 0;
+    transform: scale(0.98, 0.98) translateY(1.5%);
+}
+
+.fivestage_dialog_window_header {
     height: 30px;
     line-height: 30px;
     box-sizing: border-box;
@@ -11,11 +41,11 @@
     cursor: default;
 }
 
-.spa_dialog_window_header.inactive {
+.fivestage_dialog_window_header.inactive {
     background-color: #B0B0B0;
 }
 
-.spa_dialog_window_header .caption {
+.fivestage_dialog_window_header .caption {
 	flex-grow: 1;
 	text-align: left;
 	font-size: 10pt;
@@ -23,7 +53,7 @@
 	padding-left: 8px;
 }
 
-.spa_dialog_window_header .close_button {
+.fivestage_dialog_window_header .close_button {
 	width: 30px;
 	flex-grow: 0;
 	flex-shrink: 1;
@@ -35,15 +65,15 @@
   	background-size: 10px;
 }
 
-.spa_dialog_window_header .close_button:hover {
+.fivestage_dialog_window_header .close_button:hover {
 	background-color: rgba(255, 255, 255, 0.2);
 }
 
-.spa_dialog_window_body {
+.fivestage_dialog_window_body {
     background-color: #FFFFFF;
 }
 
-.spa_dialog_window_footer {
+.fivestage_dialog_window_footer {
     display: flex;
     justify-content: flex-end;
     align-items: center;
@@ -54,6 +84,27 @@
     background-color: #F5F5F5;
 }
 
-.spa_modal_background_layer {
+
+
+
+.fivestage_modal_background_layer {
     background-color: rgba(0, 0, 0, 0.3);
+}
+
+.fivestage_modal_background_layer.standy_state {
+    opacity: 0;
+}
+
+.fivestage_modal_background_layer.enter_transition {
+	transition-duration: 120ms;
+	transition-timing-function: ease;
+}
+
+.fivestage_modal_background_layer.leave_transition {
+	transition-duration: 120ms;
+	transition-timing-function: ease;
+}
+
+.fivestage_modal_background_layer.end_state {
+    opacity: 0;
 }

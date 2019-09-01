@@ -2,9 +2,8 @@ import Container from "./container";
 import Overlay, { ShowOptions } from "./overlay";
 import OvarlayManager from "./overlay_manager";
 import ContainerManager from "./container_manager";
-import Result, { ActionType } from "./result";
-import Parcel from "./parcel";
 import { Size } from "./types";
+import { Result, ActionType, Parcel } from "./dto";
 
 export interface WindowOptions {
     size?: Size;
@@ -44,7 +43,7 @@ export default class DialogWindow extends Overlay {
         this.wrapperEl.style.height = "100%";
 
         this.headerEl = document.createElement("div");
-        this.headerEl.className = "spa_dialog_window_header";
+        this.headerEl.className = "fivestage_dialog_window_header";
         this.headerEl.style.position = "relative";
         this.headerEl.style.display = "flex";
         this.headerEl.style.width = "100%";
@@ -65,7 +64,7 @@ export default class DialogWindow extends Overlay {
         this.headerEl.addEventListener("dragstart", this.onHeaderDragStart.bind(this));
 
         this.bodyEl = document.createElement("div");
-        this.bodyEl.className = "spa_dialog_window_body";
+        this.bodyEl.className = "fivestage_dialog_window_body";
         this.bodyEl.style.position = "relative";
         this.bodyEl.style.flexGrow = "1";
         this.bodyEl.style.flexShrink = "1";
@@ -75,7 +74,7 @@ export default class DialogWindow extends Overlay {
             "__window" + String(DialogWindow.instanceSequence++), "", this.bodyEl);
 
         this.footerEl = document.createElement("div");
-        this.footerEl.className = "spa_dialog_window_footer";
+        this.footerEl.className = "fivestage_dialog_window_footer";
         this.footerEl.style.position = "relative";
         this.footerEl.style.width = "100%";
 
@@ -101,6 +100,13 @@ export default class DialogWindow extends Overlay {
         this.wrapperEl.appendChild(this.footerEl);
 
         this.contentEl.appendChild(this.wrapperEl);
+
+        this.outerFrameTransitionDriver.setCustomTransitionClasses({
+            standyStateClass: "fivestage_dialog_window_standy_state",
+            enterTransitionClass: "fivestage_dialog_window_enter_transition",
+            leaveTransitionClass: "fivestage_dialog_window_leave_transition",
+            endStateClass: "fivestage_dialog_window_end_state"
+        });
     }
 
     protected onHeaderMouseDown(event: MouseEvent) {
@@ -170,11 +176,12 @@ export default class DialogWindow extends Overlay {
             px = options.x; py = options.y;
         } else {
             //デフォルト表示位置は表示領域（ビューポート）の中央
-            px = Math.round((this.viewPortElement.offsetWidth - this.size.width) / 2);
-            py = Math.round((this.viewPortElement.offsetHeight - this.size.height) / 2);
+            px = Math.round((this.viewPortEl.offsetWidth - this.size.width) / 2);
+            py = Math.round((this.viewPortEl.offsetHeight - this.size.height) / 2);
         }
         this.changePosition(px, py);
-        this.outerFrameEl.style.display = "block";
+
+        this.outerFrameTransitionDriver.show();
 
         this.container.getActiveModule().waitForExit().then(result => {
             this.close();
@@ -191,7 +198,7 @@ export default class DialogWindow extends Overlay {
     }
 
     public close(): void {
-        this.outerFrameEl.style.display = "none";
+        this.outerFrameTransitionDriver.hide();
     }
 
     //override

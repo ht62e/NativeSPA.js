@@ -34,7 +34,7 @@
     // })
 
 
-    setTimeout(() => {
+    setTimeout(function() {
         document.getElementById("\:input1").value = "実行完了1";
     }, 1000);
 </script>
@@ -42,46 +42,46 @@
 <script data-scope-mode="prototype">
     this.textArea1 = document.getElementById("\:textarea1");
     document.getElementById("\:show_main2").addEventListener("click", (function() {
-        this.moduleRouter.forward("base.body::main2", null, (obj) => {
+        this.moduleRouter.forward("base.body::main2", null, function(obj) {
             console.log("main1 callback");
             console.log(obj);
         });
     }).bind(this));
 
     document.getElementById("\:show_win1").addEventListener("click", (function() {
-        this.showWindow("win1", null, null).then(result => {
-            alert(JSON.stringify(result));
-        });
+        this.showWindow("win1", null, null).then((function(result) {
+            this.writeLine(JSON.stringify(result));
+        }).bind(this));
     }).bind(this));
 
     document.getElementById("\:show_win2").addEventListener("click", (function() {
-        this.showWindow("win2", null, null).then(result => {
-            alert(JSON.stringify(result));
-        });
+        this.showWindow("win2", null, null).then((function(result) {
+            this.writeLine(JSON.stringify(result));
+        }).bind(this));
     }).bind(this));
 
     document.getElementById("\:show_win3").addEventListener("click", (function() {
-        this.showWindow("win3", null, null).then(result => {
-            alert(JSON.stringify(result));
-        });
+        this.showWindow("win3", null, null).then((function(result) {
+            this.writeLine(JSON.stringify(result));
+        }).bind(this));
     }).bind(this));
 
     document.getElementById("\:show_win1_as_modal").addEventListener("click", (function() {
-        this.showWindowAsModal("win1", null, null).then(result => {
-            alert(JSON.stringify(result));
-        });
+        this.showWindowAsModal("win1", null, null).then((function(result) {
+            this.writeLine(JSON.stringify(result));
+        }).bind(this));
     }).bind(this));
 
     document.getElementById("\:show_win2_as_modal").addEventListener("click", (function() {
-        this.showWindowAsModal("win2", null, null).then(result => {
-            alert(JSON.stringify(result));
-        });
+        this.showWindowAsModal("win2", null, null).then((function(result) {
+            this.writeLine(JSON.stringify(result));
+        }).bind(this));
     }).bind(this));
 
     document.getElementById("\:show_win3_as_modal").addEventListener("click", (function() {
-        this.showWindowAsModal("win3", null, null).then(result => {
-            alert(JSON.stringify(result));
-        });
+        this.showWindowAsModal("win3", null, null).then((function(result) {
+            this.writeLine(JSON.stringify(result));
+        }).bind(this));
     }).bind(this));
 
     document.getElementById("\:back").addEventListener("click", (function() {
@@ -92,7 +92,7 @@
         this.startExitProcess(0);
     }).bind(this));
 
-    setTimeout(() => {
+    setTimeout(function() {
         document.getElementById("\:input1").value = "実行完了2";
     }, 2000);
 
@@ -126,16 +126,20 @@
             }
         }
     }
+
+    this.writeLine = function(text) {
+        this.textArea1.value += text + "\n";
+    }
 </script>
 
 <script>
-    setTimeout(() => {
+    setTimeout(function() {
         document.getElementById("\:input1").value = "実行完了3";
     }, 3000);
 </script>
 
 <script data-scope-mode="class">
-    setTimeout(() => {
+    setTimeout(function() {
         document.getElementById("\:input1").value = "実行完了4";
     }, 4000);
 </script>

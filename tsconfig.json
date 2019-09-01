@@ -3,14 +3,14 @@
         "target": "ES5",
         "module": "amd",
         "sourceMap": true,
-        "outFile": "./src/build/debug/nativespa.js",
+        "outFile": "./src/build/debug/fivestage.js",
         "lib": [
             "dom",
             "es5",
             "scripthost",
             "es2015.promise",
+            "es2015.iterable",
             "es2015.collection",
-            "es2015.iterable"
         ]
     }
 }

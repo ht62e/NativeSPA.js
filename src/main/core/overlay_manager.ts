@@ -1,7 +1,7 @@
 import DialogWindow, { WindowOptions as DialogWindowOptions } from "./dialog_window";
 import Overlay, { ShowOptions } from "./overlay";
-import Result from "./result";
-import Parcel from "./parcel";
+import { Parcel, Result } from "./dto";
+import CssTransitionDriver from "./css_transition_driver";
 
 export default class OvarlayManager {
     private static instance = new OvarlayManager();
@@ -10,6 +10,7 @@ export default class OvarlayManager {
     public overlayLastFocusedElement: HTMLElement = null;
 
     private modalBackgroundLayer: HTMLDivElement;
+    private modalBackgroundLayerTransitionDriver: CssTransitionDriver;
 
     private overlays: Map<string, Overlay>;
     private overlayManagementTable: Map<string, OverlayManagementData>;
@@ -32,13 +33,15 @@ export default class OvarlayManager {
         this.overlayManagementTable = new Map<string, OverlayManagementData>();
 
         this.modalBackgroundLayer = document.createElement("div");
-        this.modalBackgroundLayer.className = "spa_modal_background_layer";
+        this.modalBackgroundLayer.className = "fivestage_modal_background_layer";
         this.modalBackgroundLayer.style.position = "absolute";
         this.modalBackgroundLayer.style.overflow = "hidden";
         this.modalBackgroundLayer.style.width = "100%";
         this.modalBackgroundLayer.style.height = "100%";
         this.modalBackgroundLayer.style.display = "none";
         this.modalBackgroundLayer.style.zIndex = String(this.MODAL_START_Z_INDEX);
+
+        this.modalBackgroundLayerTransitionDriver = new CssTransitionDriver(this.modalBackgroundLayer);
 
         this.onFocusInBindedThis = this.onFocusIn.bind(this);
         this.onMouseMoveBindedThis = this.onMouseMove.bind(this);
@@ -51,18 +54,18 @@ export default class OvarlayManager {
     }
 
     private onMouseMove(event: MouseEvent) {
-        let deltaX = event.x - this.previousMouseX;
-        let deltaY = event.y - this.previousMouseY;
-        this.previousMouseX = event.x;
-        this.previousMouseY = event.y;
+        let deltaX = event.screenX - this.previousMouseX;
+        let deltaY = event.screenY - this.previousMouseY;
+        this.previousMouseX = event.screenX;
+        this.previousMouseY = event.screenY;
         this.overlays.forEach(overlay => {
-            overlay.__dispachMouseMoveEvent(event.x, event.y, deltaX, deltaY);
-        })
+            overlay.__dispachMouseMoveEvent(event.screenX, event.screenY, deltaX, deltaY);
+        });
     }
 
     private onMouseUp(event: MouseEvent) {
         this.overlays.forEach(overlay => {
-            overlay.__dispachMouseUpEvent(event.x, event.y);
+            overlay.__dispachMouseUpEvent(event.screenX, event.screenY);
         });
         this.changeContentsSelectable(true);
     }
@@ -105,7 +108,7 @@ export default class OvarlayManager {
     }
 
     private beginModalMode() {
-        this.modalBackgroundLayer.style.display = "";
+        this.modalBackgroundLayerTransitionDriver.show();
     }
 
     private endModalMode() {
@@ -114,7 +117,7 @@ export default class OvarlayManager {
             if (value.isVisible && value.isModal) existModalOverlay = true;
         });
         if (!existModalOverlay) {
-            this.modalBackgroundLayer.style.display = "none";
+            this.modalBackgroundLayerTransitionDriver.hide();
         }
     }
 

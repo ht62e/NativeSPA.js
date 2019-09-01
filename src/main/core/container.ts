@@ -1,7 +1,6 @@
 import Module from "./module";
 import RuntimeError from "./runtime_error";
-import Result, { ActionType } from "./result";
-import Parcel from "./parcel";
+import { Parcel, Result, ActionType } from "./dto";
 
 export default class Container {
     private activeModule: Module;

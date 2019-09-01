@@ -1,7 +1,5 @@
 import Container from "./container";
-import Parcel from "./parcel";
-import Result, { ActionType } from "./result";
-import MessageResponse from "./message_response";
+import { Parcel, ActionType, Result } from "./dto";
 
 export default interface Module {
     fetch(): Promise<boolean>;
@@ -17,7 +15,7 @@ export default interface Module {
 
     //apply(): Result;
     
-    passMessage(command: string, message?: any): Promise<MessageResponse>;
+    passMessage(command: string, message?: any): Promise<any>;
 
     dispachResizeEvent(): void;
 

@@ -60,9 +60,24 @@ define("core/runtime_error", ["require", "exports"], function (require, exports)
     }(Error));
     exports.default = RuntimeError;
 });
-define("core/result", ["require", "exports"], function (require, exports) {
+define("core/dto", ["require", "exports"], function (require, exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
+    var Parcel = /** @class */ (function () {
+        function Parcel(requestMode, params) {
+            this.requestMode = requestMode;
+            this.params = params;
+        }
+        return Parcel;
+    }());
+    exports.Parcel = Parcel;
+    var RequestMode;
+    (function (RequestMode) {
+        RequestMode[RequestMode["READONLY"] = 0] = "READONLY";
+        RequestMode[RequestMode["NEW"] = 1] = "NEW";
+        RequestMode[RequestMode["NEW_EDIT"] = 2] = "NEW_EDIT";
+        RequestMode[RequestMode["EDIT"] = 3] = "EDIT";
+    })(RequestMode = exports.RequestMode || (exports.RequestMode = {}));
     var Result = /** @class */ (function () {
         function Result(actionType, isChanged, result) {
             this.actionType = actionType;
@@ -71,7 +86,7 @@ define("core/result", ["require", "exports"], function (require, exports) {
         }
         return Result;
     }());
-    exports.default = Result;
+    exports.Result = Result;
     var ActionType;
     (function (ActionType) {
         ActionType[ActionType["OK"] = 0] = "OK";
@@ -82,26 +97,7 @@ define("core/result", ["require", "exports"], function (require, exports) {
         ActionType[ActionType["NO"] = 5] = "NO";
     })(ActionType = exports.ActionType || (exports.ActionType = {}));
 });
-define("core/parcel", ["require", "exports"], function (require, exports) {
-    "use strict";
-    Object.defineProperty(exports, "__esModule", { value: true });
-    var Parcel = /** @class */ (function () {
-        function Parcel(requestMode, params) {
-            this.requestMode = requestMode;
-            this.params = params;
-        }
-        return Parcel;
-    }());
-    exports.default = Parcel;
-    var RequestMode;
-    (function (RequestMode) {
-        RequestMode[RequestMode["READONLY"] = 0] = "READONLY";
-        RequestMode[RequestMode["NEW"] = 1] = "NEW";
-        RequestMode[RequestMode["NEW_EDIT"] = 2] = "NEW_EDIT";
-        RequestMode[RequestMode["EDIT"] = 3] = "EDIT";
-    })(RequestMode = exports.RequestMode || (exports.RequestMode = {}));
-});
-define("core/container", ["require", "exports", "core/runtime_error", "core/result"], function (require, exports, runtime_error_1, result_1) {
+define("core/container", ["require", "exports", "core/runtime_error", "core/dto"], function (require, exports, runtime_error_1, dto_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var Container = /** @class */ (function () {
@@ -187,7 +183,7 @@ define("core/container", ["require", "exports", "core/runtime_error", "core/resu
         Container.prototype.back = function () {
             var _this = this;
             this.inBackProcess = true;
-            this.activeModule.exit(result_1.ActionType.BACK).then(function (exited) {
+            this.activeModule.exit(dto_1.ActionType.BACK).then(function (exited) {
                 if (!exited)
                     return;
                 _this.showPreviousModule();
@@ -208,16 +204,6 @@ define("core/container", ["require", "exports", "core/runtime_error", "core/resu
     }());
     exports.default = Container;
 });
-define("core/message_response", ["require", "exports"], function (require, exports) {
-    "use strict";
-    Object.defineProperty(exports, "__esModule", { value: true });
-    var MessageResponse = /** @class */ (function () {
-        function MessageResponse() {
-        }
-        return MessageResponse;
-    }());
-    exports.default = MessageResponse;
-});
 define("core/module", ["require", "exports"], function (require, exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -227,7 +213,12 @@ define("core/source_repository", ["require", "exports"], function (require, expo
     Object.defineProperty(exports, "__esModule", { value: true });
     var SourceRepository = /** @class */ (function () {
         function SourceRepository() {
+            this.msIeMode = false;
             this.cache = new Map();
+            var userAgent = window.navigator.userAgent.toLowerCase();
+            if (userAgent.indexOf("msie") != -1 || userAgent.indexOf("trident") != -1) {
+                this.msIeMode = true;
+            }
         }
         SourceRepository.getInstance = function () {
             return SourceRepository.instance;
@@ -257,7 +248,11 @@ define("core/source_repository", ["require", "exports"], function (require, expo
                                 var httpRequest = new XMLHttpRequest();
                                 httpRequest.onreadystatechange = function () {
                                     if (httpRequest.readyState === 4) {
-                                        var isLocalAccessSuccess = (httpRequest.responseURL.indexOf("file:///") > -1) && httpRequest.responseText !== null;
+                                        var isLocalAccessSuccess = false;
+                                        if (!_this.msIeMode) {
+                                            isLocalAccessSuccess =
+                                                (httpRequest.responseURL.indexOf("file:///") > -1) && httpRequest.responseText !== null;
+                                        }
                                         if (httpRequest.status === 200 || isLocalAccessSuccess) {
                                             var res = httpRequest.responseText;
                                             _this.cache.set(sourceUri, res);
@@ -268,7 +263,7 @@ define("core/source_repository", ["require", "exports"], function (require, expo
                                         }
                                     }
                                 };
-                                httpRequest.open("POST", sourceUri + "?ver=" + Date.now().toString(), true);
+                                httpRequest.open("GET", sourceUri + "?ver=" + Date.now().toString(), true);
                                 httpRequest.send(null);
                             })];
                     }
@@ -287,12 +282,17 @@ define("core/container_manager", ["require", "exports", "core/runtime_error", "c
     var ContainerManager = /** @class */ (function () {
         function ContainerManager() {
             this.containers = new Map();
+            this.windowResizeEventHandlerBindThis = this.windowResizeEventHandler.bind(this);
         }
         ContainerManager.getInstance = function () {
             return ContainerManager.instance;
         };
-        ContainerManager.prototype.createRootContainer = function (domElement) {
-            return this.createContainer("root", "", domElement);
+        ContainerManager.prototype.setRootElement = function (element) {
+            this.rootContainer = this.createContainer("root", "", element);
+            window.addEventListener("resize", this.windowResizeEventHandlerBindThis);
+        };
+        ContainerManager.prototype.windowResizeEventHandler = function (event) {
+            this.rootContainer.onResize();
         };
         ContainerManager.prototype.createContainer = function (id, type, bindDomElement) {
             if (this.containers.has(id)) {
@@ -361,7 +361,143 @@ define("core/types", ["require", "exports"], function (require, exports) {
     }());
     exports.Size = Size;
 });
-define("core/overlay", ["require", "exports", "core/overlay_manager", "core/types"], function (require, exports, overlay_manager_1, types_1) {
+define("core/css_transition_driver", ["require", "exports"], function (require, exports) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    var CssTransitionDriver = /** @class */ (function () {
+        function CssTransitionDriver(target, customClasses) {
+            var _this = this;
+            this.standyStateClass = "standy_state";
+            this.enterTransitionClass = "enter_transition";
+            this.leaveTransitionClass = "leave_transition";
+            this.endStateClass = "end_state";
+            this.showResolver = null;
+            this.hideResolver = null;
+            this.target = target;
+            this.setCustomTransitionClasses(customClasses);
+            this.target.addEventListener("transitionend", function (event) {
+                if (_this.hideResolver) {
+                    _this.target.style.display = "none";
+                    if (_this.standyStateClass) {
+                        _this.target.classList.add(_this.standyStateClass);
+                    }
+                    if (_this.leaveTransitionClass) {
+                        _this.target.classList.remove(_this.leaveTransitionClass);
+                    }
+                    if (_this.endStateClass) {
+                        _this.target.classList.remove(_this.endStateClass);
+                    }
+                    _this.hideResolver(true);
+                    _this.hideResolver = null;
+                }
+                if (_this.showResolver) {
+                    _this.showResolver(true);
+                    _this.showResolver = null;
+                }
+            });
+        }
+        CssTransitionDriver.prototype.setCustomTransitionClasses = function (classes) {
+            if (classes) {
+                if (classes.standyStateClass !== undefined)
+                    this.standyStateClass = classes.standyStateClass;
+                if (classes.enterTransitionClass !== undefined)
+                    this.enterTransitionClass = classes.enterTransitionClass;
+                if (classes.leaveTransitionClass !== undefined)
+                    this.leaveTransitionClass = classes.leaveTransitionClass;
+                if (classes.endStateClass !== undefined)
+                    this.endStateClass = classes.endStateClass;
+            }
+            if (this.target.style.display === "none") {
+                this.target.classList.add(this.standyStateClass);
+            }
+        };
+        CssTransitionDriver.prototype.show = function () {
+            return __awaiter(this, void 0, void 0, function () {
+                var _this = this;
+                return __generator(this, function (_a) {
+                    if (this.hideResolver) {
+                        //クローズアニメーション中に再表示した場合においても、hide呼び出し元は閉じたことを通知する
+                        this.hideResolver(true);
+                        this.hideResolver = null;
+                    }
+                    this.toggleClasses(true);
+                    if (this.enterTransitionClass) {
+                        return [2 /*return*/, new Promise(function (resolve) {
+                                _this.showResolver = resolve;
+                            })];
+                    }
+                    else {
+                        return [2 /*return*/, Promise.resolve(true)];
+                    }
+                    return [2 /*return*/];
+                });
+            });
+        };
+        CssTransitionDriver.prototype.hide = function () {
+            return __awaiter(this, void 0, void 0, function () {
+                var _this = this;
+                return __generator(this, function (_a) {
+                    if (this.showResolver) {
+                        this.showResolver(true);
+                        this.showResolver = null;
+                    }
+                    this.toggleClasses(false);
+                    if (this.leaveTransitionClass) {
+                        return [2 /*return*/, new Promise(function (resolve) {
+                                _this.hideResolver = resolve;
+                            })];
+                    }
+                    else {
+                        return [2 /*return*/, Promise.resolve(true)];
+                    }
+                    return [2 /*return*/];
+                });
+            });
+        };
+        CssTransitionDriver.prototype.toggleClasses = function (visible) {
+            var _this = this;
+            if (visible) {
+                this.target.style.display = "";
+                window.setTimeout(function () {
+                    _this.target.style.pointerEvents = "";
+                    if (_this.enterTransitionClass) {
+                        _this.target.classList.add(_this.enterTransitionClass);
+                    }
+                    if (_this.standyStateClass) {
+                        _this.target.classList.remove(_this.standyStateClass);
+                    }
+                    if (_this.leaveTransitionClass) {
+                        _this.target.classList.remove(_this.leaveTransitionClass);
+                    }
+                    if (_this.endStateClass) {
+                        _this.target.classList.remove(_this.endStateClass);
+                    }
+                }, 0);
+            }
+            else {
+                this.target.style.pointerEvents = "none";
+                if (this.standyStateClass) {
+                    this.target.classList.remove(this.standyStateClass);
+                }
+                if (this.enterTransitionClass) {
+                    this.target.classList.remove(this.enterTransitionClass);
+                }
+                if (this.leaveTransitionClass) {
+                    this.target.classList.add(this.leaveTransitionClass);
+                }
+                else {
+                    this.target.style.display = "none";
+                }
+                if (this.endStateClass) {
+                    this.target.classList.add(this.endStateClass);
+                }
+            }
+        };
+        return CssTransitionDriver;
+    }());
+    exports.default = CssTransitionDriver;
+});
+define("core/overlay", ["require", "exports", "core/overlay_manager", "core/types", "core/css_transition_driver"], function (require, exports, overlay_manager_1, types_1, css_transition_driver_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var Overlay = /** @class */ (function () {
@@ -370,7 +506,7 @@ define("core/overlay", ["require", "exports", "core/overlay_manager", "core/type
             this.inactiveModalMode = false;
             this.isResizing = false;
             this.resizeHandleEl = new Array();
-            this.viewPortElement = viewPortElement;
+            this.viewPortEl = viewPortElement;
             this.name = name;
             var width = size ? size.width : Overlay.DEFAULT_OVERLAY_SIZE_WIDTH;
             var height = size ? size.height : Overlay.DEFAULT_OVERLAY_SIZE_HEIGHT;
@@ -383,43 +519,58 @@ define("core/overlay", ["require", "exports", "core/overlay_manager", "core/type
             this.outerFrameEl.addEventListener("mousedown", this.onOuterMouseDown.bind(this));
             //キーボードタブキーナビゲーションによってダイアログの外にフォーカスが移ることを
             //防止（検知）するための非表示エレメントの作成（Shift+Tabキー対策）
-            this.tabNaviFrontDetector = document.createElement("div");
-            this.tabNaviFrontDetector.style.height = "0px";
-            this.tabNaviFrontDetector.tabIndex = 0;
-            this.tabNaviFrontDetector.addEventListener("focusin", this.onTabNaviFrontDetectorFocusIn.bind(this));
+            this.tabFocusMoveHeadStopper = document.createElement("div");
+            this.tabFocusMoveHeadStopper.className = "fivestage_tabfocus_move_stopper";
+            this.tabFocusMoveHeadStopper.style.height = "0px";
+            this.tabFocusMoveHeadStopper.tabIndex = 0;
+            this.tabFocusMoveHeadStopper.addEventListener("focusin", this.onTabFocusMoveHeadStopperFocusIn.bind(this));
+            this.tabFocusMoveHeadDetector = document.createElement("div");
+            this.tabFocusMoveHeadDetector.className = "fivestage_tabfocus_move_detector";
+            this.tabFocusMoveHeadDetector.style.height = "0px";
+            this.tabFocusMoveHeadDetector.tabIndex = 0;
+            this.tabFocusMoveHeadDetector.addEventListener("focusin", this.onTabFocusMoveHeadDetectorFocusIn.bind(this));
             //コンテンツコンテナ生成
             this.contentEl = document.createElement("div");
-            this.contentEl.className = "spa_overlay_container";
+            this.contentEl.className = "fivestage_overlay_container";
             this.contentEl.style.position = "absolute";
             this.contentEl.style.left = String(Overlay.resizeHandleThicknessPx) + "px";
             this.contentEl.style.top = String(Overlay.resizeHandleThicknessPx) + "px";
-            this.resize(width, height);
             //overlayのモーダル表示によって非アクティブ化したときに表示するレイヤー
             this.modalInactiveLayer = document.createElement("div");
-            this.modalInactiveLayer.className = "spa_modal_background_layer";
+            this.modalInactiveLayer.className = "fivestage_modal_background_layer";
             this.modalInactiveLayer.style.position = "absolute";
             this.modalInactiveLayer.style.overflow = "hidden";
             this.modalInactiveLayer.style.left = String(Overlay.resizeHandleThicknessPx) + "px";
             this.modalInactiveLayer.style.top = String(Overlay.resizeHandleThicknessPx) + "px";
-            this.modalInactiveLayer.style.width = String(width) + "px";
-            this.modalInactiveLayer.style.height = String(height) + "px";
             this.modalInactiveLayer.style.display = "none";
+            this.modalInactiveLayerTransitionDriver = new css_transition_driver_1.default(this.modalInactiveLayer);
+            this.resize(width, height);
             //非表示エレメントの作成（Tabキー対策）
-            this.tabNaviRearDetector = document.createElement("div");
-            this.tabNaviRearDetector.style.height = "0px";
-            this.tabNaviRearDetector.tabIndex = 0;
-            this.tabNaviRearDetector.addEventListener("focusin", this.onTabNaviRearDetectorFocusIn.bind(this));
+            this.tabFocusMoveTailDetector = document.createElement("div");
+            this.tabFocusMoveTailDetector.className = "fivestage_tabfocus_move_detector";
+            this.tabFocusMoveTailDetector.style.height = "0px";
+            this.tabFocusMoveTailDetector.tabIndex = 0;
+            this.tabFocusMoveTailDetector.addEventListener("focusin", this.onTabFocusMoveTailDetectorFocusIn.bind(this));
+            this.tabFocusMoveTailStopper = document.createElement("div");
+            this.tabFocusMoveTailStopper.className = "fivestage_tabfocus_move_stopper";
+            this.tabFocusMoveTailStopper.style.height = "0px";
+            this.tabFocusMoveTailStopper.tabIndex = 0;
+            this.tabFocusMoveTailStopper.addEventListener("focusin", this.onTabFocusMoveTailStopperFocusIn.bind(this));
             this.contentEl.addEventListener("focusin", this.onFocusIn.bind(this));
             this.contentEl.addEventListener("focusout", this.onFocusOut.bind(this));
             //outerFrameElの周囲にリサイズイベント検知用のエレメントを生成・配置
             this.createResizeHandleElements();
-            this.outerFrameEl.appendChild(this.tabNaviFrontDetector);
+            this.outerFrameEl.appendChild(this.tabFocusMoveHeadStopper);
+            this.outerFrameEl.appendChild(this.tabFocusMoveHeadDetector);
             this.outerFrameEl.appendChild(this.contentEl);
-            this.outerFrameEl.appendChild(this.tabNaviRearDetector);
+            this.outerFrameEl.appendChild(this.tabFocusMoveTailDetector);
+            this.outerFrameEl.appendChild(this.tabFocusMoveTailStopper);
             this.outerFrameEl.appendChild(this.modalInactiveLayer);
             viewPortElement.appendChild(this.outerFrameEl);
+            this.outerFrameTransitionDriver = new css_transition_driver_1.default(this.outerFrameEl);
         }
         Overlay.prototype.createResizeHandleElements = function () {
+            var _this = this;
             var size = Overlay.resizeHandleThicknessPx * 2;
             //0:左上 1:上中 2:右上 3:左中...8:右下  計8箇所 ※中中は無し
             for (var i = 0; i < 8; i++) {
@@ -461,9 +612,9 @@ define("core/overlay", ["require", "exports", "core/overlay_manager", "core/type
             this.resizeHandleEl[7].style.right = "0px";
             this.resizeHandleEl[7].style.bottom = "0px";
             this.resizeHandleEl[7].style.cursor = "nwse-resize";
-            for (var i = 0; i < 8; i++) {
-                this.outerFrameEl.appendChild(this.resizeHandleEl[i]);
-            }
+            this.resizeHandleEl.forEach(function (element) {
+                _this.outerFrameEl.appendChild(element);
+            });
         };
         Overlay.prototype.__dispachMouseMoveEvent = function (x, y, deltaX, deltaY) {
             if (this.isResizing) {
@@ -509,29 +660,42 @@ define("core/overlay", ["require", "exports", "core/overlay_manager", "core/type
         Overlay.prototype.onResizeHandleMouseDown = function (event) {
             this.isResizing = true;
             this.resizePositionIndex = parseInt(event.target.dataset["positionIndex"]);
-            this.resizeStartMousePos = new types_1.Point(event.x, event.y);
+            this.resizeStartMousePos = new types_1.Point(event.screenX, event.screenY);
             this.resizeStartPos = new types_1.Point(this.position.x, this.position.y);
             this.resizeStartSize = new types_1.Size(this.size.width, this.size.height);
             overlay_manager_1.default.getInstance().changeContentsSelectable(false);
         };
         Overlay.prototype.onSelectStart = function (event) {
-            //console.log(event);
-            //event.stopPropagation();
-            //event.preventDefault();
         };
-        Overlay.prototype.onTabNaviFrontDetectorFocusIn = function (event) {
+        Overlay.prototype.onTabFocusMoveHeadStopperFocusIn = function (event) {
+            if (this.lastFocusedEl) {
+                this.lastFocusedEl.focus();
+            }
+            else {
+                this.tabFocusMoveHeadDetector.focus();
+            }
+        };
+        Overlay.prototype.onTabFocusMoveHeadDetectorFocusIn = function (event) {
             if (!this.lastFocusIsDetector) {
                 this.lastFocusIsDetector = true;
-                this.tabNaviRearDetector.focus();
+                this.tabFocusMoveTailDetector.focus();
             }
             event.stopPropagation();
         };
-        Overlay.prototype.onTabNaviRearDetectorFocusIn = function (event) {
+        Overlay.prototype.onTabFocusMoveTailDetectorFocusIn = function (event) {
             if (!this.lastFocusIsDetector) {
                 this.lastFocusIsDetector = true;
-                this.tabNaviFrontDetector.focus();
+                this.tabFocusMoveHeadDetector.focus();
             }
             event.stopPropagation();
+        };
+        Overlay.prototype.onTabFocusMoveTailStopperFocusIn = function (event) {
+            if (this.lastFocusedEl) {
+                this.lastFocusedEl.focus();
+            }
+            else {
+                this.tabFocusMoveTailDetector.focus();
+            }
         };
         Overlay.prototype.onOuterMouseDown = function (event) {
             if (this.inactiveModalMode)
@@ -569,15 +733,23 @@ define("core/overlay", ["require", "exports", "core/overlay_manager", "core/type
             this.outerFrameEl.style.height = String(height + Overlay.resizeHandleThicknessPx * 2) + "px";
             this.contentEl.style.width = String(width) + "px";
             this.contentEl.style.height = String(height) + "px";
+            this.modalInactiveLayer.style.width = String(width) + "px";
+            this.modalInactiveLayer.style.height = String(height) + "px";
         };
         Overlay.prototype.activate = function () {
             this.inactiveModalMode = false;
-            this.modalInactiveLayer.style.display = "none";
+            this.modalInactiveLayerTransitionDriver.hide();
+            this.resizeHandleEl.forEach(function (element) {
+                element.style.display = "";
+            });
         };
         Overlay.prototype.inactivate = function (withModal) {
             this.inactiveModalMode = withModal;
             if (withModal) {
-                this.modalInactiveLayer.style.display = "block";
+                this.modalInactiveLayerTransitionDriver.show();
+                this.resizeHandleEl.forEach(function (element) {
+                    element.style.display = "none";
+                });
             }
         };
         Overlay.resizeHandleThicknessPx = 7;
@@ -587,7 +759,7 @@ define("core/overlay", ["require", "exports", "core/overlay_manager", "core/type
     }());
     exports.default = Overlay;
 });
-define("core/dialog_window", ["require", "exports", "core/overlay", "core/overlay_manager", "core/container_manager", "core/result"], function (require, exports, overlay_1, overlay_manager_2, container_manager_2, result_2) {
+define("core/dialog_window", ["require", "exports", "core/overlay", "core/overlay_manager", "core/container_manager", "core/dto"], function (require, exports, overlay_1, overlay_manager_2, container_manager_2, dto_2) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var DialogWindow = /** @class */ (function (_super) {
@@ -603,7 +775,7 @@ define("core/dialog_window", ["require", "exports", "core/overlay", "core/overla
             _this.wrapperEl.style.width = "100%";
             _this.wrapperEl.style.height = "100%";
             _this.headerEl = document.createElement("div");
-            _this.headerEl.className = "spa_dialog_window_header";
+            _this.headerEl.className = "fivestage_dialog_window_header";
             _this.headerEl.style.position = "relative";
             _this.headerEl.style.display = "flex";
             _this.headerEl.style.width = "100%";
@@ -619,14 +791,14 @@ define("core/dialog_window", ["require", "exports", "core/overlay", "core/overla
             _this.headerEl.addEventListener("mousedown", _this.onHeaderMouseDown.bind(_this));
             _this.headerEl.addEventListener("dragstart", _this.onHeaderDragStart.bind(_this));
             _this.bodyEl = document.createElement("div");
-            _this.bodyEl.className = "spa_dialog_window_body";
+            _this.bodyEl.className = "fivestage_dialog_window_body";
             _this.bodyEl.style.position = "relative";
             _this.bodyEl.style.flexGrow = "1";
             _this.bodyEl.style.flexShrink = "1";
             _this.bodyEl.style.width = "100%";
             _this.container = containerManager.createContainer("__window" + String(DialogWindow.instanceSequence++), "", _this.bodyEl);
             _this.footerEl = document.createElement("div");
-            _this.footerEl.className = "spa_dialog_window_footer";
+            _this.footerEl.className = "fivestage_dialog_window_footer";
             _this.footerEl.style.position = "relative";
             _this.footerEl.style.width = "100%";
             _this.okButtonEl = document.createElement("input");
@@ -646,6 +818,12 @@ define("core/dialog_window", ["require", "exports", "core/overlay", "core/overla
             _this.wrapperEl.appendChild(_this.bodyEl);
             _this.wrapperEl.appendChild(_this.footerEl);
             _this.contentEl.appendChild(_this.wrapperEl);
+            _this.outerFrameTransitionDriver.setCustomTransitionClasses({
+                standyStateClass: "fivestage_dialog_window_standy_state",
+                enterTransitionClass: "fivestage_dialog_window_enter_transition",
+                leaveTransitionClass: "fivestage_dialog_window_leave_transition",
+                endStateClass: "fivestage_dialog_window_end_state"
+            });
             return _this;
         }
         DialogWindow.prototype.onHeaderMouseDown = function (event) {
@@ -657,7 +835,7 @@ define("core/dialog_window", ["require", "exports", "core/overlay", "core/overla
         };
         DialogWindow.prototype.onHeaderCloseButtonClick = function (event) {
             var _this = this;
-            this.container.getActiveModule().exit(result_2.ActionType.CANCEL).then(function (exited) {
+            this.container.getActiveModule().exit(dto_2.ActionType.CANCEL).then(function (exited) {
                 if (exited)
                     _this.close();
             });
@@ -667,14 +845,14 @@ define("core/dialog_window", ["require", "exports", "core/overlay", "core/overla
         // }
         DialogWindow.prototype.onOkButtonClick = function (event) {
             var _this = this;
-            this.container.getActiveModule().exit(result_2.ActionType.OK).then(function (exited) {
+            this.container.getActiveModule().exit(dto_2.ActionType.OK).then(function (exited) {
                 if (exited)
                     _this.close();
             });
         };
         DialogWindow.prototype.onCancelButtonClick = function (event) {
             var _this = this;
-            this.container.getActiveModule().exit(result_2.ActionType.CANCEL).then(function (exited) {
+            this.container.getActiveModule().exit(dto_2.ActionType.CANCEL).then(function (exited) {
                 if (exited)
                     _this.close();
             });
@@ -713,11 +891,11 @@ define("core/dialog_window", ["require", "exports", "core/overlay", "core/overla
                     }
                     else {
                         //デフォルト表示位置は表示領域（ビューポート）の中央
-                        px = Math.round((this.viewPortElement.offsetWidth - this.size.width) / 2);
-                        py = Math.round((this.viewPortElement.offsetHeight - this.size.height) / 2);
+                        px = Math.round((this.viewPortEl.offsetWidth - this.size.width) / 2);
+                        py = Math.round((this.viewPortEl.offsetHeight - this.size.height) / 2);
                     }
                     this.changePosition(px, py);
-                    this.outerFrameEl.style.display = "block";
+                    this.outerFrameTransitionDriver.show();
                     this.container.getActiveModule().waitForExit().then(function (result) {
                         _this.close();
                         //自身のdisplay:noneが反映した後にコールバックさせるためsetTimeoutを介して呼び出す
@@ -735,7 +913,7 @@ define("core/dialog_window", ["require", "exports", "core/overlay", "core/overla
             });
         };
         DialogWindow.prototype.close = function () {
-            this.outerFrameEl.style.display = "none";
+            this.outerFrameTransitionDriver.hide();
         };
         //override
         DialogWindow.prototype.activate = function () {
@@ -752,7 +930,7 @@ define("core/dialog_window", ["require", "exports", "core/overlay", "core/overla
     }(overlay_1.default));
     exports.default = DialogWindow;
 });
-define("core/overlay_manager", ["require", "exports", "core/dialog_window"], function (require, exports, dialog_window_1) {
+define("core/overlay_manager", ["require", "exports", "core/dialog_window", "core/css_transition_driver"], function (require, exports, dialog_window_1, css_transition_driver_2) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var OvarlayManager = /** @class */ (function () {
@@ -767,13 +945,14 @@ define("core/overlay_manager", ["require", "exports", "core/dialog_window"], fun
             this.overlays = new Map();
             this.overlayManagementTable = new Map();
             this.modalBackgroundLayer = document.createElement("div");
-            this.modalBackgroundLayer.className = "spa_modal_background_layer";
+            this.modalBackgroundLayer.className = "fivestage_modal_background_layer";
             this.modalBackgroundLayer.style.position = "absolute";
             this.modalBackgroundLayer.style.overflow = "hidden";
             this.modalBackgroundLayer.style.width = "100%";
             this.modalBackgroundLayer.style.height = "100%";
             this.modalBackgroundLayer.style.display = "none";
             this.modalBackgroundLayer.style.zIndex = String(this.MODAL_START_Z_INDEX);
+            this.modalBackgroundLayerTransitionDriver = new css_transition_driver_2.default(this.modalBackgroundLayer);
             this.onFocusInBindedThis = this.onFocusIn.bind(this);
             this.onMouseMoveBindedThis = this.onMouseMove.bind(this);
             this.onMouseUpBindedThis = this.onMouseUp.bind(this);
@@ -783,17 +962,17 @@ define("core/overlay_manager", ["require", "exports", "core/dialog_window"], fun
             return OvarlayManager.instance;
         };
         OvarlayManager.prototype.onMouseMove = function (event) {
-            var deltaX = event.x - this.previousMouseX;
-            var deltaY = event.y - this.previousMouseY;
-            this.previousMouseX = event.x;
-            this.previousMouseY = event.y;
+            var deltaX = event.screenX - this.previousMouseX;
+            var deltaY = event.screenY - this.previousMouseY;
+            this.previousMouseX = event.screenX;
+            this.previousMouseY = event.screenY;
             this.overlays.forEach(function (overlay) {
-                overlay.__dispachMouseMoveEvent(event.x, event.y, deltaX, deltaY);
+                overlay.__dispachMouseMoveEvent(event.screenX, event.screenY, deltaX, deltaY);
             });
         };
         OvarlayManager.prototype.onMouseUp = function (event) {
             this.overlays.forEach(function (overlay) {
-                overlay.__dispachMouseUpEvent(event.x, event.y);
+                overlay.__dispachMouseUpEvent(event.screenX, event.screenY);
             });
             this.changeContentsSelectable(true);
         };
@@ -829,7 +1008,7 @@ define("core/overlay_manager", ["require", "exports", "core/dialog_window"], fun
             this.contentsSelectable = selectable;
         };
         OvarlayManager.prototype.beginModalMode = function () {
-            this.modalBackgroundLayer.style.display = "";
+            this.modalBackgroundLayerTransitionDriver.show();
         };
         OvarlayManager.prototype.endModalMode = function () {
             var existModalOverlay = false;
@@ -838,7 +1017,7 @@ define("core/overlay_manager", ["require", "exports", "core/dialog_window"], fun
                     existModalOverlay = true;
             });
             if (!existModalOverlay) {
-                this.modalBackgroundLayer.style.display = "none";
+                this.modalBackgroundLayerTransitionDriver.hide();
             }
         };
         OvarlayManager.prototype.show = function (overlayName, parcel, options) {
@@ -955,7 +1134,7 @@ define("core/overlay_manager", ["require", "exports", "core/dialog_window"], fun
         return OverlayManagementData;
     }());
 });
-define("core/html_component_adapter", ["require", "exports", "core/module_router", "core/result", "core/overlay_manager"], function (require, exports, module_router_1, result_3, overlay_manager_3) {
+define("core/html_component_adapter", ["require", "exports", "core/module_router", "core/overlay_manager", "core/dto", "core/module_manager"], function (require, exports, module_router_1, overlay_manager_3, dto_3, module_manager_2) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.htmlComponentAdapters = new Map();
@@ -963,6 +1142,7 @@ define("core/html_component_adapter", ["require", "exports", "core/module_router
         function HTMLComponentAdapter() {
             this.isModified = false;
             this.moduleRouter = module_router_1.default.getInstance();
+            this.moduleManager = module_manager_2.default.getInstance();
             this.overlayManager = overlay_manager_3.default.getInstance();
             this.exitCallbackReturnFunctionsObject = {
                 cancelExit: this.cancelExit.bind(this),
@@ -993,7 +1173,7 @@ define("core/html_component_adapter", ["require", "exports", "core/module_router
                 this.onExit(actionType, this.exitCallbackReturnFunctionsObject);
             }
             else {
-                this.continueExit(new result_3.default(actionType, true));
+                this.continueExit(new dto_3.Result(actionType, true));
             }
         };
         HTMLComponentAdapter.prototype.triggerOnReceiveMessage = function (command, message) {
@@ -1038,6 +1218,13 @@ define("core/html_component_adapter", ["require", "exports", "core/module_router
                             return [4 /*yield*/, overlayManager.showAsModal(overlayName, parcel, options)];
                         case 1: return [2 /*return*/, _a.sent()];
                     }
+                });
+            });
+        };
+        HTMLComponentAdapter.prototype.sendMessage = function (destination, command, message) {
+            return __awaiter(this, void 0, void 0, function () {
+                return __generator(this, function (_a) {
+                    return [2 /*return*/, this.moduleManager.dispatchMessage(destination, command, message)];
                 });
             });
         };
@@ -1252,7 +1439,9 @@ define("core/native_component", ["require", "exports", "core/abstract_html_compo
             var prototypeScript = "";
             var classScript = "";
             var initialScriptElements = new Array();
-            this.wrapperElement.querySelectorAll("script").forEach(function (element) {
+            var nodeList = this.wrapperElement.querySelectorAll("script");
+            for (var i = 0; i < nodeList.length; i++) {
+                var element = nodeList[i];
                 var scopeMode = element.dataset["scopeMode"];
                 if (!scopeMode || scopeMode === "native") {
                     nativeScript += element.textContent;
@@ -1264,7 +1453,18 @@ define("core/native_component", ["require", "exports", "core/abstract_html_compo
                     classScript += element.textContent;
                 }
                 initialScriptElements.push(element);
-            });
+            }
+            // this.wrapperElement.querySelectorAll("script").forEach((element: HTMLScriptElement) => {
+            //     const scopeMode: string = element.dataset["scopeMode"];
+            //     if (!scopeMode || scopeMode === "native") {
+            //         nativeScript += element.textContent;
+            //     } else if (scopeMode === "prototype")  {
+            //         prototypeScript += element.textContent;
+            //     } else if (scopeMode === "class") {
+            //         classScript += element.textContent;
+            //     }
+            //     initialScriptElements.push(element);
+            // })
             var nativeScriptElement = document.createElement("script");
             nativeScriptElement.textContent = nativeScript;
             this.wrapperElement.appendChild(nativeScriptElement);
@@ -1465,6 +1665,9 @@ define("core/module_manager", ["require", "exports", "core/native_component", "c
                 });
             });
         };
+        ModuleManager.prototype.dispatchMessage = function (destination, command, message) {
+            return this.getModule(destination).passMessage(command, message);
+        };
         ModuleManager.instance = new ModuleManager();
         ModuleManager.ROOT_NAME = "root";
         ModuleManager.instanceSequence = 0;
@@ -1473,10 +1676,15 @@ define("core/module_manager", ["require", "exports", "core/native_component", "c
     exports.default = ModuleManager;
     var ModuleDependencyInfo = /** @class */ (function () {
         function ModuleDependencyInfo(moduleDescription, subContainerNames) {
+            var _this = this;
             this.subModuleNames = new Array();
             this.isProcessed = false;
             this.moduleDescription = moduleDescription;
-            this.subContainerNames = new Set(subContainerNames);
+            //this.subContainerNames = new Set(subContainerNames); //IE11非対応
+            this.subContainerNames = new Set();
+            subContainerNames.forEach(function (name) {
+                _this.subContainerNames.add(name);
+            });
             this.isRoot = moduleDescription === null;
         }
         ModuleDependencyInfo.prototype.addSubModule = function (subModuleName, targetContainerName) {
@@ -1490,21 +1698,16 @@ define("core/module_manager", ["require", "exports", "core/native_component", "c
         return ModuleDependencyInfo;
     }());
 });
-define("nativespa", ["require", "exports", "core/module_manager", "core/container_manager", "core/overlay_manager"], function (require, exports, module_manager_2, container_manager_5, overlay_manager_5) {
+define("fivestage", ["require", "exports", "core/module_manager", "core/container_manager", "core/overlay_manager"], function (require, exports, module_manager_3, container_manager_5, overlay_manager_5) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     console.log("******** start ********");
-    var moduleManager = module_manager_2.default.getInstance();
+    var moduleManager = module_manager_3.default.getInstance();
     var containerManager = container_manager_5.default.getInstance();
     var overlayManager = overlay_manager_5.default.getInstance();
     var rootElement = document.getElementById("app");
-    var rootContainer = containerManager.createRootContainer(rootElement);
+    containerManager.setRootElement(rootElement);
     overlayManager.setViewPortElement(rootElement);
-    window.addEventListener("resize", function (event) {
-        rootElement.style.width = window.innerWidth + "px";
-        rootElement.style.height = window.innerHeight + "px";
-        rootContainer.onResize();
-    });
     moduleManager.register("base", "src/module/base.html", "root", true);
     moduleManager.register("header", "src/module/header.html", "base.header", true);
     moduleManager.register("main", "src/module/main.html", "base.body", false);
@@ -1521,4 +1724,4 @@ define("core/transition_effect", ["require", "exports"], function (require, expo
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
 });
-//# sourceMappingURL=nativespa.js.map
+//# sourceMappingURL=fivestage.js.map
