@@ -1,5 +1,7 @@
-import RuntimeError from "./runtime_error";
+import RuntimeError from "../runtime_error";
 import Container from "./container";
+import HierarchicalContainer from "./hierarchical_container";
+import FlatContainer from "./flat_container";
 
 export default class ContainerManager {
     private static instance = new ContainerManager();
@@ -29,11 +31,23 @@ export default class ContainerManager {
 
     public createContainer(id: string, type: string, bindDomElement: HTMLDivElement): Container {
         if (this.containers.has(id)) {
-            throw new RuntimeError("コンテナID重複");
+            throw new RuntimeError("コンテナID '" + id + "' は既に登録されています。");
         }
-        let newContainer = new Container(id, bindDomElement);
+
+        let newContainer = null;
+
+        if (!type || type === "separated") {
+            newContainer = new HierarchicalContainer(id, bindDomElement);
+        } else if ("continuous") {
+            newContainer = new FlatContainer(id, bindDomElement);
+        }
+        
         this.containers.set(id, newContainer);
         return newContainer;
+    }
+
+    public initializeRootContainer(): void {
+        this.rootContainer.initialize();
     }
 
     public getContainer(id: string): Container {

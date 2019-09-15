@@ -1,14 +1,13 @@
-import Container, { ContainerInfo } from "./container";
-import HTMLComponent from "./abstract_html_component";
-import ContainerManager from "./container_manager";
-import { htmlComponentAdapters } from "./html_component_adapter";
+import Container, { ContainerInfo } from "../container/container";
+import HTMLComponent from "./html_component";
+import ContainerManager from "../container/container_manager";
+import { htmlComponentAdapters } from "../html_component_adapter";
 
 export default class NativeComponent extends HTMLComponent {
     private prototypeTemplateBegin: string;
     private prototypeTemplateEnd: string;
 
     
-
     protected onCreate(): void {
         this.prototypeTemplateBegin = 
         `(function() {
@@ -26,23 +25,28 @@ export default class NativeComponent extends HTMLComponent {
     }
 
     protected loadSubContainerInfos(): void {
-        const regExp = /<div *id *= *["'](.+)["'] *.*data-container-name *= *["'](.+)["'].*>/g;
-
         let match: RegExpExecArray;
-        while (match = regExp.exec(this.source)) {
-            this.subContainerInfos.set(match[1], {
-                name: match[2],
+        //高速化のためタグ全体を個別に抽出してから各属性を抽出する
+        const tagExtractRegExp = /<div .*?data-container-name[ =].*?>/g;
+        while (match = tagExtractRegExp.exec(this.source)) {
+            //DomIDの抽出
+            const matchDomId = /id *= *["'](.+?)["']/.exec(match[0]);
+            //コンテナ名の抽出
+            const matchName = /data-container-name *= *["'](.*?)["']/.exec(match[0]);
+            //コンテナ種別の抽出
+            const matchType = /data-container-type *= *["'](.*?)["']/.exec(match[0]);
+            this.subContainerInfos.set(matchDomId[1], {
+                name: matchName[1],
+                type: matchType ? matchType[1] : "",
                 container: null
             });
         }
     }
 
-    async mount(container: Container): Promise<boolean> {
+    async mount(elementAttachHandler: (element: HTMLDivElement, ownerModuleName: string) => Container): Promise<boolean> {
         if (!this.isFetched) await this.fetch();
 
         const localPrefix = "_" + this.moduleIndex.toString() + "_";
-
-        this.currentContainer = container;
 
         //ソースに対してテンプレート処理
         const localizeRegExp = /\\:/g;
@@ -58,7 +62,8 @@ export default class NativeComponent extends HTMLComponent {
         this.wrapperElement.style.visibility = "hidden";
 
         this.wrapperElement.innerHTML = this.source;
-        container.addModuleElement(this.wrapperElement);
+        
+        this.currentContainer = elementAttachHandler(this.wrapperElement, this.name);
 
         //scriptタグを実行
         this.evalScripts();
@@ -69,7 +74,7 @@ export default class NativeComponent extends HTMLComponent {
             let localElementId = domId.replace(localizeRegExp, localPrefix);
             let containerEl: HTMLDivElement = document.getElementById(localElementId) as HTMLDivElement;
             let containerId: string = this.name + "." + containerInfo.name;
-            containerInfo.container = containerManager.createContainer(containerId, "", containerEl);
+            containerInfo.container = containerManager.createContainer(containerId, containerInfo.type, containerEl);
         });
 
         this.isMounted = true;
@@ -134,5 +139,15 @@ export default class NativeComponent extends HTMLComponent {
         for (let element of initialScriptElements) {
             this.wrapperElement.removeChild(element);
         }
+    }
+
+    public changeModuleCssPosition(left: string, top: string) {
+        this.wrapperElement.style.left = left;
+        this.wrapperElement.style.top = top;
+    }
+
+    public changeModuleCssSize(width: string, height: string) {
+        this.wrapperElement.style.width = width;
+        this.wrapperElement.style.height = height;
     }
 }

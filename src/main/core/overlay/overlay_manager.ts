@@ -1,7 +1,7 @@
 import DialogWindow, { WindowOptions as DialogWindowOptions } from "./dialog_window";
 import Overlay, { ShowOptions } from "./overlay";
-import { Parcel, Result } from "./dto";
-import CssTransitionDriver from "./css_transition_driver";
+import { Parcel, Result } from "../dto";
+import CssTransitionDriver from "../css_transition_driver";
 
 export default class OvarlayManager {
     private static instance = new OvarlayManager();

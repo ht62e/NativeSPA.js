@@ -1,10 +1,10 @@
-import Container from "./container";
-import { Parcel, ActionType, Result } from "./dto";
+import Container from "../container/container";
+import { Parcel, ActionType, Result } from "../dto";
 
 export default interface Module {
     fetch(): Promise<boolean>;
-    mount(container: Container): Promise<boolean>;
-    initialize(param: Parcel): void;
+    mount(elementAttachHandler: (element: HTMLDivElement) => Container): Promise<boolean>;
+    initialize(parcel: Parcel): void;
     exit(actionType: ActionType): Promise<boolean>;
     
 
@@ -12,6 +12,8 @@ export default interface Module {
     
     show(): void;
     hide(): void;
+    changeModuleCssPosition(left: string, top: string);
+    changeModuleCssSize(width: string, height: string);
 
     //apply(): Result;
     

@@ -1,6 +1,7 @@
 <!-- <div id="\:all" class="module"> -->
     <div>This is main.html</div>
     <div><input type="button" id="\:show_main2" value="show main2"></div>
+    <div><input type="button" id="\:show_tab" value="show tab"></div>
     <div><input type="button" id="\:show_win1" value="show win1"></div>
     <div><input type="button" id="\:show_win2" value="show win2"></div>
     <div><input type="button" id="\:show_win3" value="show win3"></div>
@@ -42,10 +43,11 @@
 <script data-scope-mode="prototype">
     this.textArea1 = document.getElementById("\:textarea1");
     document.getElementById("\:show_main2").addEventListener("click", (function() {
-        this.moduleRouter.forward("base.body::main2", null, function(obj) {
-            console.log("main1 callback");
-            console.log(obj);
-        });
+        this.moduleRouter.forward("base.body::main2", null);
+    }).bind(this));
+
+    document.getElementById("\:show_tab").addEventListener("click", (function() {
+        this.moduleRouter.forward("base.body::tab", null);
     }).bind(this));
 
     document.getElementById("\:show_win1").addEventListener("click", (function() {

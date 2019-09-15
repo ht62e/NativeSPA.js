@@ -1,8 +1,8 @@
-import Container, { ContainerInfo } from "./container";
+import Container, { ContainerInfo } from "../container/container";
 import Module from "./module";
-import SourceRepository from "./source_repository";
-import HTMLComponentAdapter from "./html_component_adapter";
-import { Result, ActionType, Parcel } from "./dto";
+import SourceRepository from "../source_repository";
+import HTMLComponentAdapter from "../html_component_adapter";
+import { Result, ActionType, Parcel } from "../dto";
 
 export default abstract class HTMLComponent implements Module {
     protected isFetched: boolean = false;
@@ -21,7 +21,9 @@ export default abstract class HTMLComponent implements Module {
 
     protected abstract onCreate(): void;
     protected abstract loadSubContainerInfos(): void;
-    public abstract async mount(container: Container): Promise<boolean>;
+    public abstract async mount(elementAttachHandler: (element: HTMLDivElement, ownerModuleName: string) => Container): Promise<boolean>;
+    public abstract changeModuleCssPosition(left: string, top: string);
+    public abstract changeModuleCssSize(width: string, height: string);
 
     constructor(protected name: string, protected sourceUri: string, protected moduleIndex: number) {
         this.onCreate();
@@ -32,7 +34,7 @@ export default abstract class HTMLComponent implements Module {
 
         this.subContainerInfos.forEach((containerInfo: ContainerInfo) => {
             containerInfo.container.onResize();
-        })
+        });
     }
 
     async fetch(): Promise<boolean> {
@@ -45,14 +47,22 @@ export default abstract class HTMLComponent implements Module {
         return null;
     }
 
-    initialize(param: Parcel): void {
-        this.htmlAdapter.triggerOnInitializeHandler(param);
+    initialize(parcel: Parcel): void {
+        this.subContainerInfos.forEach((containerInfo: ContainerInfo) => {
+            containerInfo.container.initialize(parcel);
+        });
+
+        this.htmlAdapter.triggerOnInitializeHandler(parcel);
     }
 
     show(): void {
         this.wrapperElement.style.display = "";
         this.wrapperElement.style.visibility = "";
         this.htmlAdapter.triggerOnShowHandler(false, null);
+
+        this.subContainerInfos.forEach((containerInfo: ContainerInfo) => {
+            containerInfo.container.onShow();
+        });
     }
 
     hide(): void {
@@ -61,6 +71,8 @@ export default abstract class HTMLComponent implements Module {
         }
         this.htmlAdapter.triggerOnHideHandler(null);
     }
+
+    
 
     waitForExit(): Promise<Result> {
         return new Promise(resolve => {

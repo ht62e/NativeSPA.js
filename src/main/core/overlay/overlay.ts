@@ -1,8 +1,8 @@
-import Container from "./container";
+import Container from "../container/container";
 import OvarlayManager from "./overlay_manager";
-import { Point, Size } from "./types";
-import CssTransitionDriver from "./css_transition_driver";
-import { Parcel, Result } from "./dto";
+import { Point, Size } from "../types";
+import CssTransitionDriver from "../css_transition_driver";
+import { Parcel, Result } from "../dto";
 
 export interface ShowOptions {
     x?: number;

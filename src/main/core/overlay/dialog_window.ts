@@ -1,9 +1,9 @@
-import Container from "./container";
+import Container from "../container/container";
 import Overlay, { ShowOptions } from "./overlay";
 import OvarlayManager from "./overlay_manager";
-import ContainerManager from "./container_manager";
-import { Size } from "./types";
-import { Result, ActionType, Parcel } from "./dto";
+import ContainerManager from "../container/container_manager";
+import { Size } from "../types";
+import { Result, ActionType, Parcel } from "../dto";
 
 export interface WindowOptions {
     size?: Size;

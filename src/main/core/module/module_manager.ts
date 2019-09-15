@@ -1,10 +1,10 @@
 import Module from "./module";
 import NativeComponent from "./native_component";
-import RuntimeError from "./runtime_error";
-import ContainerManager from "./container_manager";
-import Container from "./container";
-import OvarlayManager from "./overlay_manager";
-import DialogWindow from "./dialog_window";
+import RuntimeError from "../runtime_error";
+import ContainerManager from "../container/container_manager";
+import Container from "../container/container";
+import OvarlayManager from "../overlay/overlay_manager";
+import DialogWindow from "../overlay/dialog_window";
 
 export interface ModuleDescription {
     name: string;
@@ -178,7 +178,8 @@ export default class ModuleManager {
                 if (targetContainer) {
                     await targetContainer.addModule(module);
                     if (dependencyInfo.moduleDescription.isContainerDefault) {
-                        targetContainer.activateModule(module);
+                        //targetContainer.activateModule(module);
+                        targetContainer.setDefaultModule(module);
                     }
                 } else {
                     throw new RuntimeError("ターゲットコンテナが存在しないか、未ロード");
