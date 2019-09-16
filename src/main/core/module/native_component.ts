@@ -1,7 +1,7 @@
 import Container, { ContainerInfo } from "../container/container";
 import HTMLComponent from "./html_component";
 import ContainerManager from "../container/container_manager";
-import { htmlComponentAdapters } from "../html_component_adapter";
+import { htmlComponentAdapters } from "../adapter/html_component_adapter";
 
 export default class NativeComponent extends HTMLComponent {
     private prototypeTemplateBegin: string;

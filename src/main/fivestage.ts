@@ -4,6 +4,11 @@ import OvarlayManager from "./core/overlay/overlay_manager";
 
 console.log("******** start ********");
 
+var _fivestage_isMsIE: boolean = false;
+
+if (document["documentMode"]) {
+    _fivestage_isMsIE = true;
+}
 
 var moduleManager = ModuleManager.getInstance();
 var containerManager = ContainerManager.getInstance();
@@ -27,10 +32,19 @@ moduleManager.registerWindow("win1", "src/module/main.html", {});
 moduleManager.registerWindow("win2", "src/module/main.html", {});
 moduleManager.registerWindow("win3", "src/module/main.html", {});
 
-
 moduleManager.initialize().then(() => {
-    window.dispatchEvent(new Event("resize"));
+    console.log("moduleManager is initialized.");
     containerManager.initializeRootContainer();
+
+    let resizeEvent: Event;
+    if(_fivestage_isMsIE){
+        resizeEvent = document.createEvent("Event")
+        resizeEvent.initEvent("resize", true, false);
+    }else{
+        resizeEvent = new Event("resize");
+    }
+    window.dispatchEvent(resizeEvent);
+    
 });
 
 

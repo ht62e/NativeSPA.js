@@ -46,7 +46,7 @@ var __extends = (this && this.__extends) || (function () {
         d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
     };
 })();
-define("core/dto", ["require", "exports"], function (require, exports) {
+define("core/common/dto", ["require", "exports"], function (require, exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var Parcel = /** @class */ (function () {
@@ -83,412 +83,7 @@ define("core/dto", ["require", "exports"], function (require, exports) {
         ActionType[ActionType["NO"] = 5] = "NO";
     })(ActionType = exports.ActionType || (exports.ActionType = {}));
 });
-define("core/container/container", ["require", "exports", "core/dto"], function (require, exports, dto_1) {
-    "use strict";
-    Object.defineProperty(exports, "__esModule", { value: true });
-    var Container = /** @class */ (function () {
-        function Container(id, bindDomElement) {
-            this.id = id;
-            this.bindDomElement = bindDomElement;
-            this.mountedModules = new Map();
-            this.moduleChangeHistory = new Array();
-            this.inBackProcess = false;
-            this.bindDomElement.style.position = "relative";
-        }
-        Container.prototype.getId = function () {
-            return this.id;
-        };
-        Container.prototype.getElement = function () {
-            return this.bindDomElement;
-        };
-        Container.prototype.getActiveModule = function () {
-            return this.activeModule;
-        };
-        Container.prototype.setDefaultModule = function (module) {
-            this.defaultModule = module;
-        };
-        // public getContainerWidth(): number {
-        //     return this.containerWidth;
-        // }
-        Container.prototype.onShow = function () {
-        };
-        Container.prototype.onResize = function () {
-            //this.containerWidth = this.bindDomElement.clientWidth;
-            this.mountedModules.forEach(function (module) {
-                module.dispachResizeEvent();
-            });
-        };
-        Container.prototype.back = function () {
-            var _this = this;
-            this.inBackProcess = true;
-            this.activeModule.exit(dto_1.ActionType.BACK).then(function (exited) {
-                if (!exited)
-                    return;
-                _this.showPreviousModule();
-            });
-        };
-        return Container;
-    }());
-    exports.default = Container;
-});
-define("core/module/module", ["require", "exports"], function (require, exports) {
-    "use strict";
-    Object.defineProperty(exports, "__esModule", { value: true });
-});
-define("core/source_repository", ["require", "exports"], function (require, exports) {
-    "use strict";
-    Object.defineProperty(exports, "__esModule", { value: true });
-    var SourceRepository = /** @class */ (function () {
-        function SourceRepository() {
-            this.msIeMode = false;
-            this.cache = new Map();
-            var userAgent = window.navigator.userAgent.toLowerCase();
-            if (userAgent.indexOf("msie") != -1 || userAgent.indexOf("trident") != -1) {
-                this.msIeMode = true;
-            }
-        }
-        SourceRepository.getInstance = function () {
-            return SourceRepository.instance;
-        };
-        SourceRepository.prototype.preload = function (sourceUri) {
-            return __awaiter(this, void 0, void 0, function () {
-                return __generator(this, function (_a) {
-                    switch (_a.label) {
-                        case 0: return [4 /*yield*/, this.fetch(sourceUri)];
-                        case 1:
-                            _a.sent();
-                            return [2 /*return*/, true];
-                    }
-                });
-            });
-        };
-        SourceRepository.prototype.fetch = function (sourceUri, noCache) {
-            if (noCache === void 0) { noCache = false; }
-            return __awaiter(this, void 0, void 0, function () {
-                var _this = this;
-                return __generator(this, function (_a) {
-                    if (!noCache && this.cache.has(sourceUri)) {
-                        return [2 /*return*/, this.cache.get(sourceUri)];
-                    }
-                    else {
-                        return [2 /*return*/, new Promise(function (resolve, reject) {
-                                var httpRequest = new XMLHttpRequest();
-                                httpRequest.onreadystatechange = function () {
-                                    if (httpRequest.readyState === 4) {
-                                        var isLocalAccessSuccess = false;
-                                        if (!_this.msIeMode) {
-                                            isLocalAccessSuccess =
-                                                (httpRequest.responseURL.indexOf("file:///") > -1) && httpRequest.responseText !== null;
-                                        }
-                                        if (httpRequest.status === 200 || isLocalAccessSuccess) {
-                                            var res = httpRequest.responseText;
-                                            _this.cache.set(sourceUri, res);
-                                            resolve(res);
-                                        }
-                                        else {
-                                            reject(httpRequest.statusText);
-                                        }
-                                    }
-                                };
-                                httpRequest.open("GET", sourceUri + "?ver=" + Date.now().toString(), true);
-                                httpRequest.send(null);
-                            })];
-                    }
-                    return [2 /*return*/];
-                });
-            });
-        };
-        SourceRepository.instance = new SourceRepository();
-        return SourceRepository;
-    }());
-    exports.default = SourceRepository;
-});
-define("core/runtime_error", ["require", "exports"], function (require, exports) {
-    "use strict";
-    Object.defineProperty(exports, "__esModule", { value: true });
-    var RuntimeError = /** @class */ (function (_super) {
-        __extends(RuntimeError, _super);
-        function RuntimeError(message) {
-            var _this = _super.call(this) || this;
-            _this.message = message;
-            return _this;
-        }
-        return RuntimeError;
-    }(Error));
-    exports.default = RuntimeError;
-});
-define("core/container/hierarchical_container", ["require", "exports", "core/container/container", "core/runtime_error"], function (require, exports, container_1, runtime_error_1) {
-    "use strict";
-    Object.defineProperty(exports, "__esModule", { value: true });
-    var HierarchicalContainer = /** @class */ (function (_super) {
-        __extends(HierarchicalContainer, _super);
-        function HierarchicalContainer(id, bindDomElement) {
-            var _this = _super.call(this, id, bindDomElement) || this;
-            _this.id = id;
-            _this.bindDomElement = bindDomElement;
-            return _this;
-        }
-        HierarchicalContainer.prototype.addModule = function (module) {
-            return __awaiter(this, void 0, void 0, function () {
-                return __generator(this, function (_a) {
-                    switch (_a.label) {
-                        case 0: return [4 /*yield*/, module.mount(this.elementAttachHandler.bind(this))];
-                        case 1:
-                            _a.sent();
-                            this.mountedModules.set(module.getName(), module);
-                            return [2 /*return*/, true];
-                    }
-                });
-            });
-        };
-        HierarchicalContainer.prototype.initialize = function (parcel) {
-            if (this.defaultModule) {
-                this.forward(this.defaultModule, parcel);
-            }
-        };
-        HierarchicalContainer.prototype.forward = function (module, parcel) {
-            return __awaiter(this, void 0, void 0, function () {
-                var result;
-                return __generator(this, function (_a) {
-                    switch (_a.label) {
-                        case 0:
-                            if (this.moduleChangeHistory.indexOf(module) !== -1)
-                                return [2 /*return*/];
-                            this.moduleChangeHistory.push(module);
-                            this.activateModule(module, parcel);
-                            return [4 /*yield*/, module.waitForExit()];
-                        case 1:
-                            result = _a.sent();
-                            if (!this.inBackProcess) {
-                                //backメソッドではなく、モジュールの自主的な終了の場合はページを前に戻す
-                                this.showPreviousModule();
-                            }
-                            this.inBackProcess = false;
-                            return [2 /*return*/, result];
-                    }
-                });
-            });
-        };
-        HierarchicalContainer.prototype.elementAttachHandler = function (element, ownerModuleName) {
-            this.bindDomElement.appendChild(element);
-            return this;
-        };
-        HierarchicalContainer.prototype.activateModule = function (module, parcel) {
-            var _this = this;
-            if (!this.mountedModules.has(module.getName()))
-                throw new runtime_error_1.default("指定されたモジュールはマウントされていません。");
-            this.mountedModules.forEach(function (m) {
-                if (m === module) {
-                    m.initialize(parcel);
-                    m.show();
-                    _this.activeModule = m;
-                }
-                else {
-                    m.hide();
-                }
-            });
-        };
-        HierarchicalContainer.prototype.showPreviousModule = function () {
-            if (this.moduleChangeHistory.length > 0) {
-                this.moduleChangeHistory.pop();
-            }
-            if (this.moduleChangeHistory.length > 0) {
-                this.activateModule(this.moduleChangeHistory[this.moduleChangeHistory.length - 1]);
-            }
-            else {
-                this.activeModule.hide();
-            }
-        };
-        return HierarchicalContainer;
-    }(container_1.default));
-    exports.default = HierarchicalContainer;
-});
-define("core/container/flat_container", ["require", "exports", "core/container/container", "core/runtime_error"], function (require, exports, container_2, runtime_error_2) {
-    "use strict";
-    Object.defineProperty(exports, "__esModule", { value: true });
-    var FlatContainer = /** @class */ (function (_super) {
-        __extends(FlatContainer, _super);
-        function FlatContainer(id, bindDomElement) {
-            var _this = _super.call(this, id, bindDomElement) || this;
-            _this.id = id;
-            _this.bindDomElement = bindDomElement;
-            _this.moduleOrders = new Map();
-            _this.scrollBoxElement = document.createElement("div");
-            _this.scrollBoxElement.style.position = "absolute";
-            _this.scrollBoxElement.style.overflow = "hidden";
-            _this.scrollBoxElement.style.width = "100%";
-            _this.scrollBoxElement.style.height = "100%";
-            _this.scrollBoxElement.style.transitionProperty = "transform";
-            _this.scrollBoxElement.style.transitionDuration = "200ms";
-            _this.scrollBoxElement.style.transitionTimingFunction = "ease";
-            bindDomElement.appendChild(_this.scrollBoxElement);
-            return _this;
-        }
-        //Override
-        FlatContainer.prototype.onShow = function () {
-        };
-        FlatContainer.prototype.addModule = function (module) {
-            return __awaiter(this, void 0, void 0, function () {
-                return __generator(this, function (_a) {
-                    switch (_a.label) {
-                        case 0:
-                            this.mountedModules.set(module.getName(), module);
-                            this.moduleOrders.set(module.getName(), this.mountedModules.size - 1);
-                            return [4 /*yield*/, module.mount(this.elementAttachHandler.bind(this))];
-                        case 1:
-                            _a.sent();
-                            return [2 /*return*/, true];
-                    }
-                });
-            });
-        };
-        FlatContainer.prototype.initialize = function (parcel) {
-            this.updateAllModulePositionAndSize();
-            this.mountedModules.forEach(function (m) {
-                m.initialize(parcel);
-                m.show();
-            });
-        };
-        FlatContainer.prototype.activateModule = function (module, parcel) {
-            if (!this.mountedModules.has(module.getName())) {
-                throw new runtime_error_2.default("マウントされていないモジュールです。");
-            }
-            var leftIndex = this.moduleOrders.get(module.getName());
-            if (true) {
-                //IE11以外
-                this.scrollBoxElement.style.transform = "translate(calc(-100% / " + this.mountedModules.size + " * " + leftIndex + "))";
-            }
-            else {
-                //IE11（transformでcalcが使えない）
-            }
-        };
-        FlatContainer.prototype.forward = function (module, parcel) {
-            return __awaiter(this, void 0, void 0, function () {
-                return __generator(this, function (_a) {
-                    this.activateModule(module, parcel);
-                    return [2 /*return*/, null];
-                });
-            });
-        };
-        //TODO デリゲート的な方法ではなく、addModule内の匿名関数に変更したい
-        FlatContainer.prototype.elementAttachHandler = function (element, ownerModuleName) {
-            this.scrollBoxElement.appendChild(element);
-            this.scrollBoxElement.style.width = "calc(100% * " + this.mountedModules.size + ")";
-            return this;
-        };
-        FlatContainer.prototype.updateAllModulePositionAndSize = function () {
-            var _this = this;
-            var leftValueCommon = "calc(100% / " + this.mountedModules.size + " * "; //+ leftIndex + ")";
-            var widthValue = String(Math.round(1.0 / this.mountedModules.size * 10000) / 100) + "%";
-            this.mountedModules.forEach(function (m) {
-                var order = _this.moduleOrders.get(m.getName());
-                var leftValue = leftValueCommon + order + ")";
-                m.changeModuleCssPosition(leftValue, "0px");
-                m.changeModuleCssSize(widthValue, "100%");
-            });
-        };
-        FlatContainer.prototype.showPreviousModule = function () {
-            throw new Error("Method not implemented.");
-        };
-        return FlatContainer;
-    }(container_2.default));
-    exports.default = FlatContainer;
-});
-define("core/container/container_manager", ["require", "exports", "core/runtime_error", "core/container/hierarchical_container", "core/container/flat_container"], function (require, exports, runtime_error_3, hierarchical_container_1, flat_container_1) {
-    "use strict";
-    Object.defineProperty(exports, "__esModule", { value: true });
-    var ContainerManager = /** @class */ (function () {
-        function ContainerManager() {
-            this.containers = new Map();
-            this.windowResizeEventHandlerBindThis = this.windowResizeEventHandler.bind(this);
-        }
-        ContainerManager.getInstance = function () {
-            return ContainerManager.instance;
-        };
-        ContainerManager.prototype.setRootElement = function (element) {
-            this.rootContainer = this.createContainer("root", "", element);
-            window.addEventListener("resize", this.windowResizeEventHandlerBindThis);
-        };
-        ContainerManager.prototype.windowResizeEventHandler = function (event) {
-            this.rootContainer.onResize();
-        };
-        ContainerManager.prototype.createContainer = function (id, type, bindDomElement) {
-            if (this.containers.has(id)) {
-                throw new runtime_error_3.default("コンテナID '" + id + "' は既に登録されています。");
-            }
-            var newContainer = null;
-            if (!type || type === "separated") {
-                newContainer = new hierarchical_container_1.default(id, bindDomElement);
-            }
-            else if ("continuous") {
-                newContainer = new flat_container_1.default(id, bindDomElement);
-            }
-            this.containers.set(id, newContainer);
-            return newContainer;
-        };
-        ContainerManager.prototype.initializeRootContainer = function () {
-            this.rootContainer.initialize();
-        };
-        ContainerManager.prototype.getContainer = function (id) {
-            return this.containers.get(id);
-        };
-        ContainerManager.instance = new ContainerManager();
-        return ContainerManager;
-    }());
-    exports.default = ContainerManager;
-});
-define("core/module/module_router", ["require", "exports", "core/container/container_manager", "core/module/module_manager"], function (require, exports, container_manager_1, module_manager_1) {
-    "use strict";
-    Object.defineProperty(exports, "__esModule", { value: true });
-    var ModuleRouter = /** @class */ (function () {
-        function ModuleRouter() {
-        }
-        ModuleRouter.getInstance = function () {
-            return ModuleRouter.instance;
-        };
-        ModuleRouter.prototype.forward = function (targetIdentifier, params) {
-            return __awaiter(this, void 0, void 0, function () {
-                var s, targetContainerId, moduleName, target, module;
-                return __generator(this, function (_a) {
-                    s = targetIdentifier.split("::");
-                    targetContainerId = s[0];
-                    moduleName = s[1];
-                    target = container_manager_1.default.getInstance().getContainer(targetContainerId);
-                    module = module_manager_1.default.getInstance().getModule(moduleName);
-                    return [2 /*return*/, target.forward(module, params)];
-                });
-            });
-        };
-        ModuleRouter.prototype.back = function (targetContainerId) {
-            var target = container_manager_1.default.getInstance().getContainer(targetContainerId);
-            target.back();
-        };
-        ModuleRouter.instance = new ModuleRouter();
-        return ModuleRouter;
-    }());
-    exports.default = ModuleRouter;
-});
-define("core/types", ["require", "exports"], function (require, exports) {
-    "use strict";
-    Object.defineProperty(exports, "__esModule", { value: true });
-    var Point = /** @class */ (function () {
-        function Point(x, y) {
-            this.x = x;
-            this.y = y;
-        }
-        return Point;
-    }());
-    exports.Point = Point;
-    var Size = /** @class */ (function () {
-        function Size(width, height) {
-            this.width = width;
-            this.height = height;
-        }
-        return Size;
-    }());
-    exports.Size = Size;
-});
-define("core/css_transition_driver", ["require", "exports"], function (require, exports) {
+define("core/common/css_transition_driver", ["require", "exports"], function (require, exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var CssTransitionDriver = /** @class */ (function () {
@@ -624,7 +219,407 @@ define("core/css_transition_driver", ["require", "exports"], function (require, 
     }());
     exports.default = CssTransitionDriver;
 });
-define("core/overlay/overlay", ["require", "exports", "core/overlay/overlay_manager", "core/types", "core/css_transition_driver"], function (require, exports, overlay_manager_1, types_1, css_transition_driver_1) {
+define("core/container/container", ["require", "exports", "core/common/dto"], function (require, exports, dto_1) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    var Container = /** @class */ (function () {
+        function Container(id, bindDomElement, cssTransitionOptions) {
+            this.mountedModules = new Map();
+            this.moduleChangeHistory = new Array();
+            this.inBackProcess = false;
+            this.id = id;
+            this.bindDomElement = bindDomElement;
+            this.cssTransitionOptions = cssTransitionOptions;
+            this.bindDomElement.style.position = "relative";
+        }
+        Container.prototype.getId = function () {
+            return this.id;
+        };
+        Container.prototype.getElement = function () {
+            return this.bindDomElement;
+        };
+        Container.prototype.getActiveModule = function () {
+            return this.activeModule;
+        };
+        Container.prototype.setDefaultModule = function (module) {
+            this.defaultModule = module;
+        };
+        Container.prototype.onShow = function () {
+        };
+        Container.prototype.onResize = function () {
+            this.mountedModules.forEach(function (module) {
+                module.dispachResizeEvent();
+            });
+        };
+        Container.prototype.back = function () {
+            var _this = this;
+            this.inBackProcess = true;
+            this.activeModule.exit(dto_1.ActionType.BACK).then(function (exited) {
+                if (!exited)
+                    return;
+                _this.showPreviousModule();
+            });
+        };
+        return Container;
+    }());
+    exports.default = Container;
+});
+define("core/module/module", ["require", "exports"], function (require, exports) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+});
+define("core/source_repository", ["require", "exports"], function (require, exports) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    var SourceRepository = /** @class */ (function () {
+        function SourceRepository() {
+            this.msIeMode = false;
+            this.cache = new Map();
+            var userAgent = window.navigator.userAgent.toLowerCase();
+            if (userAgent.indexOf("msie") != -1 || userAgent.indexOf("trident") != -1) {
+                this.msIeMode = true;
+            }
+        }
+        SourceRepository.getInstance = function () {
+            return SourceRepository.instance;
+        };
+        SourceRepository.prototype.preload = function (sourceUri) {
+            return __awaiter(this, void 0, void 0, function () {
+                return __generator(this, function (_a) {
+                    switch (_a.label) {
+                        case 0: return [4 /*yield*/, this.fetch(sourceUri)];
+                        case 1:
+                            _a.sent();
+                            return [2 /*return*/, true];
+                    }
+                });
+            });
+        };
+        SourceRepository.prototype.fetch = function (sourceUri, noCache) {
+            if (noCache === void 0) { noCache = false; }
+            return __awaiter(this, void 0, void 0, function () {
+                var _this = this;
+                return __generator(this, function (_a) {
+                    if (!noCache && this.cache.has(sourceUri)) {
+                        return [2 /*return*/, this.cache.get(sourceUri)];
+                    }
+                    else {
+                        return [2 /*return*/, new Promise(function (resolve, reject) {
+                                var httpRequest = new XMLHttpRequest();
+                                httpRequest.onreadystatechange = function () {
+                                    if (httpRequest.readyState === 4) {
+                                        var isLocalAccessSuccess = false;
+                                        if (!_this.msIeMode) {
+                                            isLocalAccessSuccess =
+                                                (httpRequest.responseURL.indexOf("file:///") > -1) && httpRequest.responseText !== null;
+                                        }
+                                        if (httpRequest.status === 200 || isLocalAccessSuccess) {
+                                            var res = httpRequest.responseText;
+                                            _this.cache.set(sourceUri, res);
+                                            resolve(res);
+                                        }
+                                        else {
+                                            reject(httpRequest.statusText);
+                                        }
+                                    }
+                                };
+                                httpRequest.open("GET", sourceUri + "?ver=" + Date.now().toString(), true);
+                                httpRequest.send(null);
+                            })];
+                    }
+                    return [2 /*return*/];
+                });
+            });
+        };
+        SourceRepository.instance = new SourceRepository();
+        return SourceRepository;
+    }());
+    exports.default = SourceRepository;
+});
+define("core/common/runtime_error", ["require", "exports"], function (require, exports) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    var RuntimeError = /** @class */ (function (_super) {
+        __extends(RuntimeError, _super);
+        function RuntimeError(message) {
+            var _this = _super.call(this) || this;
+            _this.message = message;
+            return _this;
+        }
+        return RuntimeError;
+    }(Error));
+    exports.default = RuntimeError;
+});
+define("core/container/hierarchical_container", ["require", "exports", "core/container/container", "core/common/runtime_error", "core/common/css_transition_driver"], function (require, exports, container_1, runtime_error_1, css_transition_driver_1) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    var HierarchicalContainer = /** @class */ (function (_super) {
+        __extends(HierarchicalContainer, _super);
+        function HierarchicalContainer(id, bindDomElement, cssTransitionOptions) {
+            var _this = _super.call(this, id, bindDomElement, cssTransitionOptions) || this;
+            _this.cssTransitionDrivers = new Map();
+            return _this;
+        }
+        HierarchicalContainer.prototype.addModule = function (module) {
+            return __awaiter(this, void 0, void 0, function () {
+                var _this = this;
+                return __generator(this, function (_a) {
+                    switch (_a.label) {
+                        case 0:
+                            this.mountedModules.set(module.getName(), module);
+                            return [4 /*yield*/, module.mount(function (element) {
+                                    if (_this.cssTransitionOptions && _this.cssTransitionOptions.enableCssTransition) {
+                                        var driver = new css_transition_driver_1.default(element);
+                                        driver.setCustomTransitionClasses(_this.cssTransitionOptions.cssTransitionDriverClasses);
+                                        _this.cssTransitionDrivers.set(module.getName(), driver);
+                                    }
+                                    _this.bindDomElement.appendChild(element);
+                                    return _this;
+                                })];
+                        case 1:
+                            _a.sent();
+                            return [2 /*return*/, true];
+                    }
+                });
+            });
+        };
+        HierarchicalContainer.prototype.initialize = function (parcel) {
+            if (this.defaultModule) {
+                this.forward(this.defaultModule, parcel);
+            }
+        };
+        HierarchicalContainer.prototype.forward = function (module, parcel) {
+            return __awaiter(this, void 0, void 0, function () {
+                var result;
+                return __generator(this, function (_a) {
+                    switch (_a.label) {
+                        case 0:
+                            if (this.moduleChangeHistory.indexOf(module) !== -1)
+                                return [2 /*return*/];
+                            this.moduleChangeHistory.push(module);
+                            this.activateModule(module, parcel);
+                            return [4 /*yield*/, module.waitForExit()];
+                        case 1:
+                            result = _a.sent();
+                            if (!this.inBackProcess) {
+                                //backメソッドではなく、モジュールの自主的な終了の場合はページを前に戻す
+                                this.showPreviousModule();
+                            }
+                            this.inBackProcess = false;
+                            return [2 /*return*/, result];
+                    }
+                });
+            });
+        };
+        HierarchicalContainer.prototype.activateModule = function (module, parcel) {
+            if (!this.mountedModules.has(module.getName()))
+                throw new runtime_error_1.default("指定されたモジュールはマウントされていません。");
+            //TODO ここにactiveModuleの非表示処理
+            if (this.activeModule)
+                this.activeModule.hide();
+            //TODO ここにmoduleの表示処理
+            module.initialize(parcel);
+            module.show();
+            var previousActiveModule = this.activeModule;
+            this.activeModule = module;
+            //その他モジュールの非表示化
+            this.mountedModules.forEach(function (m) {
+                if (m !== module && m !== previousActiveModule)
+                    m.hide();
+            });
+        };
+        HierarchicalContainer.prototype.showPreviousModule = function () {
+            if (this.moduleChangeHistory.length > 0) {
+                this.moduleChangeHistory.pop();
+            }
+            if (this.moduleChangeHistory.length > 0) {
+                this.activateModule(this.moduleChangeHistory[this.moduleChangeHistory.length - 1]);
+            }
+            else {
+                this.activeModule.hide();
+            }
+        };
+        return HierarchicalContainer;
+    }(container_1.default));
+    exports.default = HierarchicalContainer;
+});
+define("core/container/flat_container", ["require", "exports", "core/container/container", "core/common/runtime_error"], function (require, exports, container_2, runtime_error_2) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    var FlatContainer = /** @class */ (function (_super) {
+        __extends(FlatContainer, _super);
+        function FlatContainer(id, bindDomElement, cssTransitionOptions) {
+            var _this = _super.call(this, id, bindDomElement, cssTransitionOptions) || this;
+            _this.moduleOrders = new Map();
+            _this.scrollBoxElement = document.createElement("div");
+            _this.scrollBoxElement.style.position = "absolute";
+            _this.scrollBoxElement.style.overflow = "hidden";
+            _this.scrollBoxElement.style.width = "100%";
+            _this.scrollBoxElement.style.height = "100%";
+            _this.scrollBoxElement.className = "fivestage_flat_container_transition";
+            bindDomElement.appendChild(_this.scrollBoxElement);
+            return _this;
+        }
+        //Override
+        FlatContainer.prototype.onShow = function () {
+        };
+        FlatContainer.prototype.addModule = function (module) {
+            return __awaiter(this, void 0, void 0, function () {
+                var _this = this;
+                return __generator(this, function (_a) {
+                    switch (_a.label) {
+                        case 0:
+                            this.mountedModules.set(module.getName(), module);
+                            this.moduleOrders.set(module.getName(), this.mountedModules.size - 1);
+                            return [4 /*yield*/, module.mount(function (element) {
+                                    _this.scrollBoxElement.appendChild(element);
+                                    _this.scrollBoxElement.style.width = "calc(100% * " + _this.mountedModules.size + ")";
+                                    return _this;
+                                })];
+                        case 1:
+                            _a.sent();
+                            return [2 /*return*/, true];
+                    }
+                });
+            });
+        };
+        FlatContainer.prototype.initialize = function (parcel) {
+            this.updateAllModulePositionAndSize();
+            this.mountedModules.forEach(function (m) {
+                m.initialize(parcel);
+                m.show();
+            });
+        };
+        FlatContainer.prototype.activateModule = function (module, parcel) {
+            if (!this.mountedModules.has(module.getName())) {
+                throw new runtime_error_2.default("マウントされていないモジュールです。");
+            }
+            var leftIndex = this.moduleOrders.get(module.getName());
+            var transX = Math.round(10000 / this.mountedModules.size * leftIndex) / 100;
+            this.scrollBoxElement.style.transform = "translate(-" + String(transX) + "%)";
+        };
+        FlatContainer.prototype.forward = function (module, parcel) {
+            return __awaiter(this, void 0, void 0, function () {
+                return __generator(this, function (_a) {
+                    this.activateModule(module, parcel);
+                    return [2 /*return*/, null];
+                });
+            });
+        };
+        FlatContainer.prototype.updateAllModulePositionAndSize = function () {
+            var _this = this;
+            var leftValueCommon = "calc(100% / " + this.mountedModules.size + " * "; //+ leftIndex + ")";
+            var widthValue = String(Math.round(1.0 / this.mountedModules.size * 10000) / 100) + "%";
+            this.mountedModules.forEach(function (m) {
+                var order = _this.moduleOrders.get(m.getName());
+                var leftValue = leftValueCommon + order + ")";
+                m.changeModuleCssPosition(leftValue, "0px");
+                m.changeModuleCssSize(widthValue, "100%");
+            });
+        };
+        FlatContainer.prototype.showPreviousModule = function () {
+            throw new Error("Method not implemented.");
+        };
+        return FlatContainer;
+    }(container_2.default));
+    exports.default = FlatContainer;
+});
+define("core/container/container_manager", ["require", "exports", "core/common/runtime_error", "core/container/hierarchical_container", "core/container/flat_container"], function (require, exports, runtime_error_3, hierarchical_container_1, flat_container_1) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    var ContainerManager = /** @class */ (function () {
+        function ContainerManager() {
+            this.containers = new Map();
+            this.windowResizeEventHandlerBindThis = this.windowResizeEventHandler.bind(this);
+        }
+        ContainerManager.getInstance = function () {
+            return ContainerManager.instance;
+        };
+        ContainerManager.prototype.setRootElement = function (element) {
+            this.rootContainer = this.createContainer("root", "", element);
+            window.addEventListener("resize", this.windowResizeEventHandlerBindThis);
+        };
+        ContainerManager.prototype.windowResizeEventHandler = function (event) {
+            this.rootContainer.onResize();
+        };
+        ContainerManager.prototype.createContainer = function (id, type, bindDomElement) {
+            if (this.containers.has(id)) {
+                throw new runtime_error_3.default("コンテナID '" + id + "' は既に登録されています。");
+            }
+            var newContainer = null;
+            if (!type || type === "separated") {
+                newContainer = new hierarchical_container_1.default(id, bindDomElement);
+            }
+            else if ("continuous") {
+                newContainer = new flat_container_1.default(id, bindDomElement);
+            }
+            this.containers.set(id, newContainer);
+            return newContainer;
+        };
+        ContainerManager.prototype.initializeRootContainer = function () {
+            console.log("ContainerManager.initializeRootContainer");
+            this.rootContainer.initialize();
+        };
+        ContainerManager.prototype.getContainer = function (id) {
+            return this.containers.get(id);
+        };
+        ContainerManager.instance = new ContainerManager();
+        return ContainerManager;
+    }());
+    exports.default = ContainerManager;
+});
+define("core/module/module_router", ["require", "exports", "core/container/container_manager", "core/module/module_manager"], function (require, exports, container_manager_1, module_manager_1) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    var ModuleRouter = /** @class */ (function () {
+        function ModuleRouter() {
+        }
+        ModuleRouter.getInstance = function () {
+            return ModuleRouter.instance;
+        };
+        ModuleRouter.prototype.forward = function (targetIdentifier, params) {
+            return __awaiter(this, void 0, void 0, function () {
+                var s, targetContainerId, moduleName, target, module;
+                return __generator(this, function (_a) {
+                    s = targetIdentifier.split("::");
+                    targetContainerId = s[0];
+                    moduleName = s[1];
+                    target = container_manager_1.default.getInstance().getContainer(targetContainerId);
+                    module = module_manager_1.default.getInstance().getModule(moduleName);
+                    return [2 /*return*/, target.forward(module, params)];
+                });
+            });
+        };
+        ModuleRouter.prototype.back = function (targetContainerId) {
+            var target = container_manager_1.default.getInstance().getContainer(targetContainerId);
+            target.back();
+        };
+        ModuleRouter.instance = new ModuleRouter();
+        return ModuleRouter;
+    }());
+    exports.default = ModuleRouter;
+});
+define("core/common/types", ["require", "exports"], function (require, exports) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    var Point = /** @class */ (function () {
+        function Point(x, y) {
+            this.x = x;
+            this.y = y;
+        }
+        return Point;
+    }());
+    exports.Point = Point;
+    var Size = /** @class */ (function () {
+        function Size(width, height) {
+            this.width = width;
+            this.height = height;
+        }
+        return Size;
+    }());
+    exports.Size = Size;
+});
+define("core/overlay/overlay", ["require", "exports", "core/overlay/overlay_manager", "core/common/types", "core/common/css_transition_driver"], function (require, exports, overlay_manager_1, types_1, css_transition_driver_2) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var Overlay = /** @class */ (function () {
@@ -670,7 +665,7 @@ define("core/overlay/overlay", ["require", "exports", "core/overlay/overlay_mana
             this.modalInactiveLayer.style.left = String(Overlay.resizeHandleThicknessPx) + "px";
             this.modalInactiveLayer.style.top = String(Overlay.resizeHandleThicknessPx) + "px";
             this.modalInactiveLayer.style.display = "none";
-            this.modalInactiveLayerTransitionDriver = new css_transition_driver_1.default(this.modalInactiveLayer);
+            this.modalInactiveLayerTransitionDriver = new css_transition_driver_2.default(this.modalInactiveLayer);
             this.resize(width, height);
             //非表示エレメントの作成（Tabキー対策）
             this.tabFocusMoveTailDetector = document.createElement("div");
@@ -694,7 +689,7 @@ define("core/overlay/overlay", ["require", "exports", "core/overlay/overlay_mana
             this.outerFrameEl.appendChild(this.tabFocusMoveTailStopper);
             this.outerFrameEl.appendChild(this.modalInactiveLayer);
             viewPortElement.appendChild(this.outerFrameEl);
-            this.outerFrameTransitionDriver = new css_transition_driver_1.default(this.outerFrameEl);
+            this.outerFrameTransitionDriver = new css_transition_driver_2.default(this.outerFrameEl);
         }
         Overlay.prototype.createResizeHandleElements = function () {
             var _this = this;
@@ -886,7 +881,7 @@ define("core/overlay/overlay", ["require", "exports", "core/overlay/overlay_mana
     }());
     exports.default = Overlay;
 });
-define("core/overlay/dialog_window", ["require", "exports", "core/overlay/overlay", "core/overlay/overlay_manager", "core/container/container_manager", "core/dto"], function (require, exports, overlay_1, overlay_manager_2, container_manager_2, dto_2) {
+define("core/overlay/dialog_window", ["require", "exports", "core/overlay/overlay", "core/overlay/overlay_manager", "core/container/container_manager", "core/common/dto"], function (require, exports, overlay_1, overlay_manager_2, container_manager_2, dto_2) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var DialogWindow = /** @class */ (function (_super) {
@@ -1057,7 +1052,7 @@ define("core/overlay/dialog_window", ["require", "exports", "core/overlay/overla
     }(overlay_1.default));
     exports.default = DialogWindow;
 });
-define("core/overlay/overlay_manager", ["require", "exports", "core/overlay/dialog_window", "core/css_transition_driver"], function (require, exports, dialog_window_1, css_transition_driver_2) {
+define("core/overlay/overlay_manager", ["require", "exports", "core/overlay/dialog_window", "core/common/css_transition_driver"], function (require, exports, dialog_window_1, css_transition_driver_3) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var OvarlayManager = /** @class */ (function () {
@@ -1079,7 +1074,7 @@ define("core/overlay/overlay_manager", ["require", "exports", "core/overlay/dial
             this.modalBackgroundLayer.style.height = "100%";
             this.modalBackgroundLayer.style.display = "none";
             this.modalBackgroundLayer.style.zIndex = String(this.MODAL_START_Z_INDEX);
-            this.modalBackgroundLayerTransitionDriver = new css_transition_driver_2.default(this.modalBackgroundLayer);
+            this.modalBackgroundLayerTransitionDriver = new css_transition_driver_3.default(this.modalBackgroundLayer);
             this.onFocusInBindedThis = this.onFocusIn.bind(this);
             this.onMouseMoveBindedThis = this.onMouseMove.bind(this);
             this.onMouseUpBindedThis = this.onMouseUp.bind(this);
@@ -1261,7 +1256,7 @@ define("core/overlay/overlay_manager", ["require", "exports", "core/overlay/dial
         return OverlayManagementData;
     }());
 });
-define("core/html_component_adapter", ["require", "exports", "core/module/module_router", "core/overlay/overlay_manager", "core/dto", "core/module/module_manager"], function (require, exports, module_router_1, overlay_manager_3, dto_3, module_manager_2) {
+define("core/adapter/html_component_adapter", ["require", "exports", "core/module/module_router", "core/overlay/overlay_manager", "core/common/dto", "core/module/module_manager"], function (require, exports, module_router_1, overlay_manager_3, dto_3, module_manager_2) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.htmlComponentAdapters = new Map();
@@ -1498,7 +1493,7 @@ define("core/module/html_component", ["require", "exports", "core/source_reposit
     }());
     exports.default = HTMLComponent;
 });
-define("core/module/native_component", ["require", "exports", "core/module/html_component", "core/container/container_manager", "core/html_component_adapter"], function (require, exports, html_component_1, container_manager_3, html_component_adapter_1) {
+define("core/module/native_component", ["require", "exports", "core/module/html_component", "core/container/container_manager", "core/adapter/html_component_adapter"], function (require, exports, html_component_1, container_manager_3, html_component_adapter_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var NativeComponent = /** @class */ (function (_super) {
@@ -1634,7 +1629,7 @@ define("core/module/native_component", ["require", "exports", "core/module/html_
     }(html_component_1.default));
     exports.default = NativeComponent;
 });
-define("core/module/module_manager", ["require", "exports", "core/module/native_component", "core/runtime_error", "core/container/container_manager", "core/overlay/overlay_manager"], function (require, exports, native_component_1, runtime_error_4, container_manager_4, overlay_manager_4) {
+define("core/module/module_manager", ["require", "exports", "core/module/native_component", "core/common/runtime_error", "core/container/container_manager", "core/overlay/overlay_manager"], function (require, exports, native_component_1, runtime_error_4, container_manager_4, overlay_manager_4) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var DisplayMode;
@@ -1851,6 +1846,10 @@ define("fivestage", ["require", "exports", "core/module/module_manager", "core/c
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     console.log("******** start ********");
+    var _fivestage_isMsIE = false;
+    if (document["documentMode"]) {
+        _fivestage_isMsIE = true;
+    }
     var moduleManager = module_manager_3.default.getInstance();
     var containerManager = container_manager_5.default.getInstance();
     var overlayManager = overlay_manager_5.default.getInstance();
@@ -1869,8 +1868,17 @@ define("fivestage", ["require", "exports", "core/module/module_manager", "core/c
     moduleManager.registerWindow("win2", "src/module/main.html", {});
     moduleManager.registerWindow("win3", "src/module/main.html", {});
     moduleManager.initialize().then(function () {
-        window.dispatchEvent(new Event("resize"));
+        console.log("moduleManager is initialized.");
         containerManager.initializeRootContainer();
+        var resizeEvent;
+        if (_fivestage_isMsIE) {
+            resizeEvent = document.createEvent("Event");
+            resizeEvent.initEvent("resize", true, false);
+        }
+        else {
+            resizeEvent = new Event("resize");
+        }
+        window.dispatchEvent(resizeEvent);
     });
     console.log("******** end ********");
 });

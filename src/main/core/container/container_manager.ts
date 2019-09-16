@@ -1,4 +1,4 @@
-import RuntimeError from "../runtime_error";
+import RuntimeError from "../common/runtime_error";
 import Container from "./container";
 import HierarchicalContainer from "./hierarchical_container";
 import FlatContainer from "./flat_container";
@@ -47,6 +47,7 @@ export default class ContainerManager {
     }
 
     public initializeRootContainer(): void {
+        console.log("ContainerManager.initializeRootContainer");
         this.rootContainer.initialize();
     }
 

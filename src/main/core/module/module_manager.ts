@@ -1,6 +1,6 @@
 import Module from "./module";
 import NativeComponent from "./native_component";
-import RuntimeError from "../runtime_error";
+import RuntimeError from "../common/runtime_error";
 import ContainerManager from "../container/container_manager";
 import Container from "../container/container";
 import OvarlayManager from "../overlay/overlay_manager";

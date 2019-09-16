@@ -1,5 +1,5 @@
 import Container from "../container/container";
-import { Parcel, ActionType, Result } from "../dto";
+import { Parcel, ActionType, Result } from "../common/dto";
 
 export default interface Module {
     fetch(): Promise<boolean>;

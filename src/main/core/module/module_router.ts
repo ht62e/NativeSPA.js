@@ -2,7 +2,7 @@ import ContainerManager from "../container/container_manager";
 import ModuleManager from "./module_manager";
 import Container from "../container/container";
 import Module from "./module";
-import { Parcel, Result } from "../dto";
+import { Parcel, Result } from "../common/dto";
 
 export default class ModuleRouter {
     private static instance = new ModuleRouter();

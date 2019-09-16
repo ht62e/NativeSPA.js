@@ -1,8 +1,8 @@
 import Container, { ContainerInfo } from "../container/container";
 import Module from "./module";
 import SourceRepository from "../source_repository";
-import HTMLComponentAdapter from "../html_component_adapter";
-import { Result, ActionType, Parcel } from "../dto";
+import HTMLComponentAdapter from "../adapter/html_component_adapter";
+import { Result, ActionType, Parcel } from "../common/dto";
 
 export default abstract class HTMLComponent implements Module {
     protected isFetched: boolean = false;

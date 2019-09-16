@@ -1,17 +1,30 @@
-import Container from "./container";
+import Container, { CssTransitionOptions } from "./container";
 import Module from "../module/module";
-import RuntimeError from "../runtime_error";
-import { Parcel, Result } from "../dto";
+import RuntimeError from "../common/runtime_error";
+import { Parcel, Result } from "../common/dto";
+import CssTransitionDriver from "../common/css_transition_driver";
 
 export default class HierarchicalContainer extends Container {
-    constructor(protected id: string, protected bindDomElement: HTMLDivElement) {
-        super(id, bindDomElement);
+    protected cssTransitionDrivers = new Map<string, CssTransitionDriver>();
+
+    constructor(id: string, bindDomElement: HTMLDivElement, cssTransitionOptions?: CssTransitionOptions) {
+        super(id, bindDomElement, cssTransitionOptions);
 
     }
 
-    public async addModule(module: Module): Promise<boolean> {
-        await module.mount(this.elementAttachHandler.bind(this));
+    public async addModule(module: Module): Promise<boolean> {       
         this.mountedModules.set(module.getName(), module);
+
+        await module.mount((element: HTMLDivElement): Container => {
+            if (this.cssTransitionOptions && this.cssTransitionOptions.enableCssTransition) {
+                const driver = new CssTransitionDriver(element);
+                driver.setCustomTransitionClasses(this.cssTransitionOptions.cssTransitionDriverClasses);
+                this.cssTransitionDrivers.set(module.getName(), driver);
+            }
+            this.bindDomElement.appendChild(element);
+            return this;
+        });
+
         return true;
     }
 
@@ -39,22 +52,21 @@ export default class HierarchicalContainer extends Container {
         return result;
     }
 
-    protected elementAttachHandler(element: HTMLDivElement, ownerModuleName: string): Container {
-        this.bindDomElement.appendChild(element);
-        return this;
-    }
-
     public activateModule(module: Module, parcel?: Parcel): void {
         if (!this.mountedModules.has(module.getName())) throw new RuntimeError("指定されたモジュールはマウントされていません。");
         
+        //TODO トランジションの追加
+        if (this.activeModule) this.activeModule.hide();
+
+        //TODO トランジションの追加
+        module.initialize(parcel);
+        module.show();
+        const previousActiveModule = this.activeModule;
+        this.activeModule = module;
+
+        //その他モジュールの非表示化
         this.mountedModules.forEach((m: Module) => {
-            if (m === module) {
-                m.initialize(parcel);
-                m.show();
-                this.activeModule = m;
-            } else {
-                m.hide();
-            }
+            if (m !== module && m !== previousActiveModule) m.hide();
         });
     }
 

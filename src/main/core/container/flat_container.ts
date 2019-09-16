@@ -1,14 +1,14 @@
-import Container from "./container";
+import Container, { CssTransitionOptions } from "./container";
 import Module from "../module/module";
-import RuntimeError from "../runtime_error";
-import { Parcel, Result } from "../dto";
+import RuntimeError from "../common/runtime_error";
+import { Parcel, Result } from "../common/dto";
 
 export default class FlatContainer extends Container {
     protected scrollBoxElement: HTMLDivElement;
     protected moduleOrders = new Map<string, number>();
 
-    constructor(protected id: string, protected bindDomElement: HTMLDivElement) {
-        super(id, bindDomElement);
+    constructor(id: string, bindDomElement: HTMLDivElement, cssTransitionOptions?: CssTransitionOptions) {
+        super(id, bindDomElement, cssTransitionOptions);
 
         this.scrollBoxElement = document.createElement("div");
 
@@ -17,9 +17,7 @@ export default class FlatContainer extends Container {
         this.scrollBoxElement.style.width = "100%";
         this.scrollBoxElement.style.height = "100%";
 
-        this.scrollBoxElement.style.transitionProperty = "transform";
-        this.scrollBoxElement.style.transitionDuration = "200ms";
-        this.scrollBoxElement.style.transitionTimingFunction = "ease";
+        this.scrollBoxElement.className = "fivestage_flat_container_transition";
 
         bindDomElement.appendChild(this.scrollBoxElement);
     }
@@ -32,7 +30,13 @@ export default class FlatContainer extends Container {
     public async addModule(module: Module): Promise<boolean> {
         this.mountedModules.set(module.getName(), module);
         this.moduleOrders.set(module.getName(), this.mountedModules.size - 1);
-        await module.mount(this.elementAttachHandler.bind(this));
+
+        await module.mount((element: HTMLDivElement): Container => {
+            this.scrollBoxElement.appendChild(element);        
+            this.scrollBoxElement.style.width = "calc(100% * " + this.mountedModules.size + ")";
+            return this;
+        });
+
         return true;
     }
 
@@ -49,13 +53,8 @@ export default class FlatContainer extends Container {
             throw new RuntimeError("マウントされていないモジュールです。");
         }
         const leftIndex = this.moduleOrders.get(module.getName());
-        if (true) {
-            //IE11以外
-            this.scrollBoxElement.style.transform = "translate(calc(-100% / " + this.mountedModules.size + " * " + leftIndex + "))";
-        } else {
-            //IE11（transformでcalcが使えない）
-
-        }
+        const transX = Math.round(10000 / this.mountedModules.size * leftIndex) / 100;
+        this.scrollBoxElement.style.transform = "translate(-" + String(transX) + "%)";
     }
 
     public async forward(module: Module, parcel?: Parcel): Promise<Result> {
@@ -63,14 +62,6 @@ export default class FlatContainer extends Container {
         return null;
     }
     
-    //TODO デリゲート的な方法ではなく、addModule内の匿名関数に変更したい
-    protected elementAttachHandler(element: HTMLDivElement, ownerModuleName: string): Container {
-        this.scrollBoxElement.appendChild(element);        
-        this.scrollBoxElement.style.width = "calc(100% * " + this.mountedModules.size + ")";
-
-        return this;
-    }
-
     protected updateAllModulePositionAndSize() {
         const leftValueCommon = "calc(100% / " + this.mountedModules.size + " * "; //+ leftIndex + ")";
         const widthValue = String(Math.round(1.0 / this.mountedModules.size * 10000) / 100) + "%";

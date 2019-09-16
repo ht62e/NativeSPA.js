@@ -1,9 +1,9 @@
-import ModuleRouter from "./module/module_router";
-import HTMLComponent from "./module/html_component";
-import OvarlayManager from "./overlay/overlay_manager";
-import { ShowOptions } from "./overlay/overlay";
-import { Parcel, ActionType, Result } from "./dto";
-import ModuleManager from "./module/module_manager";
+import ModuleRouter from "../module/module_router";
+import HTMLComponent from "../module/html_component";
+import OvarlayManager from "../overlay/overlay_manager";
+import { ShowOptions } from "../overlay/overlay";
+import { Parcel, ActionType, Result } from "../common/dto";
+import ModuleManager from "../module/module_manager";
 
 export const htmlComponentAdapters = new Map<number, HTMLComponentAdapter>();
 
