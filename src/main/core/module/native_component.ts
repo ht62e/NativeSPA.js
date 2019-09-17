@@ -54,13 +54,14 @@ export default class NativeComponent extends HTMLComponent {
 
         //引数で与えられたコンテナDOMに対して自身をロード
         this.wrapperElement = document.createElement("div");
-        this.wrapperElement.id = localPrefix + "module"
+        this.wrapperElement.id = localPrefix + "module";
+        this.wrapperElement.className = "fvst_html_module";
         this.wrapperElement.style.position = "absolute";
         this.wrapperElement.style.overflow = "auto";
         this.wrapperElement.style.width = "100%";
         this.wrapperElement.style.height = "100%";
         this.wrapperElement.style.visibility = "hidden";
-
+        
         this.wrapperElement.innerHTML = this.source;
         
         this.currentContainer = elementAttachHandler(this.wrapperElement, this.name);

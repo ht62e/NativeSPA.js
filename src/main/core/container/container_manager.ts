@@ -37,7 +37,10 @@ export default class ContainerManager {
         let newContainer = null;
 
         if (!type || type === "separated") {
-            newContainer = new HierarchicalContainer(id, bindDomElement);
+            //newContainer = new HierarchicalContainer(id, bindDomElement);
+            newContainer = new HierarchicalContainer(id, bindDomElement, {
+                enableCssTransition: true
+            });
         } else if ("continuous") {
             newContainer = new FlatContainer(id, bindDomElement);
         }

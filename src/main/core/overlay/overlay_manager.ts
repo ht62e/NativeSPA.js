@@ -33,7 +33,7 @@ export default class OvarlayManager {
         this.overlayManagementTable = new Map<string, OverlayManagementData>();
 
         this.modalBackgroundLayer = document.createElement("div");
-        this.modalBackgroundLayer.className = "fivestage_modal_background_layer";
+        this.modalBackgroundLayer.className = "fvst_modal_background_layer";
         this.modalBackgroundLayer.style.position = "absolute";
         this.modalBackgroundLayer.style.overflow = "hidden";
         this.modalBackgroundLayer.style.width = "100%";

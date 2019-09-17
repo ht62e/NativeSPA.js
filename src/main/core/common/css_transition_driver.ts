@@ -50,7 +50,7 @@ export default class CssTransitionDriver {
             if (classes.endStateClass !== undefined) this.endStateClass = classes.endStateClass;
         }
 
-        if (this.target.style.display === "none") {
+        if (this.target.style.display === "none" || this.target.style.visibility === "hidden") {
             this.target.classList.add(this.standyStateClass);
         }
     }
@@ -91,6 +91,7 @@ export default class CssTransitionDriver {
     private toggleClasses(visible: boolean): void {
         if (visible) {
             this.target.style.display = "";
+            this.target.style.visibility = "";
 
             window.setTimeout(() => {
                 this.target.style.pointerEvents = "";

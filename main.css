@@ -1,15 +1,15 @@
-.fivestage_overlay_container {
+.fvst_overlay_container {
     overflow: hidden;
     box-shadow: 6px 6px 25px -5px rgba(0,0,0,0.4);
 }
 
-.fivestage_tabfocus_move_stopper:focus,
-.fivestage_tabfocus_move_detector:focus {
+.fvst_tabfocus_move_stopper:focus,
+.fvst_tabfocus_move_detector:focus {
     outline: none;
 }
 
 
-.fivestage_flat_container_transition {
+.fvst_flat_container_transition {
     transition-property: transform;
     transition-duration: 200ms;
     transition-timing-function: ease;
@@ -17,28 +17,53 @@
 
 
 
-.fivestage_dialog_window_standy_state {
+
+.fvst_html_module.standy_state {
     opacity: 0;
-    transform: scale(0.98, 0.98) translateY(1.5%);
+    transform: translateY(1.5%);
 }
 
-.fivestage_dialog_window_enter_transition {
+.fvst_html_module.enter_transition {
     transition-property: transform, opacity;
     transition-duration: 150ms;
 }
 
-.fivestage_dialog_window_leave_transition {
+.fvst_html_module.leave_transition {
+	transition-property: opacity, transform;
+	transition-duration: 200ms;
+	transition-timing-function: ease;
+}
+
+.fvst_html_module.end_state {
+    opacity: 0;
+    transform: translateY(3%);
+}
+
+
+
+
+.fvst_dialog_window_standy_state {
+    opacity: 0;
+    transform: scale(0.98, 0.98) translateY(1.5%);
+}
+
+.fvst_dialog_window_enter_transition {
+    transition-property: transform, opacity;
+    transition-duration: 150ms;
+}
+
+.fvst_dialog_window_leave_transition {
 	transition-property: opacity, transform;
 	transition-duration: 150ms;
 	transition-timing-function: ease-in;
 }
 
-.fivestage_dialog_window_end_state {
+.fvst_dialog_window_end_state {
     opacity: 0;
     transform: scale(0.98, 0.98) translateY(1.5%);
 }
 
-.fivestage_dialog_window_header {
+.fvst_dialog_window_header {
     height: 30px;
     line-height: 30px;
     box-sizing: border-box;
@@ -46,11 +71,11 @@
     cursor: default;
 }
 
-.fivestage_dialog_window_header.inactive {
+.fvst_dialog_window_header.inactive {
     background-color: #B0B0B0;
 }
 
-.fivestage_dialog_window_header .caption {
+.fvst_dialog_window_header .caption {
 	flex-grow: 1;
 	text-align: left;
 	font-size: 10pt;
@@ -58,7 +83,7 @@
 	padding-left: 8px;
 }
 
-.fivestage_dialog_window_header .close_button {
+.fvst_dialog_window_header .close_button {
 	width: 30px;
 	flex-grow: 0;
 	flex-shrink: 1;
@@ -70,15 +95,15 @@
   	background-size: 10px;
 }
 
-.fivestage_dialog_window_header .close_button:hover {
+.fvst_dialog_window_header .close_button:hover {
 	background-color: rgba(255, 255, 255, 0.2);
 }
 
-.fivestage_dialog_window_body {
+.fvst_dialog_window_body {
     background-color: #FFFFFF;
 }
 
-.fivestage_dialog_window_footer {
+.fvst_dialog_window_footer {
     display: flex;
     justify-content: flex-end;
     align-items: center;
@@ -92,24 +117,24 @@
 
 
 
-.fivestage_modal_background_layer {
+.fvst_modal_background_layer {
     background-color: rgba(0, 0, 0, 0.3);
 }
 
-.fivestage_modal_background_layer.standy_state {
+.fvst_modal_background_layer.standy_state {
     opacity: 0;
 }
 
-.fivestage_modal_background_layer.enter_transition {
+.fvst_modal_background_layer.enter_transition {
 	transition-duration: 120ms;
 	transition-timing-function: ease;
 }
 
-.fivestage_modal_background_layer.leave_transition {
+.fvst_modal_background_layer.leave_transition {
 	transition-duration: 120ms;
 	transition-timing-function: ease;
 }
 
-.fivestage_modal_background_layer.end_state {
+.fvst_modal_background_layer.end_state {
     opacity: 0;
 }

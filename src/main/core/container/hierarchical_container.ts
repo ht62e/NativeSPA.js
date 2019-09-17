@@ -9,7 +9,7 @@ export default class HierarchicalContainer extends Container {
 
     constructor(id: string, bindDomElement: HTMLDivElement, cssTransitionOptions?: CssTransitionOptions) {
         super(id, bindDomElement, cssTransitionOptions);
-
+        bindDomElement.classList.add("fvst_hierarchical_container");
     }
 
     public async addModule(module: Module): Promise<boolean> {       
@@ -55,12 +55,12 @@ export default class HierarchicalContainer extends Container {
     public activateModule(module: Module, parcel?: Parcel): void {
         if (!this.mountedModules.has(module.getName())) throw new RuntimeError("指定されたモジュールはマウントされていません。");
         
-        //TODO トランジションの追加
-        if (this.activeModule) this.activeModule.hide();
+        if (this.activeModule) {
+            this.hideModule(this.activeModule);
+        }
 
-        //TODO トランジションの追加
         module.initialize(parcel);
-        module.show();
+        this.showModule(module);
         const previousActiveModule = this.activeModule;
         this.activeModule = module;
 
@@ -70,6 +70,24 @@ export default class HierarchicalContainer extends Container {
         });
     }
 
+    protected showModule(targetModule: Module): void {
+        let driver: CssTransitionDriver;
+        if (driver = this.cssTransitionDrivers.get(targetModule.getName())) {  
+            driver.show();
+        } else {
+            targetModule.show();
+        }
+    }
+
+    protected hideModule(targetModule: Module): void {
+        let driver: CssTransitionDriver;
+        if (driver = this.cssTransitionDrivers.get(targetModule.getName())) {
+            driver.hide();
+        } else {
+            targetModule.hide();
+        }
+    }
+
     protected showPreviousModule(): void {
         if (this.moduleChangeHistory.length > 0) {
             this.moduleChangeHistory.pop();
@@ -77,7 +95,9 @@ export default class HierarchicalContainer extends Container {
         if (this.moduleChangeHistory.length > 0) {
             this.activateModule(this.moduleChangeHistory[this.moduleChangeHistory.length - 1]);
         } else {
-            this.activeModule.hide();
+            if (this.activeModule) {
+                this.hideModule(this.activeModule);
+            }
         }
     }
 }

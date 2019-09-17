@@ -43,7 +43,7 @@ export default class DialogWindow extends Overlay {
         this.wrapperEl.style.height = "100%";
 
         this.headerEl = document.createElement("div");
-        this.headerEl.className = "fivestage_dialog_window_header";
+        this.headerEl.className = "fvst_dialog_window_header";
         this.headerEl.style.position = "relative";
         this.headerEl.style.display = "flex";
         this.headerEl.style.width = "100%";
@@ -64,7 +64,7 @@ export default class DialogWindow extends Overlay {
         this.headerEl.addEventListener("dragstart", this.onHeaderDragStart.bind(this));
 
         this.bodyEl = document.createElement("div");
-        this.bodyEl.className = "fivestage_dialog_window_body";
+        this.bodyEl.className = "fvst_dialog_window_body";
         this.bodyEl.style.position = "relative";
         this.bodyEl.style.flexGrow = "1";
         this.bodyEl.style.flexShrink = "1";
@@ -74,7 +74,7 @@ export default class DialogWindow extends Overlay {
             "__window" + String(DialogWindow.instanceSequence++), "", this.bodyEl);
 
         this.footerEl = document.createElement("div");
-        this.footerEl.className = "fivestage_dialog_window_footer";
+        this.footerEl.className = "fvst_dialog_window_footer";
         this.footerEl.style.position = "relative";
         this.footerEl.style.width = "100%";
 
@@ -102,10 +102,10 @@ export default class DialogWindow extends Overlay {
         this.contentEl.appendChild(this.wrapperEl);
 
         this.outerFrameTransitionDriver.setCustomTransitionClasses({
-            standyStateClass: "fivestage_dialog_window_standy_state",
-            enterTransitionClass: "fivestage_dialog_window_enter_transition",
-            leaveTransitionClass: "fivestage_dialog_window_leave_transition",
-            endStateClass: "fivestage_dialog_window_end_state"
+            standyStateClass: "fvst_dialog_window_standy_state",
+            enterTransitionClass: "fvst_dialog_window_enter_transition",
+            leaveTransitionClass: "fvst_dialog_window_leave_transition",
+            endStateClass: "fvst_dialog_window_end_state"
         });
     }
 
