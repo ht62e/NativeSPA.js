@@ -28,7 +28,7 @@ export default class DialogWindow extends Overlay {
 
     protected container: Container;
 
-    protected closeForWaitResolver: (value?: Result | PromiseLike<Result>) => void;
+    protected waitForOverlayCloseResolver: (value?: Result | PromiseLike<Result>) => void;
 
     constructor(viewPortElement: HTMLElement, name: string, caption: string, options?: WindowOptions) {
         super(viewPortElement, name, options ? options.size : null);
@@ -124,22 +124,15 @@ export default class DialogWindow extends Overlay {
         });        
     }
 
-    // private onMouseUp(event: MouseEvent) {
-    //     this.isDragging = false;
-    // }
-
-    
-
-
     protected onOkButtonClick(event: MouseEvent) {
         this.container.getActiveModule().exit(ActionType.OK).then(exited => {
-            if (exited) this.close();
+            if (exited) this.close(this.container.getContainerResult());
         });
     }
 
     protected onCancelButtonClick(event: MouseEvent) {
         this.container.getActiveModule().exit(ActionType.CANCEL).then(exited => {
-            if (exited) this.close();
+            if (exited) this.close(null);
         });
     }
 
@@ -149,7 +142,7 @@ export default class DialogWindow extends Overlay {
 
     protected waitForOverlayClose(): Promise<Result> {
         return new Promise(resolve => {
-            this.closeForWaitResolver = resolve;
+            this.waitForOverlayCloseResolver = resolve;
         });
     }
 
@@ -171,24 +164,15 @@ export default class DialogWindow extends Overlay {
     }
 
     public async show(parcel?: Parcel, options?: ShowOptions): Promise<Result> {
-        let px: number, py: number;
         if (options && options.x !== undefined && options.y !== undefined) {
-            px = options.x; py = options.y;
+            this.changePosition(options.x, options.y);
         } else {
             //デフォルト表示位置は表示領域（ビューポート）の中央
-            px = Math.round((this.viewPortEl.offsetWidth - this.size.width) / 2);
-            py = Math.round((this.viewPortEl.offsetHeight - this.size.height) / 2);
-        }
-        this.changePosition(px, py);
+            this.moveToViewPortCenter();
+        }        
 
+        this.container.initialize(parcel);
         this.outerFrameTransitionDriver.show();
-
-        this.container.getActiveModule().waitForExit().then(result => {
-            this.close();
-            //自身のdisplay:noneが反映した後にコールバックさせるためsetTimeoutを介して呼び出す
-            window.setTimeout(this.closeForWaitResolver.bind(this), 0, result);
-        });
-
         
         return this.waitForOverlayClose();
     }
@@ -197,8 +181,16 @@ export default class DialogWindow extends Overlay {
         return this.show(parcel, options);
     }
 
-    public close(): void {
+    public moveToViewPortCenter(): void {
+        const x = Math.round((this.viewPortEl.offsetWidth - this.size.width) / 2);
+        const y = Math.round((this.viewPortEl.offsetHeight - this.size.height) / 2);
+        this.changePosition(x, y);
+    }
+
+    public close(result?: Result): void {
         this.outerFrameTransitionDriver.hide();
+        //自身のdisplay:noneが反映した後にコールバックさせるためsetTimeoutを介して呼び出す
+        window.setTimeout(this.waitForOverlayCloseResolver.bind(this), 0, result);
     }
 
     //override

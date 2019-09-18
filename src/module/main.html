@@ -43,11 +43,11 @@
 <script data-scope-mode="prototype">
     this.textArea1 = document.getElementById("\:textarea1");
     document.getElementById("\:show_main2").addEventListener("click", (function() {
-        this.moduleRouter.forward("base.body::main2", null);
+        this.navigator.localForward("main2", null);
     }).bind(this));
 
     document.getElementById("\:show_tab").addEventListener("click", (function() {
-        this.moduleRouter.forward("base.body::tab", null);
+        this.navigator.localForward("base.body::tab", null);
     }).bind(this));
 
     document.getElementById("\:show_win1").addEventListener("click", (function() {

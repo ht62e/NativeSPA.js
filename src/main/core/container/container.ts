@@ -1,5 +1,5 @@
 import Module from "../module/module";
-import { Parcel, Result, ActionType } from "../common/dto";
+import { Parcel, Result } from "../common/dto";
 import { CssTransitionDriverClasses } from "../common/css_transition_driver";
 
 export default abstract class Container {
@@ -12,11 +12,15 @@ export default abstract class Container {
     protected moduleChangeHistory = new Array<Module>();
     protected defaultModule: Module;
     protected inBackProcess: boolean = false;
+
+    protected containerParcel: Parcel = null;
+    protected containerResult: Result = null;
     
     public abstract async addModule(module: Module): Promise<boolean>;
     public abstract initialize(parcel?: Parcel): void;
     public abstract activateModule(module: Module, parcel?: Parcel): void;
     public abstract async forward(module: Module, parcel?: Parcel): Promise<Result>;
+    public abstract back(): void;
 
     protected abstract showPreviousModule(): void;
 
@@ -44,6 +48,14 @@ export default abstract class Container {
         this.defaultModule = module;
     }
 
+    public getContainerResult(): Result {
+        return this.containerResult;
+    }
+
+    public setContainerResult(result: Result) {
+        this.containerResult = result;
+    }
+
     public onShow(): void {
 
     }
@@ -51,14 +63,6 @@ export default abstract class Container {
     public onResize(): void {
         this.mountedModules.forEach((module: Module) => {
             module.dispachResizeEvent();
-        });
-    }
-
-    public back(): void {
-        this.inBackProcess = true;
-        this.activeModule.exit(ActionType.BACK).then(exited => {
-            if (!exited) return;
-            this.showPreviousModule();
         });
     }
 

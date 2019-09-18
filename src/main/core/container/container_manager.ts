@@ -1,6 +1,6 @@
 import RuntimeError from "../common/runtime_error";
 import Container from "./container";
-import HierarchicalContainer from "./hierarchical_container";
+import PageContainer from "./page_container";
 import FlatContainer from "./flat_container";
 
 export default class ContainerManager {
@@ -37,8 +37,8 @@ export default class ContainerManager {
         let newContainer = null;
 
         if (!type || type === "separated") {
-            //newContainer = new HierarchicalContainer(id, bindDomElement);
-            newContainer = new HierarchicalContainer(id, bindDomElement, {
+            //newContainer = new PageContainer(id, bindDomElement);
+            newContainer = new PageContainer(id, bindDomElement, {
                 enableCssTransition: true
             });
         } else if ("continuous") {

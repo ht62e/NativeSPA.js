@@ -220,7 +220,7 @@ define("core/common/css_transition_driver", ["require", "exports"], function (re
     }());
     exports.default = CssTransitionDriver;
 });
-define("core/container/container", ["require", "exports", "core/common/dto"], function (require, exports, dto_1) {
+define("core/container/container", ["require", "exports"], function (require, exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var Container = /** @class */ (function () {
@@ -228,6 +228,8 @@ define("core/container/container", ["require", "exports", "core/common/dto"], fu
             this.mountedModules = new Map();
             this.moduleChangeHistory = new Array();
             this.inBackProcess = false;
+            this.containerParcel = null;
+            this.containerResult = null;
             this.id = id;
             this.bindDomElement = bindDomElement;
             this.cssTransitionOptions = cssTransitionOptions;
@@ -246,20 +248,17 @@ define("core/container/container", ["require", "exports", "core/common/dto"], fu
         Container.prototype.setDefaultModule = function (module) {
             this.defaultModule = module;
         };
+        Container.prototype.getContainerResult = function () {
+            return this.containerResult;
+        };
+        Container.prototype.setContainerResult = function (result) {
+            this.containerResult = result;
+        };
         Container.prototype.onShow = function () {
         };
         Container.prototype.onResize = function () {
             this.mountedModules.forEach(function (module) {
                 module.dispachResizeEvent();
-            });
-        };
-        Container.prototype.back = function () {
-            var _this = this;
-            this.inBackProcess = true;
-            this.activeModule.exit(dto_1.ActionType.BACK).then(function (exited) {
-                if (!exited)
-                    return;
-                _this.showPreviousModule();
             });
         };
         return Container;
@@ -352,18 +351,18 @@ define("core/common/runtime_error", ["require", "exports"], function (require, e
     }(Error));
     exports.default = RuntimeError;
 });
-define("core/container/hierarchical_container", ["require", "exports", "core/container/container", "core/common/runtime_error", "core/common/css_transition_driver"], function (require, exports, container_1, runtime_error_1, css_transition_driver_1) {
+define("core/container/page_container", ["require", "exports", "core/container/container", "core/common/runtime_error", "core/common/dto", "core/common/css_transition_driver"], function (require, exports, container_1, runtime_error_1, dto_1, css_transition_driver_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
-    var HierarchicalContainer = /** @class */ (function (_super) {
-        __extends(HierarchicalContainer, _super);
-        function HierarchicalContainer(id, bindDomElement, cssTransitionOptions) {
+    var PageContainer = /** @class */ (function (_super) {
+        __extends(PageContainer, _super);
+        function PageContainer(id, bindDomElement, cssTransitionOptions) {
             var _this = _super.call(this, id, bindDomElement, cssTransitionOptions) || this;
             _this.cssTransitionDrivers = new Map();
-            bindDomElement.classList.add("fvst_hierarchical_container");
+            bindDomElement.classList.add("fvst_page_container");
             return _this;
         }
-        HierarchicalContainer.prototype.addModule = function (module) {
+        PageContainer.prototype.addModule = function (module) {
             return __awaiter(this, void 0, void 0, function () {
                 var _this = this;
                 return __generator(this, function (_a) {
@@ -386,12 +385,12 @@ define("core/container/hierarchical_container", ["require", "exports", "core/con
                 });
             });
         };
-        HierarchicalContainer.prototype.initialize = function (parcel) {
+        PageContainer.prototype.initialize = function (parcel) {
             if (this.defaultModule) {
                 this.forward(this.defaultModule, parcel);
             }
         };
-        HierarchicalContainer.prototype.forward = function (module, parcel) {
+        PageContainer.prototype.forward = function (module, parcel) {
             return __awaiter(this, void 0, void 0, function () {
                 var result;
                 return __generator(this, function (_a) {
@@ -414,7 +413,19 @@ define("core/container/hierarchical_container", ["require", "exports", "core/con
                 });
             });
         };
-        HierarchicalContainer.prototype.activateModule = function (module, parcel) {
+        PageContainer.prototype.back = function () {
+            var _this = this;
+            this.inBackProcess = true;
+            this.activeModule.exit(dto_1.ActionType.BACK).then(function (exited) {
+                if (exited) {
+                    _this.showPreviousModule();
+                }
+                else {
+                    _this.inBackProcess = false;
+                }
+            });
+        };
+        PageContainer.prototype.activateModule = function (module, parcel) {
             if (!this.mountedModules.has(module.getName()))
                 throw new runtime_error_1.default("指定されたモジュールはマウントされていません。");
             if (this.activeModule) {
@@ -430,7 +441,7 @@ define("core/container/hierarchical_container", ["require", "exports", "core/con
                     m.hide();
             });
         };
-        HierarchicalContainer.prototype.showModule = function (targetModule) {
+        PageContainer.prototype.showModule = function (targetModule) {
             var driver;
             if (driver = this.cssTransitionDrivers.get(targetModule.getName())) {
                 driver.show();
@@ -439,7 +450,7 @@ define("core/container/hierarchical_container", ["require", "exports", "core/con
                 targetModule.show();
             }
         };
-        HierarchicalContainer.prototype.hideModule = function (targetModule) {
+        PageContainer.prototype.hideModule = function (targetModule) {
             var driver;
             if (driver = this.cssTransitionDrivers.get(targetModule.getName())) {
                 driver.hide();
@@ -448,7 +459,7 @@ define("core/container/hierarchical_container", ["require", "exports", "core/con
                 targetModule.hide();
             }
         };
-        HierarchicalContainer.prototype.showPreviousModule = function () {
+        PageContainer.prototype.showPreviousModule = function () {
             if (this.moduleChangeHistory.length > 0) {
                 this.moduleChangeHistory.pop();
             }
@@ -461,9 +472,9 @@ define("core/container/hierarchical_container", ["require", "exports", "core/con
                 }
             }
         };
-        return HierarchicalContainer;
+        return PageContainer;
     }(container_1.default));
-    exports.default = HierarchicalContainer;
+    exports.default = PageContainer;
 });
 define("core/container/flat_container", ["require", "exports", "core/container/container", "core/common/runtime_error"], function (require, exports, container_2, runtime_error_2) {
     "use strict";
@@ -529,6 +540,9 @@ define("core/container/flat_container", ["require", "exports", "core/container/c
                 });
             });
         };
+        FlatContainer.prototype.back = function () {
+            //無効な操作
+        };
         FlatContainer.prototype.updateAllModulePositionAndSize = function () {
             var _this = this;
             var leftValueCommon = "calc(100% / " + this.mountedModules.size + " * "; //+ leftIndex + ")";
@@ -547,7 +561,7 @@ define("core/container/flat_container", ["require", "exports", "core/container/c
     }(container_2.default));
     exports.default = FlatContainer;
 });
-define("core/container/container_manager", ["require", "exports", "core/common/runtime_error", "core/container/hierarchical_container", "core/container/flat_container"], function (require, exports, runtime_error_3, hierarchical_container_1, flat_container_1) {
+define("core/container/container_manager", ["require", "exports", "core/common/runtime_error", "core/container/page_container", "core/container/flat_container"], function (require, exports, runtime_error_3, page_container_1, flat_container_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var ContainerManager = /** @class */ (function () {
@@ -571,8 +585,8 @@ define("core/container/container_manager", ["require", "exports", "core/common/r
             }
             var newContainer = null;
             if (!type || type === "separated") {
-                //newContainer = new HierarchicalContainer(id, bindDomElement);
-                newContainer = new hierarchical_container_1.default(id, bindDomElement, {
+                //newContainer = new PageContainer(id, bindDomElement);
+                newContainer = new page_container_1.default(id, bindDomElement, {
                     enableCssTransition: true
                 });
             }
@@ -603,7 +617,7 @@ define("core/module/module_router", ["require", "exports", "core/container/conta
         ModuleRouter.getInstance = function () {
             return ModuleRouter.instance;
         };
-        ModuleRouter.prototype.forward = function (targetIdentifier, params) {
+        ModuleRouter.prototype.forward = function (targetIdentifier, parcel) {
             return __awaiter(this, void 0, void 0, function () {
                 var s, targetContainerId, moduleName, target, module;
                 return __generator(this, function (_a) {
@@ -612,7 +626,7 @@ define("core/module/module_router", ["require", "exports", "core/container/conta
                     moduleName = s[1];
                     target = container_manager_1.default.getInstance().getContainer(targetContainerId);
                     module = module_manager_1.default.getInstance().getModule(moduleName);
-                    return [2 /*return*/, target.forward(module, params)];
+                    return [2 /*return*/, target.forward(module, parcel)];
                 });
             });
         };
@@ -988,21 +1002,18 @@ define("core/overlay/dialog_window", ["require", "exports", "core/overlay/overla
                     _this.close();
             });
         };
-        // private onMouseUp(event: MouseEvent) {
-        //     this.isDragging = false;
-        // }
         DialogWindow.prototype.onOkButtonClick = function (event) {
             var _this = this;
             this.container.getActiveModule().exit(dto_2.ActionType.OK).then(function (exited) {
                 if (exited)
-                    _this.close();
+                    _this.close(_this.container.getContainerResult());
             });
         };
         DialogWindow.prototype.onCancelButtonClick = function (event) {
             var _this = this;
             this.container.getActiveModule().exit(dto_2.ActionType.CANCEL).then(function (exited) {
                 if (exited)
-                    _this.close();
+                    _this.close(null);
             });
         };
         DialogWindow.prototype.onApplyButtonClick = function (event) {
@@ -1010,7 +1021,7 @@ define("core/overlay/dialog_window", ["require", "exports", "core/overlay/overla
         DialogWindow.prototype.waitForOverlayClose = function () {
             var _this = this;
             return new Promise(function (resolve) {
-                _this.closeForWaitResolver = resolve;
+                _this.waitForOverlayCloseResolver = resolve;
             });
         };
         //override
@@ -1030,25 +1041,16 @@ define("core/overlay/dialog_window", ["require", "exports", "core/overlay/overla
         };
         DialogWindow.prototype.show = function (parcel, options) {
             return __awaiter(this, void 0, void 0, function () {
-                var px, py;
-                var _this = this;
                 return __generator(this, function (_a) {
                     if (options && options.x !== undefined && options.y !== undefined) {
-                        px = options.x;
-                        py = options.y;
+                        this.changePosition(options.x, options.y);
                     }
                     else {
                         //デフォルト表示位置は表示領域（ビューポート）の中央
-                        px = Math.round((this.viewPortEl.offsetWidth - this.size.width) / 2);
-                        py = Math.round((this.viewPortEl.offsetHeight - this.size.height) / 2);
+                        this.moveToViewPortCenter();
                     }
-                    this.changePosition(px, py);
+                    this.container.initialize(parcel);
                     this.outerFrameTransitionDriver.show();
-                    this.container.getActiveModule().waitForExit().then(function (result) {
-                        _this.close();
-                        //自身のdisplay:noneが反映した後にコールバックさせるためsetTimeoutを介して呼び出す
-                        window.setTimeout(_this.closeForWaitResolver.bind(_this), 0, result);
-                    });
                     return [2 /*return*/, this.waitForOverlayClose()];
                 });
             });
@@ -1060,8 +1062,15 @@ define("core/overlay/dialog_window", ["require", "exports", "core/overlay/overla
                 });
             });
         };
-        DialogWindow.prototype.close = function () {
+        DialogWindow.prototype.moveToViewPortCenter = function () {
+            var x = Math.round((this.viewPortEl.offsetWidth - this.size.width) / 2);
+            var y = Math.round((this.viewPortEl.offsetHeight - this.size.height) / 2);
+            this.changePosition(x, y);
+        };
+        DialogWindow.prototype.close = function (result) {
             this.outerFrameTransitionDriver.hide();
+            //自身のdisplay:noneが反映した後にコールバックさせるためsetTimeoutを介して呼び出す
+            window.setTimeout(this.waitForOverlayCloseResolver.bind(this), 0, result);
         };
         //override
         DialogWindow.prototype.activate = function () {
@@ -1296,9 +1305,13 @@ define("core/adapter/html_component_adapter", ["require", "exports", "core/modul
                 cancelExit: this.cancelExit.bind(this),
                 continueExit: this.continueExit.bind(this)
             };
+            this.navigator = new Navigator(this);
         }
         HTMLComponentAdapter.prototype.setHtmlComponent = function (htmlComponent) {
             this.htmlComponent = htmlComponent;
+        };
+        HTMLComponentAdapter.prototype.getHtmlComponent = function () {
+            return this.htmlComponent;
         };
         HTMLComponentAdapter.prototype.triggerOnLoadHandler = function (param) {
             if (this.onLoad)
@@ -1379,6 +1392,62 @@ define("core/adapter/html_component_adapter", ["require", "exports", "core/modul
         return HTMLComponentAdapter;
     }());
     exports.default = HTMLComponentAdapter;
+    var Navigator = /** @class */ (function () {
+        function Navigator(adapter) {
+            this.moduleRouter = module_router_1.default.getInstance();
+            this.moduleManager = module_manager_2.default.getInstance();
+            this.overlayManager = overlay_manager_3.default.getInstance();
+            this.adapter = adapter;
+        }
+        Navigator.prototype.localForward = function (moduleName, parcel) {
+            return __awaiter(this, void 0, void 0, function () {
+                var targetIdentifier;
+                return __generator(this, function (_a) {
+                    targetIdentifier = this.adapter.getHtmlComponent().
+                        getParentContainer().getId() + "::" + moduleName;
+                    return [2 /*return*/, this.moduleRouter.forward(targetIdentifier, parcel)];
+                });
+            });
+        };
+        Navigator.prototype.forward = function (targetIdentifier, parcel) {
+            return __awaiter(this, void 0, void 0, function () {
+                return __generator(this, function (_a) {
+                    return [2 /*return*/, this.moduleRouter.forward(targetIdentifier, parcel)];
+                });
+            });
+        };
+        Navigator.prototype.startExitProcess = function (actionType) {
+            this.adapter.getHtmlComponent().exit(actionType);
+        };
+        Navigator.prototype.showWindow = function (overlayName, parcel, options) {
+            return __awaiter(this, void 0, void 0, function () {
+                return __generator(this, function (_a) {
+                    switch (_a.label) {
+                        case 0: return [4 /*yield*/, this.overlayManager.show(overlayName, parcel, options)];
+                        case 1: return [2 /*return*/, _a.sent()];
+                    }
+                });
+            });
+        };
+        Navigator.prototype.showWindowAsModal = function (overlayName, parcel, options) {
+            return __awaiter(this, void 0, void 0, function () {
+                return __generator(this, function (_a) {
+                    switch (_a.label) {
+                        case 0: return [4 /*yield*/, this.overlayManager.showAsModal(overlayName, parcel, options)];
+                        case 1: return [2 /*return*/, _a.sent()];
+                    }
+                });
+            });
+        };
+        Navigator.prototype.sendMessage = function (destination, command, message) {
+            return __awaiter(this, void 0, void 0, function () {
+                return __generator(this, function (_a) {
+                    return [2 /*return*/, this.moduleManager.dispatchMessage(destination, command, message)];
+                });
+            });
+        };
+        return Navigator;
+    }());
     var __global = window;
     __global.__HTMLComponentAdapter = HTMLComponentAdapter;
     __global.__registerHTMLComponentAdapter = function (moduleIndex, componentClass) {
@@ -1499,7 +1568,7 @@ define("core/module/html_component", ["require", "exports", "core/source_reposit
         HTMLComponent.prototype.getElement = function () {
             throw this.wrapperElement;
         };
-        HTMLComponent.prototype.getCurrentContainer = function () {
+        HTMLComponent.prototype.getParentContainer = function () {
             return this.currentContainer;
         };
         HTMLComponent.prototype.getSubContainerNames = function () {

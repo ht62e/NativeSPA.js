@@ -1,15 +1,15 @@
 import Container, { CssTransitionOptions } from "./container";
 import Module from "../module/module";
 import RuntimeError from "../common/runtime_error";
-import { Parcel, Result } from "../common/dto";
+import { Parcel, Result, ActionType } from "../common/dto";
 import CssTransitionDriver from "../common/css_transition_driver";
 
-export default class HierarchicalContainer extends Container {
+export default class PageContainer extends Container {
     protected cssTransitionDrivers = new Map<string, CssTransitionDriver>();
 
     constructor(id: string, bindDomElement: HTMLDivElement, cssTransitionOptions?: CssTransitionOptions) {
         super(id, bindDomElement, cssTransitionOptions);
-        bindDomElement.classList.add("fvst_hierarchical_container");
+        bindDomElement.classList.add("fvst_page_container");
     }
 
     public async addModule(module: Module): Promise<boolean> {       
@@ -50,6 +50,17 @@ export default class HierarchicalContainer extends Container {
         this.inBackProcess = false;
 
         return result;
+    }
+
+    public back(): void {
+        this.inBackProcess = true;
+        this.activeModule.exit(ActionType.BACK).then(exited => {
+            if (exited) {
+                this.showPreviousModule();
+            } else {
+                this.inBackProcess = false;
+            }
+        });
     }
 
     public activateModule(module: Module, parcel?: Parcel): void {

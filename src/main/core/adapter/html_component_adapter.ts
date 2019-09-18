@@ -15,6 +15,8 @@ export default abstract class HTMLComponentAdapter {
     protected moduleManager: ModuleManager = ModuleManager.getInstance();
     protected overlayManager: OvarlayManager = OvarlayManager.getInstance();
 
+    public navigator: Navigator;
+
     private exitCallbackReturnFunctionsObject: ExitReturnFunctions;
 
     constructor() {
@@ -22,10 +24,15 @@ export default abstract class HTMLComponentAdapter {
             cancelExit: this.cancelExit.bind(this),
             continueExit: this.continueExit.bind(this)
         };
+        this.navigator = new Navigator(this);
     }
 
     public setHtmlComponent(htmlComponent: HTMLComponent) {
         this.htmlComponent = htmlComponent;
+    }
+
+    public getHtmlComponent(): HTMLComponent {
+        return this.htmlComponent;
     }
 
     protected abstract onLoad(param: any): void;
@@ -101,6 +108,46 @@ export default abstract class HTMLComponentAdapter {
         return this.moduleManager.dispatchMessage(destination, command, message);
     }
 }
+
+
+class Navigator {
+    private adapter: HTMLComponentAdapter;
+    private moduleRouter: ModuleRouter = ModuleRouter.getInstance();
+    private moduleManager: ModuleManager = ModuleManager.getInstance();
+    private overlayManager: OvarlayManager = OvarlayManager.getInstance();
+
+    constructor(adapter: HTMLComponentAdapter) {
+        this.adapter = adapter;
+    }
+
+    public async localForward(moduleName: string, parcel?: Parcel): Promise<Result> {
+        const targetIdentifier = 
+                this.adapter.getHtmlComponent().
+                getParentContainer().getId() + "::" + moduleName;
+        return this.moduleRouter.forward(targetIdentifier, parcel);
+    }
+
+    public async forward(targetIdentifier: string, parcel?: Parcel): Promise<Result> {
+        return this.moduleRouter.forward(targetIdentifier, parcel);
+    }
+
+    public startExitProcess(actionType: ActionType) {
+        this.adapter.getHtmlComponent().exit(actionType);
+    }
+
+    public async showWindow(overlayName: string, parcel?: Parcel, options?: ShowOptions): Promise<Result> {
+        return await this.overlayManager.show(overlayName, parcel, options);
+    }
+
+    public async showWindowAsModal(overlayName: string, parcel?: Parcel, options?: ShowOptions): Promise<Result> {
+        return await this.overlayManager.showAsModal(overlayName, parcel, options);
+    }
+
+    public async sendMessage(destination: string, command: string, message?: any): Promise<any> {
+        return this.moduleManager.dispatchMessage(destination, command, message);
+    }
+}
+
 
 interface ExitReturnFunctions {
     readonly cancelExit: () => void;

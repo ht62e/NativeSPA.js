@@ -62,6 +62,10 @@ export default class FlatContainer extends Container {
         this.activateModule(module, parcel);
         return null;
     }
+
+    public back(): void {
+        //無効な操作
+    }
     
     protected updateAllModulePositionAndSize() {
         const leftValueCommon = "calc(100% / " + this.mountedModules.size + " * "; //+ leftIndex + ")";

@@ -29,7 +29,7 @@ export default abstract class HTMLComponent implements Module {
         this.onCreate();
     }
 
-    dispachResizeEvent(): void {
+    public dispachResizeEvent(): void {
         if (!this.wrapperElement) return;
 
         this.subContainerInfos.forEach((containerInfo: ContainerInfo) => {
@@ -37,7 +37,7 @@ export default abstract class HTMLComponent implements Module {
         });
     }
 
-    async fetch(): Promise<boolean> {
+    public async fetch(): Promise<boolean> {
         const repository = SourceRepository.getInstance();
         this.source = await repository.fetch(this.sourceUri);
         
@@ -47,7 +47,7 @@ export default abstract class HTMLComponent implements Module {
         return null;
     }
 
-    initialize(parcel: Parcel): void {
+    public initialize(parcel: Parcel): void {
         this.subContainerInfos.forEach((containerInfo: ContainerInfo) => {
             containerInfo.container.initialize(parcel);
         });
@@ -55,7 +55,7 @@ export default abstract class HTMLComponent implements Module {
         this.htmlAdapter.triggerOnInitializeHandler(parcel);
     }
 
-    show(): void {
+    public show(): void {
         this.wrapperElement.style.display = "";
         this.wrapperElement.style.visibility = "";
         this.htmlAdapter.triggerOnShowHandler(false, null);
@@ -65,7 +65,7 @@ export default abstract class HTMLComponent implements Module {
         });
     }
 
-    hide(): void {
+    public hide(): void {
         if (this.wrapperElement.style.visibility !== "hidden") {
             this.wrapperElement.style.display = "none";
         }
@@ -74,7 +74,7 @@ export default abstract class HTMLComponent implements Module {
 
     
 
-    waitForExit(): Promise<Result> {
+    public waitForExit(): Promise<Result> {
         return new Promise(resolve => {
             this.exitForWaitResolver = resolve;
         });
@@ -88,7 +88,7 @@ export default abstract class HTMLComponent implements Module {
         });
     }
 
-    continueExitProcess(result: Result) {
+    public continueExitProcess(result: Result) {
         if (this.exitResolver) {
             this.exitResolver(true);
             this.exitResolver = null;
@@ -99,36 +99,36 @@ export default abstract class HTMLComponent implements Module {
         }
     }
 
-    cancelExitProcess() {
+    public cancelExitProcess() {
         if (this.exitResolver) {
             this.exitResolver(false);
             this.exitResolver = null;
         }        
     }
 
-    async passMessage(command: string, message?: any): Promise<any> {
+    public async passMessage(command: string, message?: any): Promise<any> {
         return new Promise(resolve => {
             this.passMessageResolver = resolve;
             this.htmlAdapter.triggerOnReceiveMessage(command, message);
         });
     }
 
-    returnMessageResponse(messageResponse: any) {
+    public returnMessageResponse(messageResponse: any) {
         if (this.passMessage) {
             this.passMessageResolver(messageResponse);
             this.passMessageResolver = null;
         }
     }
 
-    getElement(): HTMLDivElement {
+    public getElement(): HTMLDivElement {
         throw this.wrapperElement;
     }
 
-    getCurrentContainer(): Container {
+    public getParentContainer(): Container {
         return this.currentContainer;
     }
 
-    getSubContainerNames(): Array<string> {
+    public getSubContainerNames(): Array<string> {
         let ary = new Array<string>();
         this.subContainerInfos.forEach((c: ContainerInfo) => {
             ary.push(c.name);
@@ -136,11 +136,11 @@ export default abstract class HTMLComponent implements Module {
         return ary;
     }
 
-    getName(): string {
+    public getName(): string {
         return this.name;
     }
 
-    getCaption(): string {
+    public getCaption(): string {
         return this.name;
     }
     

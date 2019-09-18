@@ -59,7 +59,7 @@ export default abstract class Overlay {
     
     public abstract async show(parcel?: Parcel, options?: ShowOptions): Promise<Result> ;
     public abstract async showAsModal(parcel?: Parcel, options?: ShowOptions): Promise<Result> ;
-    public abstract close(): void;
+    public abstract close(result?: Result): void;
     protected abstract async waitForOverlayClose(): Promise<Result>;
 
     constructor(viewPortElement: HTMLElement, name: string, size: Size) {
