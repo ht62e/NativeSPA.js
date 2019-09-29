@@ -1,4 +1,4 @@
-<!-- <div id="\:all" class="module"> -->
+<div id="\:all" class="module">
     <div>This is main.html</div>
     <div><input type="button" id="\:show_main2" value="show main2"></div>
     <div><input type="button" id="\:show_tab" value="show tab"></div>
@@ -20,7 +20,7 @@
             </md-field>
     </div>
     <div><textarea id="\:textarea1"></textarea></div>
-<!-- </div> -->
+</div>
 
 <style>
     #\:textarea1 {
@@ -42,46 +42,51 @@
 
 <script data-scope-mode="prototype">
     this.textArea1 = document.getElementById("\:textarea1");
+
+    document.getElementById("\:all").addEventListener("dblclick", (function() {
+        this.navigation.showPopupMenu("popup1", null);
+    }).bind(this));
+
     document.getElementById("\:show_main2").addEventListener("click", (function() {
-        this.navigator.localForward("main2", null);
+        this.navigation.forward("main2", null);
     }).bind(this));
 
     document.getElementById("\:show_tab").addEventListener("click", (function() {
-        this.navigator.localForward("base.body::tab", null);
+        this.navigation.forward("tab", null);
     }).bind(this));
 
     document.getElementById("\:show_win1").addEventListener("click", (function() {
-        this.showWindow("win1", null, null).then((function(result) {
+        this.navigation.showWindow("win1", null, null).then((function(result) {
             this.writeLine(JSON.stringify(result));
         }).bind(this));
     }).bind(this));
 
     document.getElementById("\:show_win2").addEventListener("click", (function() {
-        this.showWindow("win2", null, null).then((function(result) {
+        this.navigation.showWindow("win2", null, null).then((function(result) {
             this.writeLine(JSON.stringify(result));
         }).bind(this));
     }).bind(this));
 
     document.getElementById("\:show_win3").addEventListener("click", (function() {
-        this.showWindow("win3", null, null).then((function(result) {
+        this.navigation.showWindow("win3", null, null).then((function(result) {
             this.writeLine(JSON.stringify(result));
         }).bind(this));
     }).bind(this));
 
     document.getElementById("\:show_win1_as_modal").addEventListener("click", (function() {
-        this.showWindowAsModal("win1", null, null).then((function(result) {
+        this.navigation.showWindowAsModal("win1", null, null).then((function(result) {
             this.writeLine(JSON.stringify(result));
         }).bind(this));
     }).bind(this));
 
     document.getElementById("\:show_win2_as_modal").addEventListener("click", (function() {
-        this.showWindowAsModal("win2", null, null).then((function(result) {
+        this.navigation.showWindowAsModal("win2", null, null).then((function(result) {
             this.writeLine(JSON.stringify(result));
         }).bind(this));
     }).bind(this));
 
     document.getElementById("\:show_win3_as_modal").addEventListener("click", (function() {
-        this.showWindowAsModal("win3", null, null).then((function(result) {
+        this.navigation.showWindowAsModal("win3", null, null).then((function(result) {
             this.writeLine(JSON.stringify(result));
         }).bind(this));
     }).bind(this));
@@ -140,7 +145,7 @@
     }, 3000);
 </script>
 
-<script data-scope-mode="class">
+<script data-scope-mode="native">
     setTimeout(function() {
         document.getElementById("\:input1").value = "実行完了4";
     }, 4000);

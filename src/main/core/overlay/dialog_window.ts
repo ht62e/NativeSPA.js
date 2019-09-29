@@ -7,6 +7,7 @@ import { Result, ActionType, Parcel } from "../common/dto";
 
 export interface WindowOptions {
     size?: Size;
+    defaultCaption?: string;
 }
 
 export default class DialogWindow extends Overlay {
@@ -30,8 +31,8 @@ export default class DialogWindow extends Overlay {
 
     protected waitForOverlayCloseResolver: (value?: Result | PromiseLike<Result>) => void;
 
-    constructor(viewPortElement: HTMLElement, name: string, caption: string, options?: WindowOptions) {
-        super(viewPortElement, name, options ? options.size : null);
+    constructor(viewPortElement: HTMLElement, name: string, options?: WindowOptions) {
+        super(viewPortElement, name, options ? options.size : null, true);
 
         const containerManager = ContainerManager.getInstance();
 
@@ -50,7 +51,7 @@ export default class DialogWindow extends Overlay {
 
         this.headerTitleEl = document.createElement("div");
         this.headerTitleEl.className = "caption";
-        this.headerTitleEl.textContent = caption;
+        this.headerTitleEl.textContent = options && options.defaultCaption ? options.defaultCaption : "";
 
         this.headerCloseButtonEl = document.createElement("div");
         this.headerCloseButtonEl.className = "close_button";
@@ -71,7 +72,7 @@ export default class DialogWindow extends Overlay {
         this.bodyEl.style.width = "100%";
 
         this.container = containerManager.createContainer(
-            "__window" + String(DialogWindow.instanceSequence++), "", this.bodyEl);
+            "__window_" + String(DialogWindow.instanceSequence++), "", this.bodyEl);
 
         this.footerEl = document.createElement("div");
         this.footerEl.className = "fvst_dialog_window_footer";
@@ -163,9 +164,13 @@ export default class DialogWindow extends Overlay {
         return this.container;
     }
 
+    public setWindowTitle(title: string) {
+        this.headerTitleEl.textContent = title;
+    }
+
     public async show(parcel?: Parcel, options?: ShowOptions): Promise<Result> {
-        if (options && options.x !== undefined && options.y !== undefined) {
-            this.changePosition(options.x, options.y);
+        if (options && options.position) {
+            this.changePosition(options.position.x, options.position.y);
         } else {
             //デフォルト表示位置は表示領域（ビューポート）の中央
             this.moveToViewPortCenter();

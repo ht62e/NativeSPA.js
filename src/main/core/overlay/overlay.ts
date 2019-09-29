@@ -5,8 +5,9 @@ import CssTransitionDriver from "../common/css_transition_driver";
 import { Parcel, Result } from "../common/dto";
 
 export interface ShowOptions {
-    x?: number;
-    y?: number;
+    // x?: number;
+    // y?: number;
+    position?: Point;
 }
 
 export default abstract class Overlay {
@@ -43,10 +44,13 @@ export default abstract class Overlay {
 
     protected position: Point;
     protected size: Size;
+    protected originalSize: Size;
     protected zIndex: number;
 
+    protected active: boolean = false;
     protected inactiveModalMode: boolean = false;
 
+    protected resizable: boolean = true;
     protected isResizing: boolean = false;
     protected resizePositionIndex: number;
     protected resizeStartMousePos: Point;
@@ -62,12 +66,15 @@ export default abstract class Overlay {
     public abstract close(result?: Result): void;
     protected abstract async waitForOverlayClose(): Promise<Result>;
 
-    constructor(viewPortElement: HTMLElement, name: string, size: Size) {
+    constructor(viewPortElement: HTMLElement, name: string, size: Size, resizable?: boolean) {
         this.viewPortEl = viewPortElement;
         this.name = name;
+        this.resizable = !!resizable;
 
         const width = size ? size.width : Overlay.DEFAULT_OVERLAY_SIZE_WIDTH;
         const height = size ? size.height : Overlay.DEFAULT_OVERLAY_SIZE_HEIGHT;
+
+        this.originalSize = new Size(width, height);
 
         //リサイズ可能領域のためのフレームを作成
         this.outerFrameEl = document.createElement("div");
@@ -189,11 +196,18 @@ export default abstract class Overlay {
 
         this.resizeHandleEl.forEach(element => {
             this.outerFrameEl.appendChild(element);
-        })
+        });
     }
 
+    // public setResizable(enable: boolean) {
+    //     const displayValue = enable ? "block" : "none";
+    //     for (let i = 0; i < 8; i++) {
+    //         this.resizeHandleEl[i].style.display = displayValue;
+    //     }
+    // }
+
     public __dispachMouseMoveEvent(x: number, y: number, deltaX: number, deltaY: number) {
-        if (this.isResizing) {
+        if (this.isResizing && this.resizable) {
             switch (this.resizePositionIndex) {
                 case 0 : //左上
                     this.changePosition(this.resizeStartPos.x + (x - this.resizeStartMousePos.x), this.resizeStartPos.y + (y - this.resizeStartMousePos.y));
@@ -298,6 +312,10 @@ export default abstract class Overlay {
             event.target as HTMLElement;
     }
 
+    protected restoreOriginalSize() {
+        this.resize(this.originalSize.width, this.originalSize.height);
+    }
+
     public changeZIndex(zIndex: number): void {
         this.zIndex = zIndex;
         this.outerFrameEl.style.zIndex = String(zIndex);
@@ -328,22 +346,34 @@ export default abstract class Overlay {
     }
 
     public activate(): void {
+        this.active = true;
         this.inactiveModalMode = false;
         this.modalInactiveLayerTransitionDriver.hide();
+        const _resizable = this.resizable;
         this.resizeHandleEl.forEach(element => {
-            element.style.display = "";
-        })
+            if (_resizable) {
+                element.style.display = "";
+            } else {
+                element.style.display = "none";
+            }
+        });
+
     }
 
     public inactivate(withModal: boolean): void {
+        this.active = false;
         this.inactiveModalMode = withModal;
         if (withModal) {
             this.modalInactiveLayerTransitionDriver.show();
             this.resizeHandleEl.forEach(element => {
                 element.style.display = "none";
-            })
+            });
         }
-    }    
+    }
+
+    public isActive(): boolean {
+        return this.active;
+    }
 
 }
 

@@ -15,7 +15,7 @@ export default abstract class HTMLComponentAdapter {
     protected moduleManager: ModuleManager = ModuleManager.getInstance();
     protected overlayManager: OvarlayManager = OvarlayManager.getInstance();
 
-    public navigator: Navigator;
+    public navigation: Navigation;
 
     private exitCallbackReturnFunctionsObject: ExitReturnFunctions;
 
@@ -24,7 +24,7 @@ export default abstract class HTMLComponentAdapter {
             cancelExit: this.cancelExit.bind(this),
             continueExit: this.continueExit.bind(this)
         };
-        this.navigator = new Navigator(this);
+        this.navigation = new Navigation(this);
     }
 
     public setHtmlComponent(htmlComponent: HTMLComponent) {
@@ -88,29 +88,10 @@ export default abstract class HTMLComponentAdapter {
     }
 
 
-
-
-    private startExitProcess(actionType: ActionType) {
-        this.htmlComponent.exit(actionType);
-    }
-
-    private async showWindow(overlayName: string, parcel?: Parcel, options?: ShowOptions): Promise<Result> {
-        const overlayManager = OvarlayManager.getInstance();
-        return await overlayManager.show(overlayName, parcel, options);
-    }
-
-    private async showWindowAsModal(overlayName: string, parcel?: Parcel, options?: ShowOptions): Promise<Result> {
-        const overlayManager = OvarlayManager.getInstance();
-        return await overlayManager.showAsModal(overlayName, parcel, options);
-    }
-
-    private async sendMessage(destination: string, command: string, message?: any): Promise<any> {
-        return this.moduleManager.dispatchMessage(destination, command, message);
-    }
 }
 
 
-class Navigator {
+class Navigation {
     private adapter: HTMLComponentAdapter;
     private moduleRouter: ModuleRouter = ModuleRouter.getInstance();
     private moduleManager: ModuleManager = ModuleManager.getInstance();
@@ -120,15 +101,16 @@ class Navigator {
         this.adapter = adapter;
     }
 
-    public async localForward(moduleName: string, parcel?: Parcel): Promise<Result> {
-        const targetIdentifier = 
-                this.adapter.getHtmlComponent().
-                getParentContainer().getId() + "::" + moduleName;
-        return this.moduleRouter.forward(targetIdentifier, parcel);
-    }
-
     public async forward(targetIdentifier: string, parcel?: Parcel): Promise<Result> {
-        return this.moduleRouter.forward(targetIdentifier, parcel);
+        let finalTargetId;
+        if (targetIdentifier.split("::").length > 1) {
+            finalTargetId = targetIdentifier;
+        } else {
+            finalTargetId = 
+                this.adapter.getHtmlComponent().
+                getParentContainer().getId() + "::" + targetIdentifier;
+        }
+        return this.moduleRouter.forward(finalTargetId, parcel);
     }
 
     public startExitProcess(actionType: ActionType) {
@@ -141,6 +123,15 @@ class Navigator {
 
     public async showWindowAsModal(overlayName: string, parcel?: Parcel, options?: ShowOptions): Promise<Result> {
         return await this.overlayManager.showAsModal(overlayName, parcel, options);
+    }
+
+    public async showPopupMenu(overlayName: string, parcel?: Parcel, targetElement?: HTMLElement): Promise<Result> {
+        if (targetElement) {
+            const {left, bottom} = targetElement.getBoundingClientRect();
+            return await this.overlayManager.show(overlayName, parcel, {position: {x: left, y: bottom}});
+        } else {
+            return await this.overlayManager.show(overlayName, parcel);
+        }
     }
 
     public async sendMessage(destination: string, command: string, message?: any): Promise<any> {

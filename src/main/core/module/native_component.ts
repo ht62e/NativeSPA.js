@@ -96,47 +96,37 @@ export default class NativeComponent extends HTMLComponent {
 
         const nodeList: NodeList = this.wrapperElement.querySelectorAll("script");
         for (let i = 0; i < nodeList.length; i++) {
-            const element: HTMLScriptElement = nodeList[i] as HTMLScriptElement;
-            const scopeMode: string = element.dataset["scopeMode"];
+            const scriptElement: HTMLScriptElement = nodeList[i] as HTMLScriptElement;
+            const scopeMode: string = scriptElement.dataset["scopeMode"];
 
             if (!scopeMode || scopeMode === "native") {
-                nativeScript += element.textContent;
+                nativeScript += scriptElement.textContent;
             } else if (scopeMode === "prototype")  {
-                prototypeScript += element.textContent;
+                prototypeScript += scriptElement.textContent;
             } else if (scopeMode === "class") {
-                classScript += element.textContent;
+                classScript += scriptElement.textContent;
             }
-            initialScriptElements.push(element);            
+            initialScriptElements.push(scriptElement);            
         }
-
-        // this.wrapperElement.querySelectorAll("script").forEach((element: HTMLScriptElement) => {
-        //     const scopeMode: string = element.dataset["scopeMode"];
-        //     if (!scopeMode || scopeMode === "native") {
-        //         nativeScript += element.textContent;
-        //     } else if (scopeMode === "prototype")  {
-        //         prototypeScript += element.textContent;
-        //     } else if (scopeMode === "class") {
-        //         classScript += element.textContent;
-        //     }
-        //     initialScriptElements.push(element);
-        // })
 
         const nativeScriptElement = document.createElement("script");
         nativeScriptElement.textContent = nativeScript;
         this.wrapperElement.appendChild(nativeScriptElement);
 
+        //prototypeScriptとclassScriptは1つのHTMLファイルにつき1種類だけ
+        if (classScript) {
+            const classScriptElement = document.createElement("script");
+            classScriptElement.textContent = classScript;
+            this.wrapperElement.appendChild(classScriptElement);
+        } else {
+            const prototypeScriptElement = document.createElement("script");
+            prototypeScript =   this.prototypeTemplateBegin + 
+                                prototypeScript + 
+                                this.prototypeTemplateEnd;
+            prototypeScriptElement.textContent = prototypeScript;
+            this.wrapperElement.appendChild(prototypeScriptElement);
+        }
 
-        const prototypeScriptElement = document.createElement("script");
-        prototypeScript =   this.prototypeTemplateBegin + 
-                            prototypeScript + 
-                            this.prototypeTemplateEnd;
-        prototypeScriptElement.textContent = prototypeScript;
-        this.wrapperElement.appendChild(prototypeScriptElement);
-
-        const classScriptElement = document.createElement("script");
-        classScriptElement.textContent = classScript;
-        this.wrapperElement.appendChild(classScriptElement);
-        
         for (let element of initialScriptElements) {
             this.wrapperElement.removeChild(element);
         }

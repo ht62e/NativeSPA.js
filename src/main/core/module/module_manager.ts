@@ -4,7 +4,8 @@ import RuntimeError from "../common/runtime_error";
 import ContainerManager from "../container/container_manager";
 import Container from "../container/container";
 import OvarlayManager from "../overlay/overlay_manager";
-import DialogWindow from "../overlay/dialog_window";
+import DialogWindow, { WindowOptions } from "../overlay/dialog_window";
+import PopupMenu, { PopupMenuOptions } from "../overlay/popup_menu";
 
 export interface ModuleDescription {
     name: string;
@@ -15,6 +16,8 @@ export interface ModuleDescription {
     isContainerDefault?: boolean;
     lazyModuleLoading?: boolean;
     preloadSourceAtLazy?: boolean;
+    windowOptions?: WindowOptions;
+    popupMenuOptions?: PopupMenuOptions;
 }
 
 interface registerOptions {
@@ -63,17 +66,19 @@ export default class ModuleManager {
         this.registerDescription(name, sourceUri, DisplayMode.Embedding, targetContainerId, isContainerDefault, options);
     }
 
-    public registerWindow(name: string, sourceUri: string, options?: registerOptions) {
-        this.registerDescription(name, sourceUri, DisplayMode.Window, null, null, options);
+    public registerWindow(name: string, sourceUri: string, windowOptions: WindowOptions, options?: registerOptions) {
+        let md = this.registerDescription(name, sourceUri, DisplayMode.Window, null, null, options);
+        md.windowOptions = windowOptions;
     }
 
-    public registerPopup(name: string, sourceUri: string, options?: registerOptions) {
-        this.registerDescription(name, sourceUri, DisplayMode.PopupMenu, null, null, options);
+    public registerPopupMenu(name: string, sourceUri: string, popupMenuOptions: PopupMenuOptions, options?: registerOptions) {
+        let md = this.registerDescription(name, sourceUri, DisplayMode.PopupMenu, null, null, options);
+        md.popupMenuOptions = popupMenuOptions;
     }
 
     private registerDescription(name: string, sourceUri: string, displayMode: DisplayMode, 
                                 targetContainerId: string, isContainerDefault: boolean,
-                                options?: registerOptions) {
+                                options?: registerOptions): ModuleDescription {
         const op: registerOptions = options || {};
         const ds: ModuleDescription = {
             name: name,
@@ -86,9 +91,8 @@ export default class ModuleManager {
             preloadSourceAtLazy: op.preloadSourceAtLazy !== undefined ? op.preloadSourceAtLazy : true,
         };
         this.descriptions.push(ds);
+        return ds;
     }
-   
-
 
     public getModule(name: string) {
         if (!this.modules.has(name)) throw new RuntimeError("指定されたモジュールが見つかりません。");
@@ -165,19 +169,20 @@ export default class ModuleManager {
     public async loadSubModules(dependencyInfo: ModuleDependencyInfo) {
         const containerManager = ContainerManager.getInstance();
         const overlayManager = OvarlayManager.getInstance();
+        const moduleDescription: ModuleDescription = dependencyInfo.moduleDescription;
 
         if (dependencyInfo.isProcessed) throw new RuntimeError("コンテナの循環参照発生");
         dependencyInfo.isProcessed = true;
         
-        if (!dependencyInfo.isRoot && !dependencyInfo.moduleDescription.lazyModuleLoading) {
-            const displayMode = dependencyInfo.moduleDescription.displayMode;
-            const module = this.modules.get(dependencyInfo.moduleDescription.name);
+        if (!dependencyInfo.isRoot && !moduleDescription.lazyModuleLoading) {
+            const displayMode = moduleDescription.displayMode;
+            const module = this.modules.get(moduleDescription.name);
 
             if (displayMode === DisplayMode.Embedding) {
-                let targetContainer: Container = containerManager.getContainer(dependencyInfo.moduleDescription.targetContainerId);
+                let targetContainer: Container = containerManager.getContainer(moduleDescription.targetContainerId);
                 if (targetContainer) {
                     await targetContainer.addModule(module);
-                    if (dependencyInfo.moduleDescription.isContainerDefault) {
+                    if (moduleDescription.isContainerDefault) {
                         //targetContainer.activateModule(module);
                         targetContainer.setDefaultModule(module);
                     }
@@ -185,9 +190,13 @@ export default class ModuleManager {
                     throw new RuntimeError("ターゲットコンテナが存在しないか、未ロード");
                 }
             } else if (displayMode === DisplayMode.Window) {
-                const dWindow: DialogWindow = overlayManager.createWindow(module.getName(), "test");
+                const dWindow: DialogWindow = overlayManager.createWindow(module.getName(), moduleDescription.windowOptions);
                 await dWindow.getContainer().addModule(module);
                 dWindow.getContainer().activateModule(module);
+            } else if (displayMode === DisplayMode.PopupMenu) {
+                const dPopup: PopupMenu = overlayManager.createPopupMenu(module.getName(), moduleDescription.popupMenuOptions);
+                await dPopup.getContainer().addModule(module);
+                dPopup.getContainer().activateModule(module);
             }
         }
 

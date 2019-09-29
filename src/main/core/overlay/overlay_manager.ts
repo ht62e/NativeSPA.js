@@ -2,6 +2,7 @@ import DialogWindow, { WindowOptions as DialogWindowOptions } from "./dialog_win
 import Overlay, { ShowOptions } from "./overlay";
 import { Parcel, Result } from "../common/dto";
 import CssTransitionDriver from "../common/css_transition_driver";
+import PopupMenu, { PopupMenuOptions } from "./popup_menu";
 
 export default class OvarlayManager {
     private static instance = new OvarlayManager();
@@ -20,10 +21,13 @@ export default class OvarlayManager {
 
     private contentsSelectable: boolean = true;
 
+    private requestedAutoCloseCancelOnlyOnce: boolean = false;
+
     private OVERLAY_START_Z_INDEX: number = 10;
     private MODAL_START_Z_INDEX: number = 1000;
 
     private onFocusInBindedThis: (event: FocusEvent) => void;
+    private onMouseDownBindedThis: (event: MouseEvent) => void;
     private onMouseMoveBindedThis: (event: MouseEvent) => void;
     private onMouseUpBindedThis: (event: FocusEvent) => void;
     private onSelectStartBindedThis: (event: FocusEvent) => void;
@@ -44,6 +48,7 @@ export default class OvarlayManager {
         this.modalBackgroundLayerTransitionDriver = new CssTransitionDriver(this.modalBackgroundLayer);
 
         this.onFocusInBindedThis = this.onFocusIn.bind(this);
+        this.onMouseDownBindedThis = this.onMouseDown.bind(this);
         this.onMouseMoveBindedThis = this.onMouseMove.bind(this);
         this.onMouseUpBindedThis = this.onMouseUp.bind(this);
         this.onSelectStartBindedThis = this.onSelectStart.bind(this);
@@ -51,6 +56,18 @@ export default class OvarlayManager {
 
     public static getInstance(): OvarlayManager {
         return OvarlayManager.instance;
+    }
+
+    private onMouseDown(event: MouseEvent) {
+        if (this.requestedAutoCloseCancelOnlyOnce) {
+            this.requestedAutoCloseCancelOnlyOnce = false;
+        } else {
+            this.overlayManagementTable.forEach((value: OverlayManagementData, key: string) => {
+                if (value.isAutoCloseableWhenOutfocus) {
+                    console.log(new Date().toString() +  key + " close.");
+                }
+            });
+        }   
     }
 
     private onMouseMove(event: MouseEvent) {
@@ -83,23 +100,35 @@ export default class OvarlayManager {
     public setViewPortElement(element: HTMLElement) {
         if (this.viewPortEl !== null) {
             this.viewPortEl.removeEventListener("focusin", this.onFocusInBindedThis);
+            this.viewPortEl.removeEventListener("mousedown", this.onMouseDownBindedThis);
             this.viewPortEl.removeEventListener("mousemove", this.onMouseMoveBindedThis);
             this.viewPortEl.removeEventListener("mouseup", this.onMouseUpBindedThis);
             this.viewPortEl.removeEventListener("selectstart", this.onSelectStartBindedThis);
         }
         this.viewPortEl = element;
         this.viewPortEl.addEventListener("focusin", this.onFocusInBindedThis);
+        this.viewPortEl.addEventListener("mousedown", this.onMouseDownBindedThis);
         this.viewPortEl.addEventListener("mousemove", this.onMouseMoveBindedThis);
         this.viewPortEl.addEventListener("mouseup", this.onMouseUpBindedThis);
         this.viewPortEl.addEventListener("selectstart", this.onSelectStartBindedThis);
 
         this.viewPortEl.appendChild(this.modalBackgroundLayer);
     }
+
     
-    public createWindow(overlayName: string, caption: string, options?: DialogWindowOptions): DialogWindow {
-        let overlay = new DialogWindow(this.viewPortEl, overlayName, caption, options);
+    public createWindow(overlayName: string, options?: DialogWindowOptions): DialogWindow {
+        let overlay = new DialogWindow(this.viewPortEl, overlayName, options);
         this.overlays.set(overlayName, overlay);
         this.overlayManagementTable.set(overlayName, new OverlayManagementData());
+        return overlay;
+    }
+
+    public createPopupMenu(overlayName: string, options?: PopupMenuOptions): PopupMenu {
+        let overlay = new PopupMenu(this.viewPortEl, overlayName, options);
+        this.overlays.set(overlayName, overlay);
+        let omd = new OverlayManagementData();
+        omd.isAutoCloseableWhenOutfocus = true;
+        this.overlayManagementTable.set(overlayName, omd);
         return overlay;
     }
 
@@ -143,6 +172,7 @@ export default class OvarlayManager {
 
         return result;
     }
+
 
     public overlayMouseDownEventHandler(overlayName: string) {
         //TODO 要モーダル状態チェック
@@ -207,16 +237,16 @@ export default class OvarlayManager {
             this.activateSpecificOverlay(targetOverlayName);
         }
     }
+
+    public cancelAutoClosingOnlyOnce() {
+        this.requestedAutoCloseCancelOnlyOnce = true;
+    }
 }
 
 class OverlayManagementData {
     public isVisible: boolean = false;
     public isModal: boolean = false;
-
-    constructor(isVisible?: boolean, isModal?: boolean) {
-        if (isVisible) this.isVisible = isVisible;
-        if (isModal) this.isModal = isModal;
-    }
+    public isAutoCloseableWhenOutfocus: boolean = false;
 
     public reset() {
         this.isVisible = false;
