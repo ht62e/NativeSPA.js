@@ -7,8 +7,8 @@ export default class FlatContainer extends Container {
     protected scrollBoxElement: HTMLDivElement;
     protected moduleOrders = new Map<string, number>();
 
-    constructor(id: string, bindDomElement: HTMLDivElement, cssTransitionOptions?: CssTransitionOptions) {
-        super(id, bindDomElement, cssTransitionOptions);
+    constructor(id: string, bindDomElement: HTMLDivElement, parent: Container, cssTransitionOptions?: CssTransitionOptions) {
+        super(id, bindDomElement, parent, cssTransitionOptions);
 
         this.scrollBoxElement = document.createElement("div");
 

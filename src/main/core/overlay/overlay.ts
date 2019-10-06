@@ -5,9 +5,8 @@ import CssTransitionDriver from "../common/css_transition_driver";
 import { Parcel, Result } from "../common/dto";
 
 export interface ShowOptions {
-    // x?: number;
-    // y?: number;
     position?: Point;
+    parent?: Overlay;
 }
 
 export default abstract class Overlay {
@@ -46,11 +45,12 @@ export default abstract class Overlay {
     protected size: Size;
     protected originalSize: Size;
     protected zIndex: number;
+    //protected overlayLevel: OverlayLevel;
 
     protected active: boolean = false;
     protected inactiveModalMode: boolean = false;
 
-    protected resizable: boolean = true;
+    protected resizable: boolean = false;
     protected isResizing: boolean = false;
     protected resizePositionIndex: number;
     protected resizeStartMousePos: Point;
@@ -61,15 +61,15 @@ export default abstract class Overlay {
 
     public abstract getContainer(): Container; 
     
-    public abstract async show(parcel?: Parcel, options?: ShowOptions): Promise<Result> ;
+    public abstract async show(parcel?: Parcel, options?: ShowOptions): Promise<Result>;
     public abstract async showAsModal(parcel?: Parcel, options?: ShowOptions): Promise<Result> ;
     public abstract close(result?: Result): void;
     protected abstract async waitForOverlayClose(): Promise<Result>;
 
-    constructor(viewPortElement: HTMLElement, name: string, size: Size, resizable?: boolean) {
+    constructor(viewPortElement: HTMLElement, name: string, size: Size) {
         this.viewPortEl = viewPortElement;
         this.name = name;
-        this.resizable = !!resizable;
+        //this.overlayLevel = overlayLevel !== undefined ? overlayLevel : OverlayLevel.default;
 
         const width = size ? size.width : Overlay.DEFAULT_OVERLAY_SIZE_WIDTH;
         const height = size ? size.height : Overlay.DEFAULT_OVERLAY_SIZE_HEIGHT;
@@ -99,10 +99,10 @@ export default abstract class Overlay {
         this.tabFocusMoveHeadDetector.tabIndex = 0;
         this.tabFocusMoveHeadDetector.addEventListener("focusin", this.onTabFocusMoveHeadDetectorFocusIn.bind(this));
 
-        //コンテンツコンテナ生成
+        //コンテンツ領域生成
         this.contentEl = document.createElement("div");
-        this.contentEl.className = "fvst_overlay_container";
         this.contentEl.style.position = "absolute";
+        this.contentEl.style.overflow = "hidden";
         this.contentEl.style.left = String(Overlay.resizeHandleThicknessPx) + "px";
         this.contentEl.style.top = String(Overlay.resizeHandleThicknessPx) + "px";
 
@@ -199,12 +199,10 @@ export default abstract class Overlay {
         });
     }
 
-    // public setResizable(enable: boolean) {
-    //     const displayValue = enable ? "block" : "none";
-    //     for (let i = 0; i < 8; i++) {
-    //         this.resizeHandleEl[i].style.display = displayValue;
-    //     }
-    // }
+    public setResizable(resizable: boolean) {
+        this.resizable = resizable;
+        this.refreshResizeHandleElementActivate();
+    }
 
     public __dispachMouseMoveEvent(x: number, y: number, deltaX: number, deltaY: number) {
         if (this.isResizing && this.resizable) {
@@ -345,19 +343,22 @@ export default abstract class Overlay {
         this.modalInactiveLayer.style.height = String(height) + "px";
     }
 
-    public activate(): void {
-        this.active = true;
-        this.inactiveModalMode = false;
-        this.modalInactiveLayerTransitionDriver.hide();
-        const _resizable = this.resizable;
+    private refreshResizeHandleElementActivate(): void {
+        const canResize = this.resizable && !this.inactiveModalMode;
         this.resizeHandleEl.forEach(element => {
-            if (_resizable) {
+            if (canResize) {
                 element.style.display = "";
             } else {
                 element.style.display = "none";
             }
         });
+    }
 
+    public activate(): void {
+        this.active = true;
+        this.inactiveModalMode = false;
+        this.modalInactiveLayerTransitionDriver.hide();
+        this.refreshResizeHandleElementActivate();
     }
 
     public inactivate(withModal: boolean): void {
@@ -365,9 +366,7 @@ export default abstract class Overlay {
         this.inactiveModalMode = withModal;
         if (withModal) {
             this.modalInactiveLayerTransitionDriver.show();
-            this.resizeHandleEl.forEach(element => {
-                element.style.display = "none";
-            });
+            this.refreshResizeHandleElementActivate();
         }
     }
 

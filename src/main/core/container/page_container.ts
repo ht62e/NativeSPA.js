@@ -7,8 +7,8 @@ import CssTransitionDriver from "../common/css_transition_driver";
 export default class PageContainer extends Container {
     protected cssTransitionDrivers = new Map<string, CssTransitionDriver>();
 
-    constructor(id: string, bindDomElement: HTMLDivElement, cssTransitionOptions?: CssTransitionOptions) {
-        super(id, bindDomElement, cssTransitionOptions);
+    constructor(id: string, bindDomElement: HTMLDivElement, parent: Container, cssTransitionOptions?: CssTransitionOptions) {
+        super(id, bindDomElement, parent, cssTransitionOptions);
         bindDomElement.classList.add("fvst_page_container");
     }
 
@@ -77,7 +77,7 @@ export default class PageContainer extends Container {
 
         //その他モジュールの非表示化
         this.mountedModules.forEach((m: Module) => {
-            if (m !== module && m !== previousActiveModule) m.hide();
+            if (m !== module && m !== previousActiveModule) this.hideModule(m);
         });
     }
 

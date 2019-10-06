@@ -21,7 +21,7 @@ export default class PopupMenu extends Overlay {
     protected waitForOverlayCloseResolver: (value?: Result | PromiseLike<Result>) => void;
 
     constructor(viewPortElement: HTMLElement, name: string, options: PopupMenuOptions) {
-        super(viewPortElement, name, options ? options.size : null, false);
+        super(viewPortElement, name, options ? options.size : null);
 
         const containerManager = ContainerManager.getInstance();
 
@@ -32,10 +32,18 @@ export default class PopupMenu extends Overlay {
         this.bodyEl.style.height = "100%";
 
         this.container = containerManager.createContainer(
-            "__popupmenu_" + String(PopupMenu.instanceSequence++), "", this.bodyEl);
+            "__popupmenu_" + String(PopupMenu.instanceSequence++), "", this.bodyEl, null);
 
+        this.contentEl.className = "fvst_popup_menu_container";
         this.contentEl.appendChild(this.bodyEl);
         this.contentEl.addEventListener("mousedown", this.onContentMouseDown.bind(this));
+
+        this.outerFrameTransitionDriver.setCustomTransitionClasses({
+            standyStateClass: "fvst_popup_menu_standy_state",
+            enterTransitionClass: "fvst_popup_menu_enter_transition",
+            leaveTransitionClass: "fvst_popup_menu_leave_transition",
+            endStateClass: "fvst_popup_menu_end_state"
+        });
     }
 
     public getContainer(): Container {

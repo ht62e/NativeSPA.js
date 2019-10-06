@@ -21,7 +21,7 @@ export default class ContainerManager {
     }
 
     public setRootElement(element: HTMLDivElement): void {
-        this.rootContainer = this.createContainer("root", "", element);
+        this.rootContainer = this.createContainer("root", "", element, null);
         window.addEventListener("resize", this.windowResizeEventHandlerBindThis);
     }
 
@@ -29,7 +29,7 @@ export default class ContainerManager {
         this.rootContainer.onResize();
     }
 
-    public createContainer(id: string, type: string, bindDomElement: HTMLDivElement): Container {
+    public createContainer(id: string, type: string, bindDomElement: HTMLDivElement, parent: Container): Container {
         if (this.containers.has(id)) {
             throw new RuntimeError("コンテナID '" + id + "' は既に登録されています。");
         }
@@ -38,11 +38,11 @@ export default class ContainerManager {
 
         if (!type || type === "separated") {
             //newContainer = new PageContainer(id, bindDomElement);
-            newContainer = new PageContainer(id, bindDomElement, {
+            newContainer = new PageContainer(id, bindDomElement, parent, {
                 enableCssTransition: true
             });
         } else if ("continuous") {
-            newContainer = new FlatContainer(id, bindDomElement);
+            newContainer = new FlatContainer(id, bindDomElement, parent);
         }
         
         this.containers.set(id, newContainer);

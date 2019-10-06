@@ -2,7 +2,7 @@ import Container from "../container/container";
 import Overlay, { ShowOptions } from "./overlay";
 import OvarlayManager from "./overlay_manager";
 import ContainerManager from "../container/container_manager";
-import { Size } from "../common/types";
+import { Size, Point } from "../common/types";
 import { Result, ActionType, Parcel } from "../common/dto";
 
 export interface WindowOptions {
@@ -32,7 +32,9 @@ export default class DialogWindow extends Overlay {
     protected waitForOverlayCloseResolver: (value?: Result | PromiseLike<Result>) => void;
 
     constructor(viewPortElement: HTMLElement, name: string, options?: WindowOptions) {
-        super(viewPortElement, name, options ? options.size : null, true);
+        super(viewPortElement, name, options ? options.size : null);
+
+        this.setResizable(true);
 
         const containerManager = ContainerManager.getInstance();
 
@@ -72,7 +74,7 @@ export default class DialogWindow extends Overlay {
         this.bodyEl.style.width = "100%";
 
         this.container = containerManager.createContainer(
-            "__window_" + String(DialogWindow.instanceSequence++), "", this.bodyEl);
+            "__window_" + String(DialogWindow.instanceSequence++), "", this.bodyEl, null);
 
         this.footerEl = document.createElement("div");
         this.footerEl.className = "fvst_dialog_window_footer";
@@ -100,6 +102,7 @@ export default class DialogWindow extends Overlay {
         this.wrapperEl.appendChild(this.bodyEl);
         this.wrapperEl.appendChild(this.footerEl);
 
+        this.contentEl.className = "fvst_dialog_window_container";
         this.contentEl.appendChild(this.wrapperEl);
 
         this.outerFrameTransitionDriver.setCustomTransitionClasses({
@@ -133,7 +136,7 @@ export default class DialogWindow extends Overlay {
 
     protected onCancelButtonClick(event: MouseEvent) {
         this.container.getActiveModule().exit(ActionType.CANCEL).then(exited => {
-            if (exited) this.close(null);
+            if (exited) this.close();
         });
     }
 
@@ -192,6 +195,7 @@ export default class DialogWindow extends Overlay {
         this.changePosition(x, y);
     }
 
+    //override
     public close(result?: Result): void {
         this.outerFrameTransitionDriver.hide();
         //自身のdisplay:noneが反映した後にコールバックさせるためsetTimeoutを介して呼び出す

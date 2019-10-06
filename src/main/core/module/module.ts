@@ -24,7 +24,7 @@ export default interface Module {
     getName(): string;
     getCaption(): string;
     getElement(): HTMLDivElement;
-    getParentContainer(): Container;
+    getCurrentContainer(): Container;
     getSubContainerNames(): Array<string>;
 
 }

@@ -5,6 +5,7 @@ import { CssTransitionDriverClasses } from "../common/css_transition_driver";
 export default abstract class Container {
     protected id: string;
     protected bindDomElement: HTMLDivElement;
+    protected parent: Container;
     protected cssTransitionOptions: CssTransitionOptions;
 
     protected activeModule: Module;
@@ -24,9 +25,10 @@ export default abstract class Container {
 
     protected abstract showPreviousModule(): void;
 
-    constructor(id: string, bindDomElement: HTMLDivElement, cssTransitionOptions?: CssTransitionOptions) {
+    constructor(id: string, bindDomElement: HTMLDivElement, parent: Container, cssTransitionOptions?: CssTransitionOptions) {
         this.id = id;
         this.bindDomElement = bindDomElement;
+        this.parent = parent;
         this.cssTransitionOptions = cssTransitionOptions;
         this.bindDomElement.style.position = "relative";
         this.bindDomElement.classList.add("fvst_container");
@@ -38,6 +40,10 @@ export default abstract class Container {
 
     public getElement(): HTMLDivElement {
         return this.bindDomElement;
+    }
+
+    public getParent(): Container {
+        return this.parent;
     }
 
     public getActiveModule(): Module {

@@ -1,8 +1,9 @@
 import DialogWindow, { WindowOptions as DialogWindowOptions } from "./dialog_window";
 import Overlay, { ShowOptions } from "./overlay";
-import { Parcel, Result } from "../common/dto";
+import { Parcel, Result, ActionType } from "../common/dto";
 import CssTransitionDriver from "../common/css_transition_driver";
 import PopupMenu, { PopupMenuOptions } from "./popup_menu";
+import Container from "../container/container";
 
 export default class OvarlayManager {
     private static instance = new OvarlayManager();
@@ -23,8 +24,9 @@ export default class OvarlayManager {
 
     private requestedAutoCloseCancelOnlyOnce: boolean = false;
 
-    private OVERLAY_START_Z_INDEX: number = 10;
+    private DEFAULT_OVERLAY_START_Z_INDEX: number = 10;
     private MODAL_START_Z_INDEX: number = 1000;
+    private FOREGROUND_START_Z_INDEX: number = 2000;
 
     private onFocusInBindedThis: (event: FocusEvent) => void;
     private onMouseDownBindedThis: (event: MouseEvent) => void;
@@ -58,16 +60,30 @@ export default class OvarlayManager {
         return OvarlayManager.instance;
     }
 
+    public findOverlayByContainer(searchContainer: Container): Overlay {
+        //TODO: IE11ではforEachしかつかえない。他ブラウザ用に見つかったらbreakするようなコードに変更したい。
+        let res: Overlay = null;
+        this.overlays.forEach(overlay => {
+            if (overlay.getContainer() === searchContainer) {
+                res = overlay;
+            }
+        });
+        return res;
+    }
+
     private onMouseDown(event: MouseEvent) {
-        if (this.requestedAutoCloseCancelOnlyOnce) {
-            this.requestedAutoCloseCancelOnlyOnce = false;
-        } else {
-            this.overlayManagementTable.forEach((value: OverlayManagementData, key: string) => {
-                if (value.isAutoCloseableWhenOutfocus) {
-                    console.log(new Date().toString() +  key + " close.");
+        if (!this.requestedAutoCloseCancelOnlyOnce) {
+            this.overlayManagementTable.forEach((omd: OverlayManagementData, key: string) => {
+                if (omd.isVisible && omd.isAutoCloseableWhenOutfocus) {
+                    const overlay = this.overlays.get(key);
+                    const module = overlay.getContainer().getActiveModule();
+                    module.exit(ActionType.CANCEL).then(exited => {
+                        if (exited) overlay.close();
+                    });
                 }
             });
-        }   
+        }
+        this.requestedAutoCloseCancelOnlyOnce = false;
     }
 
     private onMouseMove(event: MouseEvent) {
@@ -126,7 +142,7 @@ export default class OvarlayManager {
     public createPopupMenu(overlayName: string, options?: PopupMenuOptions): PopupMenu {
         let overlay = new PopupMenu(this.viewPortEl, overlayName, options);
         this.overlays.set(overlayName, overlay);
-        let omd = new OverlayManagementData();
+        const omd = new OverlayManagementData();
         omd.isAutoCloseableWhenOutfocus = true;
         this.overlayManagementTable.set(overlayName, omd);
         return overlay;
@@ -152,23 +168,27 @@ export default class OvarlayManager {
 
     public async show(overlayName: string, parcel?: Parcel, options?: ShowOptions): Promise<Result> {
         const overlay = this.overlays.get(overlayName);
-        this.overlayManagementTable.get(overlayName).isVisible = true;
 
+        const omd = this.overlayManagementTable.get(overlayName);
+        omd.isVisible = true;
+        omd.parentOverlay = options ? options.parent : null;
         this.activateSpecificOverlay(overlayName);
         const result = await overlay.show(parcel, options);
 
-        this.overlayManagementTable.get(overlayName).reset();
         this.activateTopOverlay();
 
         return result;
     }
 
     public async showAsModal(overlayName: string, parcel?: Parcel, options?: ShowOptions): Promise<Result> {
-        this.overlayManagementTable.get(overlayName).isModal = true;
+        const omd = this.overlayManagementTable.get(overlayName);
+        omd.isModal = true;
 
         this.beginModalMode();
         const result = await this.show(overlayName, parcel, options);
         this.endModalMode();
+
+        omd.isModal = false;
 
         return result;
     }
@@ -198,21 +218,28 @@ export default class OvarlayManager {
             if (value.isVisible) ++visibleCount;
         });
 
-        let i = 0;
+        let visibleOverlayCounter = 0;
+        let previousOmd: OverlayManagementData = null;
+        let previousOverlay: Overlay = null;
         overlayList.forEach((overlay: Overlay) => {
-            const mgrData = this.overlayManagementTable.get(overlay.getName());
-            if (mgrData.isVisible) {
-                if (mgrData.isModal) {
+            const omd = this.overlayManagementTable.get(overlay.getName());
+            if (omd.isVisible) {
+                if (omd.isAutoCloseableWhenOutfocus) {
+                    overlay.changeZIndex(this.FOREGROUND_START_Z_INDEX + visibleCount--);
+                } else if (omd.isModal) {
                     overlay.changeZIndex(this.MODAL_START_Z_INDEX + visibleCount--);
                 } else {
-                    overlay.changeZIndex(this.OVERLAY_START_Z_INDEX + visibleCount--);
+                    overlay.changeZIndex(this.DEFAULT_OVERLAY_START_Z_INDEX + visibleCount--);
                 }
-                if (i === 0) {
+                if (visibleOverlayCounter === 0 || 
+                    (previousOverlay.isActive() && overlay === previousOmd.parentOverlay)) {
                     overlay.activate();
                 } else {
-                    overlay.inactivate(mgrData.isModal);
+                    overlay.inactivate(omd.isModal);
                 }
-                ++i;
+                previousOmd = omd;
+                previousOverlay = overlay;
+                ++visibleOverlayCounter;
             }
         });
 
@@ -247,9 +274,13 @@ class OverlayManagementData {
     public isVisible: boolean = false;
     public isModal: boolean = false;
     public isAutoCloseableWhenOutfocus: boolean = false;
+    public parentOverlay: Overlay = null;
 
-    public reset() {
+    public reset(): OverlayManagementData {
         this.isVisible = false;
         this.isModal = false;
+        this.isAutoCloseableWhenOutfocus = false;
+        this.parentOverlay = null;
+        return this;
     }
 }

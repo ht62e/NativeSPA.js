@@ -124,7 +124,7 @@ export default abstract class HTMLComponent implements Module {
         throw this.wrapperElement;
     }
 
-    public getParentContainer(): Container {
+    public getCurrentContainer(): Container {
         return this.currentContainer;
     }
 

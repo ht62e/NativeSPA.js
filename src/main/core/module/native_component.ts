@@ -7,7 +7,6 @@ export default class NativeComponent extends HTMLComponent {
     private prototypeTemplateBegin: string;
     private prototypeTemplateEnd: string;
 
-    
     protected onCreate(): void {
         this.prototypeTemplateBegin = 
         `(function() {
@@ -75,7 +74,7 @@ export default class NativeComponent extends HTMLComponent {
             let localElementId = domId.replace(localizeRegExp, localPrefix);
             let containerEl: HTMLDivElement = document.getElementById(localElementId) as HTMLDivElement;
             let containerId: string = this.name + "." + containerInfo.name;
-            containerInfo.container = containerManager.createContainer(containerId, containerInfo.type, containerEl);
+            containerInfo.container = containerManager.createContainer(containerId, containerInfo.type, containerEl, this.currentContainer);
         });
 
         this.isMounted = true;

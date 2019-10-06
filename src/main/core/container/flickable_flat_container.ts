@@ -12,6 +12,6 @@ export default class FlickableFlatContainer extends FlatContainer {
         throw new Error("Method not implemented.");
     }
     constructor() {
-        super("", null);
+        super("", null, null);
     }
 }

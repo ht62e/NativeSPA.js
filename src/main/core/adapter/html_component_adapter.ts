@@ -1,9 +1,11 @@
 import ModuleRouter from "../module/module_router";
 import HTMLComponent from "../module/html_component";
 import OvarlayManager from "../overlay/overlay_manager";
-import { ShowOptions } from "../overlay/overlay";
+import Overlay, { ShowOptions } from "../overlay/overlay";
 import { Parcel, ActionType, Result } from "../common/dto";
 import ModuleManager from "../module/module_manager";
+import Container from "../container/container";
+import RuntimeError from "../common/runtime_error";
 
 export const htmlComponentAdapters = new Map<number, HTMLComponentAdapter>();
 
@@ -101,6 +103,21 @@ class Navigation {
         this.adapter = adapter;
     }
 
+    private getCurrentOverlay(): Overlay {
+        //呼び出し元モジュールのコンテナの最上位コンテナを取得
+        let i = 0; //循環時の無限ループ防止用カウンタ
+        let container: Container = this.adapter.getHtmlComponent().getCurrentContainer();
+        while (container.getParent()) {
+            container = container.getParent();
+            if (i++ > 100) {
+                throw new RuntimeError("コンテナの親子関係に循環が発生しています。");
+            }
+        }
+
+        //最上位コンテナを保持しているオーバーレイを取得
+        return this.overlayManager.findOverlayByContainer(container);
+    }
+
     public async forward(targetIdentifier: string, parcel?: Parcel): Promise<Result> {
         let finalTargetId;
         if (targetIdentifier.split("::").length > 1) {
@@ -108,7 +125,7 @@ class Navigation {
         } else {
             finalTargetId = 
                 this.adapter.getHtmlComponent().
-                getParentContainer().getId() + "::" + targetIdentifier;
+                getCurrentContainer().getId() + "::" + targetIdentifier;
         }
         return this.moduleRouter.forward(finalTargetId, parcel);
     }
@@ -126,11 +143,15 @@ class Navigation {
     }
 
     public async showPopupMenu(overlayName: string, parcel?: Parcel, targetElement?: HTMLElement): Promise<Result> {
+        let showOptions: ShowOptions = {
+            parent: this.getCurrentOverlay()
+        };
         if (targetElement) {
             const {left, bottom} = targetElement.getBoundingClientRect();
-            return await this.overlayManager.show(overlayName, parcel, {position: {x: left, y: bottom}});
+            showOptions.position = {x: left, y: bottom};
+            return await this.overlayManager.show(overlayName, parcel, showOptions);
         } else {
-            return await this.overlayManager.show(overlayName, parcel);
+            return await this.overlayManager.show(overlayName, parcel, showOptions);
         }
     }
 
