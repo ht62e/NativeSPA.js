@@ -5,21 +5,44 @@
     <meta charset="utf-8">
     <title>test</title>
     <script src="./lib/promise-7.0.4.min.js"></script>
-    <script src="./lib/vue.js"></script>    
+    <!-- <script src="./lib/vue.js"></script>    
     <script src="./lib/vue_material/vue-material.min.js"></script>
     <link rel="stylesheet" href="./lib/vue_material/vue-material.min.css">
-    <link rel="stylesheet" href="./lib/vue_material/theme/default.css">
+    <link rel="stylesheet" href="./lib/vue_material/theme/default.css"> -->
 
     <link rel="stylesheet" href="./main.css">
 
     <!-- <script src="./lib/jquery-3.4.1.min.js"></script> -->
 
+    <script data-main="./src/build/debug/fivestage.js" src="./lib/require.js"></script>
+
     <script>
-        //Vue.use(VueMaterial.default);
-    
+
+        configurer = (config) => {
+            config.setAppRootId("#app");
+
+            config.register("base", "src/module/base.html", "root", true);
+            config.register("header", "src/module/header.html", "base.header", true);
+            config.register("main", "src/module/main.html", "base.body", false);
+            config.register("main2", "src/module/main2.html", "base.body", false);
+            config.register("tab", "src/module/tab.html", "base.body", false);
+
+            config.register("tab1", "src/module/main.html", "tab.page", false);
+            config.register("tab2", "src/module/main2.html", "tab.page", false);
+            config.register("tab3", "src/module/header.html", "tab.page", false);
+
+            config.registerWindow("win1", "src/module/main.html", {defaultCaption: "window1"});
+            config.registerWindow("win2", "src/module/main.html", {size: {cssWidth: "600px", cssHeight: "600px"},  defaultCaption: "window2"});
+            config.registerWindow("win3", "src/module/main.html", {defaultCaption: "window3"});
+
+            config.registerContextMenu("popup1", "src/module/popupmenu.html", {size: {cssWidth: "200px", cssHeight: "300px"}});
+
+            config.registerDrawer("drawer1", "src/module/popupmenu.html", {});
+        }
+
     </script>
 
-    <script data-main="./src/build/debug/fivestage.js" src="./lib/require.js"></script>
+
 
     <style>
         * {

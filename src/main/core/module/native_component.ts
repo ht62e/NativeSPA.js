@@ -98,9 +98,9 @@ export default class NativeComponent extends HTMLComponent {
             const scriptElement: HTMLScriptElement = nodeList[i] as HTMLScriptElement;
             const scopeMode: string = scriptElement.dataset["scopeMode"];
 
-            if (!scopeMode || scopeMode === "native") {
+            if (scopeMode === "native") {
                 nativeScript += scriptElement.textContent;
-            } else if (scopeMode === "prototype")  {
+            } else if (!scopeMode || scopeMode === "prototype")  { //default
                 prototypeScript += scriptElement.textContent;
             } else if (scopeMode === "class") {
                 classScript += scriptElement.textContent;

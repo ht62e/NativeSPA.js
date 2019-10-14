@@ -143,7 +143,7 @@ define("core/common/css_transition_driver", ["require", "exports"], function (re
                         this.hideResolver = null;
                     }
                     this.toggleClasses(true);
-                    if (this.enterTransitionClass) {
+                    if (!!this.enterTransitionClass) {
                         return [2 /*return*/, new Promise(function (resolve) {
                                 _this.showResolver = resolve;
                             })];
@@ -164,7 +164,7 @@ define("core/common/css_transition_driver", ["require", "exports"], function (re
                         this.showResolver = null;
                     }
                     this.toggleClasses(false);
-                    if (this.leaveTransitionClass) {
+                    if (!!this.leaveTransitionClass) {
                         return [2 /*return*/, new Promise(function (resolve) {
                                 _this.hideResolver = resolve;
                             })];
@@ -180,7 +180,7 @@ define("core/common/css_transition_driver", ["require", "exports"], function (re
             var _this = this;
             if (visible) {
                 this.target.style.display = "";
-                this.target.style.visibility = "";
+                this.target.style.visibility = ""; //初回表示まではvisibility:hiddenで非表示状態になっている
                 window.setTimeout(function () {
                     _this.target.style.pointerEvents = "";
                     if (_this.enterTransitionClass) {
@@ -663,32 +663,36 @@ define("core/common/types", ["require", "exports"], function (require, exports) 
         return Size;
     }());
     exports.Size = Size;
+    var CssSize = /** @class */ (function () {
+        function CssSize(cssWidth, cssHeight) {
+            this.cssWidth = cssWidth;
+            this.cssHeight = cssHeight;
+        }
+        return CssSize;
+    }());
+    exports.CssSize = CssSize;
 });
-define("core/overlay/overlay", ["require", "exports", "core/overlay/overlay_manager", "core/common/types", "core/common/css_transition_driver"], function (require, exports, overlay_manager_1, types_1, css_transition_driver_2) {
+define("core/overlay/overlay", ["require", "exports", "core/overlay/overlay_manager", "core/common/types", "core/common/css_transition_driver", "core/container/container_manager"], function (require, exports, overlay_manager_1, types_1, css_transition_driver_2, container_manager_2) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var Overlay = /** @class */ (function () {
         function Overlay(viewPortElement, name, size) {
             this.lastFocusIsDetector = false;
-            //protected overlayLevel: OverlayLevel;
             this.active = false;
             this.inactiveModalMode = false;
-            this.resizable = false;
-            this.isResizing = false;
-            this.resizeHandleEl = new Array();
             this.viewPortEl = viewPortElement;
             this.name = name;
-            //this.overlayLevel = overlayLevel !== undefined ? overlayLevel : OverlayLevel.default;
-            var width = size ? size.width : Overlay.DEFAULT_OVERLAY_SIZE_WIDTH;
-            var height = size ? size.height : Overlay.DEFAULT_OVERLAY_SIZE_HEIGHT;
-            this.originalSize = new types_1.Size(width, height);
+            var cssWidth = size ? size.cssWidth : Overlay.DEFAULT_OVERLAY_SIZE_WIDTH;
+            var cssHeight = size ? size.cssHeight : Overlay.DEFAULT_OVERLAY_SIZE_HEIGHT;
+            this.originalSize = new types_1.CssSize(cssWidth, cssHeight);
             //リサイズ可能領域のためのフレームを作成
-            this.outerFrameEl = document.createElement("div");
-            this.outerFrameEl.style.position = "absolute";
-            this.outerFrameEl.style.backgroundColor = "transparent";
-            this.outerFrameEl.style.display = "none";
-            this.outerFrameEl.addEventListener("selectstart", this.onSelectStart.bind(this));
-            this.outerFrameEl.addEventListener("mousedown", this.onOuterMouseDown.bind(this));
+            this.frameEl = document.createElement("div");
+            this.frameEl.style.position = "absolute";
+            this.frameEl.style.backgroundColor = "transparent";
+            //正しいスタイル計算のため初回表示まではdisplay:hiddenにはしない
+            this.frameEl.style.visibility = "hidden";
+            this.frameEl.addEventListener("selectstart", this.onSelectStart.bind(this));
+            this.frameEl.addEventListener("mousedown", this.onOuterMouseDown.bind(this));
             //キーボードタブキーナビゲーションによってダイアログの外にフォーカスが移ることを
             //防止（検知）するための非表示エレメントの作成（Shift+Tabキー対策）
             this.tabFocusMoveHeadStopper = document.createElement("div");
@@ -702,21 +706,21 @@ define("core/overlay/overlay", ["require", "exports", "core/overlay/overlay_mana
             this.tabFocusMoveHeadDetector.tabIndex = 0;
             this.tabFocusMoveHeadDetector.addEventListener("focusin", this.onTabFocusMoveHeadDetectorFocusIn.bind(this));
             //コンテンツ領域生成
-            this.contentEl = document.createElement("div");
+            this.contentEl = this.outerContentEl = document.createElement("div");
             this.contentEl.style.position = "absolute";
             this.contentEl.style.overflow = "hidden";
-            this.contentEl.style.left = String(Overlay.resizeHandleThicknessPx) + "px";
-            this.contentEl.style.top = String(Overlay.resizeHandleThicknessPx) + "px";
+            this.contentEl.style.width = "100%";
+            this.contentEl.style.height = "100%";
             //overlayのモーダル表示によって非アクティブ化したときに表示するレイヤー
             this.modalInactiveLayer = document.createElement("div");
             this.modalInactiveLayer.className = "fvst_modal_background_layer";
             this.modalInactiveLayer.style.position = "absolute";
             this.modalInactiveLayer.style.overflow = "hidden";
-            this.modalInactiveLayer.style.left = String(Overlay.resizeHandleThicknessPx) + "px";
-            this.modalInactiveLayer.style.top = String(Overlay.resizeHandleThicknessPx) + "px";
             this.modalInactiveLayer.style.display = "none";
+            this.modalInactiveLayer.style.width = "100%";
+            this.modalInactiveLayer.style.height = "100%";
             this.modalInactiveLayerTransitionDriver = new css_transition_driver_2.default(this.modalInactiveLayer);
-            this.resize(width, height);
+            this.resize(cssWidth, cssHeight);
             //非表示エレメントの作成（Tabキー対策）
             this.tabFocusMoveTailDetector = document.createElement("div");
             this.tabFocusMoveTailDetector.className = "fvst_tabfocus_move_detector";
@@ -730,116 +734,27 @@ define("core/overlay/overlay", ["require", "exports", "core/overlay/overlay_mana
             this.tabFocusMoveTailStopper.addEventListener("focusin", this.onTabFocusMoveTailStopperFocusIn.bind(this));
             this.contentEl.addEventListener("focusin", this.onFocusIn.bind(this));
             this.contentEl.addEventListener("focusout", this.onFocusOut.bind(this));
-            //outerFrameElの周囲にリサイズイベント検知用のエレメントを生成・配置
-            this.createResizeHandleElements();
-            this.outerFrameEl.appendChild(this.tabFocusMoveHeadStopper);
-            this.outerFrameEl.appendChild(this.tabFocusMoveHeadDetector);
-            this.outerFrameEl.appendChild(this.contentEl);
-            this.outerFrameEl.appendChild(this.tabFocusMoveTailDetector);
-            this.outerFrameEl.appendChild(this.tabFocusMoveTailStopper);
-            this.outerFrameEl.appendChild(this.modalInactiveLayer);
-            viewPortElement.appendChild(this.outerFrameEl);
-            this.outerFrameTransitionDriver = new css_transition_driver_2.default(this.outerFrameEl);
+            this.frameEl.appendChild(this.tabFocusMoveHeadStopper);
+            this.frameEl.appendChild(this.tabFocusMoveHeadDetector);
+            this.frameEl.appendChild(this.contentEl);
+            this.frameEl.appendChild(this.tabFocusMoveTailDetector);
+            this.frameEl.appendChild(this.tabFocusMoveTailStopper);
+            this.frameEl.appendChild(this.modalInactiveLayer);
+            viewPortElement.appendChild(this.frameEl);
+            this.cacheCurrentOffsetSize();
+            this.outerFrameTransitionDriver = new css_transition_driver_2.default(this.frameEl);
         }
-        Overlay.prototype.createResizeHandleElements = function () {
-            var _this = this;
-            var size = Overlay.resizeHandleThicknessPx * 2;
-            //0:左上 1:上中 2:右上 3:左中...8:右下  計8箇所 ※中中は無し
-            for (var i = 0; i < 8; i++) {
-                var el = document.createElement("div");
-                el.dataset["positionIndex"] = String(i);
-                el.style.position = "absolute";
-                el.style.width = size + "px";
-                el.style.height = size + "px";
-                el.addEventListener("mousedown", this.onResizeHandleMouseDown.bind(this));
-                this.resizeHandleEl.push(el);
-            }
-            //左上
-            this.resizeHandleEl[0].style.cursor = "nwse-resize";
-            //上
-            this.resizeHandleEl[1].style.left = String(size) + "px";
-            this.resizeHandleEl[1].style.width = "calc(100% - " + String(size * 2) + "px)";
-            this.resizeHandleEl[1].style.cursor = "ns-resize";
-            //右上
-            this.resizeHandleEl[2].style.right = "0px";
-            this.resizeHandleEl[2].style.cursor = "nesw-resize";
-            //左中
-            this.resizeHandleEl[3].style.top = String(size) + "px";
-            this.resizeHandleEl[3].style.height = "calc(100% - " + String(size * 2) + "px)";
-            this.resizeHandleEl[3].style.cursor = "ew-resize";
-            //右中
-            this.resizeHandleEl[4].style.right = "0px";
-            this.resizeHandleEl[4].style.top = String(size) + "px";
-            this.resizeHandleEl[4].style.height = "calc(100% - " + String(size * 2) + "px)";
-            this.resizeHandleEl[4].style.cursor = "ew-resize";
-            //左下
-            this.resizeHandleEl[5].style.bottom = "0px";
-            this.resizeHandleEl[5].style.cursor = "nesw-resize";
-            //下
-            this.resizeHandleEl[6].style.left = String(size) + "px";
-            this.resizeHandleEl[6].style.bottom = "0px";
-            this.resizeHandleEl[6].style.width = "calc(100% - " + String(size * 2) + "px)";
-            this.resizeHandleEl[6].style.cursor = "ns-resize";
-            //右下
-            this.resizeHandleEl[7].style.right = "0px";
-            this.resizeHandleEl[7].style.bottom = "0px";
-            this.resizeHandleEl[7].style.cursor = "nwse-resize";
-            this.resizeHandleEl.forEach(function (element) {
-                _this.outerFrameEl.appendChild(element);
-            });
-        };
-        Overlay.prototype.setResizable = function (resizable) {
-            this.resizable = resizable;
-            this.refreshResizeHandleElementActivate();
-        };
         Overlay.prototype.__dispachMouseMoveEvent = function (x, y, deltaX, deltaY) {
-            if (this.isResizing && this.resizable) {
-                switch (this.resizePositionIndex) {
-                    case 0: //左上
-                        this.changePosition(this.resizeStartPos.x + (x - this.resizeStartMousePos.x), this.resizeStartPos.y + (y - this.resizeStartMousePos.y));
-                        this.resize(this.resizeStartSize.width - (x - this.resizeStartMousePos.x), this.resizeStartSize.height - (y - this.resizeStartMousePos.y));
-                        break;
-                    case 1: //上
-                        this.changePosition(this.position.x, this.resizeStartPos.y + (y - this.resizeStartMousePos.y));
-                        this.resize(this.size.width, this.resizeStartSize.height - (y - this.resizeStartMousePos.y));
-                        break;
-                    case 2: //右上
-                        this.changePosition(this.position.x, this.resizeStartPos.y + (y - this.resizeStartMousePos.y));
-                        this.resize(this.resizeStartSize.width + (x - this.resizeStartMousePos.x), this.resizeStartSize.height - (y - this.resizeStartMousePos.y));
-                        break;
-                    case 3: //左
-                        this.changePosition(this.resizeStartPos.x + (x - this.resizeStartMousePos.x), this.position.y);
-                        this.resize(this.resizeStartSize.width - (x - this.resizeStartMousePos.x), this.size.height);
-                        break;
-                    case 4: //右
-                        this.changePosition(this.position.x, this.position.y);
-                        this.resize(this.resizeStartSize.width + (x - this.resizeStartMousePos.x), this.size.height);
-                        break;
-                    case 5: //左下
-                        this.changePosition(this.resizeStartPos.x + (x - this.resizeStartMousePos.x), this.position.y);
-                        this.resize(this.resizeStartSize.width - (x - this.resizeStartMousePos.x), this.resizeStartSize.height + (y - this.resizeStartMousePos.y));
-                        break;
-                    case 6: //下
-                        this.changePosition(this.position.x, this.position.y);
-                        this.resize(this.size.width, this.resizeStartSize.height + (y - this.resizeStartMousePos.y));
-                        break;
-                    case 7: //右下
-                        this.changePosition(this.position.x, this.position.y);
-                        this.resize(this.resizeStartSize.width + (x - this.resizeStartMousePos.x), this.resizeStartSize.height + (y - this.resizeStartMousePos.y));
-                        break;
-                }
-            }
         };
         Overlay.prototype.__dispachMouseUpEvent = function (x, y) {
-            this.isResizing = false;
         };
-        Overlay.prototype.onResizeHandleMouseDown = function (event) {
-            this.isResizing = true;
-            this.resizePositionIndex = parseInt(event.target.dataset["positionIndex"]);
-            this.resizeStartMousePos = new types_1.Point(event.screenX, event.screenY);
-            this.resizeStartPos = new types_1.Point(this.position.x, this.position.y);
-            this.resizeStartSize = new types_1.Size(this.size.width, this.size.height);
-            overlay_manager_1.default.getInstance().changeContentsSelectable(false);
+        Overlay.prototype.registerAsContainer = function (className, targetEl) {
+            var containerManager = container_manager_2.default.getInstance();
+            var seq = Overlay.instanceSequenceTable.get(className);
+            if (seq === undefined)
+                seq = 0;
+            this.container = containerManager.createContainer("__" + className + "_" + String(seq), "", targetEl, null);
+            Overlay.instanceSequenceTable.set(className, seq + 1);
         };
         Overlay.prototype.onSelectStart = function (event) {
         };
@@ -888,12 +803,18 @@ define("core/overlay/overlay", ["require", "exports", "core/overlay/overlay_mana
             overlay_manager_1.default.getInstance().overlayLastFocusedElement =
                 event.target;
         };
+        Overlay.prototype.cacheCurrentOffsetSize = function () {
+            var w = this.frameEl.offsetWidth;
+            var h = this.frameEl.offsetHeight;
+            if (w > 0 && h > 0)
+                this.offsetSizeCache = new types_1.Size(w, h);
+        };
         Overlay.prototype.restoreOriginalSize = function () {
-            this.resize(this.originalSize.width, this.originalSize.height);
+            this.resize(this.originalSize.cssWidth, this.originalSize.cssHeight);
         };
         Overlay.prototype.changeZIndex = function (zIndex) {
             this.zIndex = zIndex;
-            this.outerFrameEl.style.zIndex = String(zIndex);
+            this.frameEl.style.zIndex = String(zIndex);
         };
         Overlay.prototype.getName = function () {
             return this.name;
@@ -903,19 +824,188 @@ define("core/overlay/overlay", ["require", "exports", "core/overlay/overlay_mana
         };
         Overlay.prototype.changePosition = function (x, y) {
             this.position = new types_1.Point(x, y);
-            this.outerFrameEl.style.left = String(this.position.x - Overlay.resizeHandleThicknessPx) + "px";
-            this.outerFrameEl.style.top = String(this.position.y - Overlay.resizeHandleThicknessPx) + "px";
+            this.frameEl.style.left = String(x) + "px";
+            this.frameEl.style.top = String(y) + "px";
+        };
+        Overlay.prototype.moveToViewPortCenter = function () {
+            var x = Math.round((this.viewPortEl.offsetWidth - this.offsetSizeCache.width) / 2);
+            var y = Math.round((this.viewPortEl.offsetHeight - this.offsetSizeCache.height) / 2);
+            this.changePosition(x, y);
         };
         Overlay.prototype.resize = function (width, height) {
-            this.size = new types_1.Size(width, height);
-            this.outerFrameEl.style.width = String(width + Overlay.resizeHandleThicknessPx * 2) + "px";
-            this.outerFrameEl.style.height = String(height + Overlay.resizeHandleThicknessPx * 2) + "px";
-            this.contentEl.style.width = String(width) + "px";
-            this.contentEl.style.height = String(height) + "px";
-            this.modalInactiveLayer.style.width = String(width) + "px";
-            this.modalInactiveLayer.style.height = String(height) + "px";
+            this.size = new types_1.CssSize(width, height);
+            this.frameEl.style.width = width;
+            this.frameEl.style.height = height;
         };
-        Overlay.prototype.refreshResizeHandleElementActivate = function () {
+        Overlay.prototype.activate = function () {
+            this.active = true;
+            this.inactiveModalMode = false;
+            this.modalInactiveLayerTransitionDriver.hide();
+        };
+        Overlay.prototype.inactivate = function (withModal) {
+            this.active = false;
+            this.inactiveModalMode = withModal;
+            if (withModal) {
+                this.modalInactiveLayerTransitionDriver.show();
+            }
+        };
+        Overlay.prototype.isActive = function () {
+            return this.active;
+        };
+        Overlay.DEFAULT_OVERLAY_SIZE_WIDTH = "50%";
+        Overlay.DEFAULT_OVERLAY_SIZE_HEIGHT = "50%";
+        Overlay.instanceSequenceTable = new Map();
+        return Overlay;
+    }());
+    exports.default = Overlay;
+});
+define("core/overlay/resizable_overlay", ["require", "exports", "core/overlay/overlay_manager", "core/common/types", "core/overlay/overlay"], function (require, exports, overlay_manager_2, types_2, overlay_1) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    var ResizableOverlay = /** @class */ (function (_super) {
+        __extends(ResizableOverlay, _super);
+        function ResizableOverlay(viewPortElement, name, size) {
+            var _this = _super.call(this, viewPortElement, name, size) || this;
+            _this.resizable = true;
+            _this.isResizing = false;
+            _this.resizeHandleEl = new Array();
+            var maxPctWithoutFrame = "calc(100% - " + (ResizableOverlay.resizeHandleThicknessPx * 2) + "px)";
+            _this.contentEl.style.left = String(ResizableOverlay.resizeHandleThicknessPx) + "px";
+            _this.contentEl.style.top = String(ResizableOverlay.resizeHandleThicknessPx) + "px";
+            _this.contentEl.style.width = maxPctWithoutFrame;
+            _this.contentEl.style.height = maxPctWithoutFrame;
+            _this.modalInactiveLayer.style.left = String(ResizableOverlay.resizeHandleThicknessPx) + "px";
+            _this.modalInactiveLayer.style.top = String(ResizableOverlay.resizeHandleThicknessPx) + "px";
+            _this.modalInactiveLayer.style.width = maxPctWithoutFrame;
+            _this.modalInactiveLayer.style.height = maxPctWithoutFrame;
+            //outerFrameElの周囲にリサイズイベント検知用のエレメントを生成・配置
+            _this.createResizeHandleElements();
+            _this.resize(_this.size.cssWidth, _this.size.cssHeight);
+            return _this;
+        }
+        ResizableOverlay.prototype.createResizeHandleElements = function () {
+            var _this = this;
+            var size = ResizableOverlay.resizeHandleThicknessPx * 2;
+            //0:左上 1:上中 2:右上 3:左中...8:右下  計8箇所 ※中中は不要
+            for (var i = 0; i < 8; i++) {
+                var el = document.createElement("div");
+                el.dataset["positionIndex"] = String(i);
+                el.style.position = "absolute";
+                el.style.width = size + "px";
+                el.style.height = size + "px";
+                el.style.zIndex = "-1";
+                el.addEventListener("mousedown", this.onResizeHandleMouseDown.bind(this));
+                this.resizeHandleEl.push(el);
+            }
+            //左上
+            this.resizeHandleEl[0].style.cursor = "nwse-resize";
+            //上
+            this.resizeHandleEl[1].style.left = String(size) + "px";
+            this.resizeHandleEl[1].style.width = "calc(100% - " + String(size * 2) + "px)";
+            this.resizeHandleEl[1].style.cursor = "ns-resize";
+            //右上
+            this.resizeHandleEl[2].style.right = "0px";
+            this.resizeHandleEl[2].style.cursor = "nesw-resize";
+            //左中
+            this.resizeHandleEl[3].style.top = String(size) + "px";
+            this.resizeHandleEl[3].style.height = "calc(100% - " + String(size * 2) + "px)";
+            this.resizeHandleEl[3].style.cursor = "ew-resize";
+            //右中
+            this.resizeHandleEl[4].style.right = "0px";
+            this.resizeHandleEl[4].style.top = String(size) + "px";
+            this.resizeHandleEl[4].style.height = "calc(100% - " + String(size * 2) + "px)";
+            this.resizeHandleEl[4].style.cursor = "ew-resize";
+            //左下
+            this.resizeHandleEl[5].style.bottom = "0px";
+            this.resizeHandleEl[5].style.cursor = "nesw-resize";
+            //下
+            this.resizeHandleEl[6].style.left = String(size) + "px";
+            this.resizeHandleEl[6].style.bottom = "0px";
+            this.resizeHandleEl[6].style.width = "calc(100% - " + String(size * 2) + "px)";
+            this.resizeHandleEl[6].style.cursor = "ns-resize";
+            //右下
+            this.resizeHandleEl[7].style.right = "0px";
+            this.resizeHandleEl[7].style.bottom = "0px";
+            this.resizeHandleEl[7].style.cursor = "nwse-resize";
+            this.resizeHandleEl.forEach(function (element) {
+                _this.frameEl.appendChild(element);
+            });
+        };
+        ResizableOverlay.prototype.__dispachMouseMoveEvent = function (x, y, deltaX, deltaY) {
+            _super.prototype.__dispachMouseMoveEvent.call(this, x, y, deltaX, deltaY);
+            var frameWidth, frameHeight;
+            if (this.isResizing && this.resizable) {
+                //※リサイズした場合は単位はピクセルに強制的に変更するものとする
+                switch (this.resizePositionIndex) {
+                    case 0: //左上
+                        this.changePosition(this.resizeStartPos.x + (x - this.resizeStartMousePos.x), this.resizeStartPos.y + (y - this.resizeStartMousePos.y));
+                        frameWidth = this.resizeStartSizePx.width - (x - this.resizeStartMousePos.x);
+                        frameHeight = this.resizeStartSizePx.height - (y - this.resizeStartMousePos.y);
+                        break;
+                    case 1: //上
+                        this.changePosition(this.position.x, this.resizeStartPos.y + (y - this.resizeStartMousePos.y));
+                        frameWidth = this.resizeStartSizePx.width;
+                        frameHeight = this.resizeStartSizePx.height - (y - this.resizeStartMousePos.y);
+                        break;
+                    case 2: //右上
+                        this.changePosition(this.position.x, this.resizeStartPos.y + (y - this.resizeStartMousePos.y));
+                        frameWidth = this.resizeStartSizePx.width + (x - this.resizeStartMousePos.x);
+                        frameHeight = this.resizeStartSizePx.height - (y - this.resizeStartMousePos.y);
+                        break;
+                    case 3: //左
+                        this.changePosition(this.resizeStartPos.x + (x - this.resizeStartMousePos.x), this.position.y);
+                        frameWidth = this.resizeStartSizePx.width - (x - this.resizeStartMousePos.x);
+                        frameHeight = this.resizeStartSizePx.height;
+                        break;
+                    case 4: //右
+                        this.changePosition(this.position.x, this.position.y);
+                        frameWidth = this.resizeStartSizePx.width + (x - this.resizeStartMousePos.x);
+                        frameHeight = this.resizeStartSizePx.height;
+                        break;
+                    case 5: //左下
+                        this.changePosition(this.resizeStartPos.x + (x - this.resizeStartMousePos.x), this.position.y);
+                        frameWidth = this.resizeStartSizePx.width - (x - this.resizeStartMousePos.x);
+                        frameHeight = this.resizeStartSizePx.height + (y - this.resizeStartMousePos.y);
+                        break;
+                    case 6: //下
+                        this.changePosition(this.position.x, this.position.y);
+                        frameWidth = this.resizeStartSizePx.width;
+                        frameHeight = this.resizeStartSizePx.height + (y - this.resizeStartMousePos.y);
+                        break;
+                    case 7: //右下
+                        this.changePosition(this.position.x, this.position.y);
+                        frameWidth = this.resizeStartSizePx.width + (x - this.resizeStartMousePos.x);
+                        frameHeight = this.resizeStartSizePx.height + (y - this.resizeStartMousePos.y);
+                        break;
+                }
+                frameWidth -= (ResizableOverlay.resizeHandleThicknessPx * 2);
+                frameHeight -= (ResizableOverlay.resizeHandleThicknessPx * 2);
+                this.resize(frameWidth + "px", frameHeight + "px");
+            }
+        };
+        ResizableOverlay.prototype.__dispachMouseUpEvent = function (x, y) {
+            _super.prototype.__dispachMouseUpEvent.call(this, x, y);
+            this.isResizing = false;
+            this.cacheCurrentOffsetSize();
+        };
+        ResizableOverlay.prototype.onResizeHandleMouseDown = function (event) {
+            this.isResizing = true;
+            this.resizePositionIndex = parseInt(event.target.dataset["positionIndex"]);
+            this.resizeStartMousePos = new types_2.Point(event.screenX, event.screenY);
+            this.resizeStartPos = new types_2.Point(this.position.x, this.position.y);
+            this.resizeStartSizePx = new types_2.Size(this.frameEl.offsetWidth, this.frameEl.offsetHeight);
+            overlay_manager_2.default.getInstance().changeContentsSelectable(false);
+        };
+        ResizableOverlay.prototype.resize = function (width, height) {
+            this.size = new types_2.CssSize(width, height);
+            this.frameEl.style.width = "calc(" + width + " + " + (ResizableOverlay.resizeHandleThicknessPx * 2) + "px)";
+            this.frameEl.style.height = "calc(" + height + " + " + (ResizableOverlay.resizeHandleThicknessPx * 2) + "px)";
+        };
+        ResizableOverlay.prototype.setResizable = function (resizable) {
+            this.resizable = resizable;
+            this.refreshResizeHandleElementActivate();
+        };
+        ResizableOverlay.prototype.refreshResizeHandleElementActivate = function () {
             var canResize = this.resizable && !this.inactiveModalMode;
             this.resizeHandleEl.forEach(function (element) {
                 if (canResize) {
@@ -926,31 +1016,12 @@ define("core/overlay/overlay", ["require", "exports", "core/overlay/overlay_mana
                 }
             });
         };
-        Overlay.prototype.activate = function () {
-            this.active = true;
-            this.inactiveModalMode = false;
-            this.modalInactiveLayerTransitionDriver.hide();
-            this.refreshResizeHandleElementActivate();
-        };
-        Overlay.prototype.inactivate = function (withModal) {
-            this.active = false;
-            this.inactiveModalMode = withModal;
-            if (withModal) {
-                this.modalInactiveLayerTransitionDriver.show();
-                this.refreshResizeHandleElementActivate();
-            }
-        };
-        Overlay.prototype.isActive = function () {
-            return this.active;
-        };
-        Overlay.resizeHandleThicknessPx = 7;
-        Overlay.DEFAULT_OVERLAY_SIZE_WIDTH = 640;
-        Overlay.DEFAULT_OVERLAY_SIZE_HEIGHT = 480;
-        return Overlay;
-    }());
-    exports.default = Overlay;
+        ResizableOverlay.resizeHandleThicknessPx = 8;
+        return ResizableOverlay;
+    }(overlay_1.default));
+    exports.default = ResizableOverlay;
 });
-define("core/overlay/dialog_window", ["require", "exports", "core/overlay/overlay", "core/overlay/overlay_manager", "core/container/container_manager", "core/common/dto"], function (require, exports, overlay_1, overlay_manager_2, container_manager_2, dto_2) {
+define("core/overlay/dialog_window", ["require", "exports", "core/overlay/overlay_manager", "core/common/dto", "core/overlay/resizable_overlay"], function (require, exports, overlay_manager_3, dto_2, resizable_overlay_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var DialogWindow = /** @class */ (function (_super) {
@@ -958,8 +1029,9 @@ define("core/overlay/dialog_window", ["require", "exports", "core/overlay/overla
         function DialogWindow(viewPortElement, name, options) {
             var _this = _super.call(this, viewPortElement, name, options ? options.size : null) || this;
             _this.isDragging = false;
-            _this.setResizable(true);
-            var containerManager = container_manager_2.default.getInstance();
+            if (options && options.resizable === false) {
+                _this.setResizable(false);
+            }
             _this.wrapperEl = document.createElement("div");
             _this.wrapperEl.style.position = "absolute";
             _this.wrapperEl.style.display = "flex";
@@ -971,6 +1043,9 @@ define("core/overlay/dialog_window", ["require", "exports", "core/overlay/overla
             _this.headerEl.style.position = "relative";
             _this.headerEl.style.display = "flex";
             _this.headerEl.style.width = "100%";
+            if (options && options.hideHeader) {
+                _this.headerEl.style.display = "none";
+            }
             _this.headerTitleEl = document.createElement("div");
             _this.headerTitleEl.className = "caption";
             _this.headerTitleEl.textContent = options && options.defaultCaption ? options.defaultCaption : "";
@@ -982,32 +1057,38 @@ define("core/overlay/dialog_window", ["require", "exports", "core/overlay/overla
             _this.headerEl.appendChild(_this.headerCloseButtonEl);
             _this.headerEl.addEventListener("mousedown", _this.onHeaderMouseDown.bind(_this));
             _this.headerEl.addEventListener("dragstart", _this.onHeaderDragStart.bind(_this));
-            _this.bodyEl = document.createElement("div");
-            _this.bodyEl.className = "fvst_dialog_window_body";
-            _this.bodyEl.style.position = "relative";
-            _this.bodyEl.style.flexGrow = "1";
-            _this.bodyEl.style.flexShrink = "1";
-            _this.bodyEl.style.width = "100%";
-            _this.container = containerManager.createContainer("__window_" + String(DialogWindow.instanceSequence++), "", _this.bodyEl, null);
+            _this.containerEl = document.createElement("div");
+            _this.containerEl.className = "fvst_dialog_window_body";
+            _this.containerEl.style.position = "relative";
+            _this.containerEl.style.flexGrow = "1";
+            _this.containerEl.style.flexShrink = "1";
+            _this.containerEl.style.width = "100%";
+            _this.registerAsContainer("window", _this.containerEl);
             _this.footerEl = document.createElement("div");
             _this.footerEl.className = "fvst_dialog_window_footer";
             _this.footerEl.style.position = "relative";
             _this.footerEl.style.width = "100%";
+            if (options && options.hideFooter) {
+                _this.footerEl.style.display = "none";
+            }
             _this.okButtonEl = document.createElement("input");
             _this.okButtonEl.type = "button";
+            _this.okButtonEl.classList.add("fvst_dialog_window_footer_button", "ok");
             _this.okButtonEl.value = "OK";
             _this.okButtonEl.addEventListener("click", _this.onOkButtonClick.bind(_this));
             _this.cancelButtonEl = document.createElement("input");
             _this.cancelButtonEl.type = "button";
+            _this.cancelButtonEl.classList.add("fvst_dialog_window_footer_button", "cancel");
             _this.cancelButtonEl.value = "キャンセル";
             _this.cancelButtonEl.addEventListener("click", _this.onCancelButtonClick.bind(_this));
             _this.applyButtonEl = document.createElement("input");
             _this.applyButtonEl.type = "button";
+            _this.applyButtonEl.classList.add("fvst_dialog_window_footer_button", "apply");
             _this.applyButtonEl.value = "適用";
             _this.footerEl.appendChild(_this.okButtonEl);
             _this.footerEl.appendChild(_this.cancelButtonEl);
             _this.wrapperEl.appendChild(_this.headerEl);
-            _this.wrapperEl.appendChild(_this.bodyEl);
+            _this.wrapperEl.appendChild(_this.containerEl);
             _this.wrapperEl.appendChild(_this.footerEl);
             _this.contentEl.className = "fvst_dialog_window_container";
             _this.contentEl.appendChild(_this.wrapperEl);
@@ -1021,7 +1102,7 @@ define("core/overlay/dialog_window", ["require", "exports", "core/overlay/overla
         }
         DialogWindow.prototype.onHeaderMouseDown = function (event) {
             this.isDragging = true;
-            overlay_manager_2.default.getInstance().changeContentsSelectable(false);
+            overlay_manager_3.default.getInstance().changeContentsSelectable(false);
         };
         DialogWindow.prototype.onHeaderDragStart = function (event) {
             event.preventDefault();
@@ -1096,11 +1177,6 @@ define("core/overlay/dialog_window", ["require", "exports", "core/overlay/overla
                 });
             });
         };
-        DialogWindow.prototype.moveToViewPortCenter = function () {
-            var x = Math.round((this.viewPortEl.offsetWidth - this.size.width) / 2);
-            var y = Math.round((this.viewPortEl.offsetHeight - this.size.height) / 2);
-            this.changePosition(x, y);
-        };
         //override
         DialogWindow.prototype.close = function (result) {
             this.outerFrameTransitionDriver.hide();
@@ -1117,9 +1193,8 @@ define("core/overlay/dialog_window", ["require", "exports", "core/overlay/overla
             _super.prototype.inactivate.call(this, withModal);
             this.headerEl.classList.add("inactive");
         };
-        DialogWindow.instanceSequence = 0;
         return DialogWindow;
-    }(overlay_1.default));
+    }(resizable_overlay_1.default));
     exports.default = DialogWindow;
 });
 define("core/common/common", ["require", "exports"], function (require, exports) {
@@ -1135,48 +1210,49 @@ define("core/common/common", ["require", "exports"], function (require, exports)
     }());
     exports.default = Common;
 });
-define("core/overlay/popup_menu", ["require", "exports", "core/overlay/overlay", "core/container/container_manager", "core/common/common", "core/overlay/overlay_manager"], function (require, exports, overlay_2, container_manager_3, common_1, overlay_manager_3) {
+define("core/overlay/context_menu", ["require", "exports", "core/overlay/overlay", "core/common/common", "core/overlay/overlay_manager"], function (require, exports, overlay_2, common_1, overlay_manager_4) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
-    var PopupMenu = /** @class */ (function (_super) {
-        __extends(PopupMenu, _super);
-        function PopupMenu(viewPortElement, name, options) {
+    var ContextMenu = /** @class */ (function (_super) {
+        __extends(ContextMenu, _super);
+        function ContextMenu(viewPortElement, name, options) {
             var _this = _super.call(this, viewPortElement, name, options ? options.size : null) || this;
-            var containerManager = container_manager_3.default.getInstance();
-            _this.bodyEl = document.createElement("div");
-            _this.bodyEl.className = "";
-            _this.bodyEl.style.position = "relative";
-            _this.bodyEl.style.width = "100%";
-            _this.bodyEl.style.height = "100%";
-            _this.container = containerManager.createContainer("__popupmenu_" + String(PopupMenu.instanceSequence++), "", _this.bodyEl, null);
-            _this.contentEl.className = "fvst_popup_menu_container";
-            _this.contentEl.appendChild(_this.bodyEl);
+            _this.containerEl = document.createElement("div");
+            _this.containerEl.className = "";
+            _this.containerEl.style.position = "relative";
+            _this.containerEl.style.width = "100%";
+            _this.containerEl.style.height = "100%";
+            _this.registerAsContainer("contextmenu", _this.containerEl);
+            _this.contentEl.className = "fvst_context_menu_container";
+            _this.contentEl.appendChild(_this.containerEl);
             _this.contentEl.addEventListener("mousedown", _this.onContentMouseDown.bind(_this));
             _this.outerFrameTransitionDriver.setCustomTransitionClasses({
-                standyStateClass: "fvst_popup_menu_standy_state",
-                enterTransitionClass: "fvst_popup_menu_enter_transition",
-                leaveTransitionClass: "fvst_popup_menu_leave_transition",
-                endStateClass: "fvst_popup_menu_end_state"
+                standyStateClass: "fvst_context_menu_standy_state",
+                enterTransitionClass: "fvst_context_menu_enter_transition",
+                leaveTransitionClass: "fvst_context_menu_leave_transition",
+                endStateClass: "fvst_context_menu_end_state"
             });
             return _this;
         }
-        PopupMenu.prototype.getContainer = function () {
+        ContextMenu.prototype.getContainer = function () {
             return this.container;
         };
-        PopupMenu.prototype.show = function (parcel, options) {
+        ContextMenu.prototype.show = function (parcel, options) {
             var x, y;
             x = common_1.default.currentMouseClientX;
             y = common_1.default.currentMouseClientY;
-            var overlayRightSideX = x + this.size.width;
-            var overlayBottomSideY = y + this.size.height;
+            var widthPx = this.frameEl.offsetWidth;
+            var heightPx = this.frameEl.offsetHeight;
+            var overlayRightSideX = x + widthPx;
+            var overlayBottomSideY = y + heightPx;
             var visibleAreaWidth = window.document.documentElement.clientWidth;
             var visibleAreaHeight = window.document.documentElement.clientHeight;
-            var xVisibleAreaIsLargerThanOverlay = this.size.width < visibleAreaWidth;
-            var yVisibleAreaIsLargerThanOverlay = this.size.height < visibleAreaHeight;
+            var xVisibleAreaIsLargerThanOverlay = widthPx < visibleAreaWidth;
+            var yVisibleAreaIsLargerThanOverlay = heightPx < visibleAreaHeight;
             var xCanDisplayOnNormalPosition = overlayRightSideX <= visibleAreaWidth;
             var yCanDisplayOnNormalPosition = overlayBottomSideY <= visibleAreaHeight;
-            var xCanDisplayOnReversePosition = x >= this.size.width;
-            var yCanDisplayOnReversePosition = y >= this.size.height;
+            var xCanDisplayOnReversePosition = x >= widthPx;
+            var yCanDisplayOnReversePosition = y >= heightPx;
             this.restoreOriginalSize();
             //x方向
             if (xVisibleAreaIsLargerThanOverlay) {
@@ -1184,11 +1260,11 @@ define("core/overlay/popup_menu", ["require", "exports", "core/overlay/overlay",
                     //指定された位置をそのまま左上座標にする
                 }
                 else if (xCanDisplayOnReversePosition) {
-                    x -= this.size.width;
+                    x -= widthPx;
                 }
                 else {
                     //右端に寄せる
-                    x = visibleAreaWidth - this.size.width;
+                    x = visibleAreaWidth - widthPx;
                 }
             }
             else {
@@ -1200,47 +1276,162 @@ define("core/overlay/popup_menu", ["require", "exports", "core/overlay/overlay",
                     //指定された位置をそのまま左上座標にする
                 }
                 else if (yCanDisplayOnReversePosition) {
-                    y -= this.size.height;
+                    y -= heightPx;
                 }
                 else {
                     //下端に寄せる
-                    y = visibleAreaHeight - this.size.height;
+                    y = visibleAreaHeight - heightPx;
                 }
             }
             else {
                 //入りきらない場合は上端に寄せたのち、入りきらない分を一時的に縮小する
                 y = 0;
-                this.resize(this.size.width, visibleAreaHeight);
+                this.resize(widthPx + "px", visibleAreaHeight + "px");
             }
             this.changePosition(x, y);
             this.container.initialize(parcel);
             this.outerFrameTransitionDriver.show();
             return this.waitForOverlayClose();
         };
-        PopupMenu.prototype.showAsModal = function (parcel, options) {
+        ContextMenu.prototype.showAsModal = function (parcel, options) {
             return this.show(parcel, options);
         };
-        PopupMenu.prototype.close = function (result) {
+        ContextMenu.prototype.close = function (result) {
             this.outerFrameTransitionDriver.hide();
             //自身のdisplay:noneが反映した後にコールバックさせるためsetTimeoutを介して呼び出す
             window.setTimeout(this.waitForOverlayCloseResolver.bind(this), 0, result);
         };
-        PopupMenu.prototype.waitForOverlayClose = function () {
+        ContextMenu.prototype.waitForOverlayClose = function () {
             var _this = this;
             return new Promise(function (resolve) {
                 _this.waitForOverlayCloseResolver = resolve;
             });
         };
-        PopupMenu.prototype.onContentMouseDown = function (event) {
-            var overlayManager = overlay_manager_3.default.getInstance();
+        ContextMenu.prototype.onContentMouseDown = function (event) {
+            var overlayManager = overlay_manager_4.default.getInstance();
             overlayManager.cancelAutoClosingOnlyOnce();
         };
-        PopupMenu.instanceSequence = 0;
-        return PopupMenu;
+        return ContextMenu;
     }(overlay_2.default));
-    exports.default = PopupMenu;
+    exports.default = ContextMenu;
 });
-define("core/overlay/overlay_manager", ["require", "exports", "core/overlay/dialog_window", "core/common/dto", "core/common/css_transition_driver", "core/overlay/popup_menu"], function (require, exports, dialog_window_1, dto_3, css_transition_driver_3, popup_menu_1) {
+define("core/overlay/drawer", ["require", "exports", "core/overlay/overlay", "core/overlay/overlay_manager"], function (require, exports, overlay_3, overlay_manager_5) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    var DockType;
+    (function (DockType) {
+        DockType[DockType["Top"] = 0] = "Top";
+        DockType[DockType["Right"] = 1] = "Right";
+        DockType[DockType["Bottom"] = 2] = "Bottom";
+        DockType[DockType["Left"] = 3] = "Left";
+    })(DockType = exports.DockType || (exports.DockType = {}));
+    var Drawer = /** @class */ (function (_super) {
+        __extends(Drawer, _super);
+        function Drawer(viewPortElement, name, options) {
+            var _this = _super.call(this, viewPortElement, name, null) || this;
+            _this.dockType = options.dockType !== undefined ? options.dockType : DockType.Left;
+            _this.dockSize = options.dockSize !== undefined ? options.dockSize : "33%";
+            _this.changeDockType(_this.dockType);
+            _this.containerEl = document.createElement("div");
+            _this.containerEl.className = "";
+            _this.containerEl.style.position = "relative";
+            _this.containerEl.style.width = "100%";
+            _this.containerEl.style.height = "100%";
+            _this.registerAsContainer("drawer", _this.containerEl);
+            _this.contentEl.className = "fvst_drawer_container";
+            _this.contentEl.appendChild(_this.containerEl);
+            _this.contentEl.addEventListener("mousedown", _this.onContentMouseDown.bind(_this));
+            return _this;
+        }
+        Drawer.prototype.getContainer = function () {
+            return this.container;
+        };
+        Drawer.prototype.changeDockType = function (dockType) {
+            //サイズ変更
+            if (dockType === DockType.Left || dockType === DockType.Right) {
+                this.frameEl.style.width = this.dockSize;
+                this.frameEl.style.height = "100%";
+            }
+            else if (dockType === DockType.Top || dockType === DockType.Bottom) {
+                this.frameEl.style.width = "100%";
+                this.frameEl.style.height = this.dockSize;
+            }
+            //位置変更
+            this.frameEl.style.left = "";
+            this.frameEl.style.right = "";
+            this.frameEl.style.top = "";
+            this.frameEl.style.bottom = "";
+            if (dockType === DockType.Left || dockType === DockType.Top || dockType === DockType.Bottom) {
+                //left=0パターン
+                this.frameEl.style.left = "0px";
+            }
+            else {
+                //right=0パターン(DockType.Right)
+                this.frameEl.style.right = "0px";
+            }
+            if (dockType === DockType.Left || dockType === DockType.Right || dockType === DockType.Top) {
+                //top=0パターン
+                this.frameEl.style.top = "0px";
+            }
+            else {
+                //bottom=0パターン(DockType.Bottom)
+                this.frameEl.style.bottom = "0px";
+            }
+            //TransitionDriverクラス変更
+            var dockTypeName;
+            switch (dockType) {
+                case DockType.Left:
+                    dockTypeName = "left";
+                    break;
+                case DockType.Right:
+                    dockTypeName = "right";
+                    break;
+                case DockType.Top:
+                    dockTypeName = "top";
+                    break;
+                case DockType.Bottom:
+                    dockTypeName = "bottom";
+                    break;
+            }
+            this.outerFrameTransitionDriver.setCustomTransitionClasses({
+                standyStateClass: "fvst_drawer_" + dockTypeName + "_dock_standy_state",
+                enterTransitionClass: "fvst_drawer_enter_transition",
+                leaveTransitionClass: "fvst_drawer_leave_transition",
+                endStateClass: "fvst_drawer_" + dockTypeName + "_dock_end_state"
+            });
+        };
+        //Override
+        Drawer.prototype.changePosition = function (x, y) {
+            //何もしない
+        };
+        Drawer.prototype.show = function (parcel, options) {
+            this.container.initialize(parcel);
+            this.outerFrameTransitionDriver.show();
+            return this.waitForOverlayClose();
+        };
+        Drawer.prototype.showAsModal = function (parcel, options) {
+            return this.show(parcel, options);
+        };
+        Drawer.prototype.close = function (result) {
+            this.outerFrameTransitionDriver.hide();
+            //自身のdisplay:noneが反映した後にコールバックさせるためsetTimeoutを介して呼び出す
+            window.setTimeout(this.waitForOverlayCloseResolver.bind(this), 0, result);
+        };
+        Drawer.prototype.waitForOverlayClose = function () {
+            var _this = this;
+            return new Promise(function (resolve) {
+                _this.waitForOverlayCloseResolver = resolve;
+            });
+        };
+        Drawer.prototype.onContentMouseDown = function (event) {
+            var overlayManager = overlay_manager_5.default.getInstance();
+            overlayManager.cancelAutoClosingOnlyOnce();
+        };
+        return Drawer;
+    }(overlay_3.default));
+    exports.default = Drawer;
+});
+define("core/overlay/overlay_manager", ["require", "exports", "core/overlay/dialog_window", "core/common/dto", "core/common/css_transition_driver", "core/overlay/context_menu", "core/overlay/drawer"], function (require, exports, dialog_window_1, dto_3, css_transition_driver_3, context_menu_1, drawer_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var OvarlayManager = /** @class */ (function () {
@@ -1270,6 +1461,7 @@ define("core/overlay/overlay_manager", ["require", "exports", "core/overlay/dial
             this.onMouseMoveBindedThis = this.onMouseMove.bind(this);
             this.onMouseUpBindedThis = this.onMouseUp.bind(this);
             this.onSelectStartBindedThis = this.onSelectStart.bind(this);
+            this.windowResizeEventHandlerBindThis = this.windowResizeEventHandler.bind(this);
         }
         OvarlayManager.getInstance = function () {
             return OvarlayManager.instance;
@@ -1289,11 +1481,11 @@ define("core/overlay/overlay_manager", ["require", "exports", "core/overlay/dial
             if (!this.requestedAutoCloseCancelOnlyOnce) {
                 this.overlayManagementTable.forEach(function (omd, key) {
                     if (omd.isVisible && omd.isAutoCloseableWhenOutfocus) {
-                        var overlay_3 = _this.overlays.get(key);
-                        var module = overlay_3.getContainer().getActiveModule();
+                        var overlay_4 = _this.overlays.get(key);
+                        var module = overlay_4.getContainer().getActiveModule();
                         module.exit(dto_3.ActionType.CANCEL).then(function (exited) {
                             if (exited)
-                                overlay_3.close();
+                                overlay_4.close();
                         });
                     }
                 });
@@ -1314,6 +1506,8 @@ define("core/overlay/overlay_manager", ["require", "exports", "core/overlay/dial
                 overlay.__dispachMouseUpEvent(event.screenX, event.screenY);
             });
             this.changeContentsSelectable(true);
+        };
+        OvarlayManager.prototype.windowResizeEventHandler = function (event) {
         };
         OvarlayManager.prototype.onSelectStart = function (event) {
             if (!this.contentsSelectable) {
@@ -1345,8 +1539,16 @@ define("core/overlay/overlay_manager", ["require", "exports", "core/overlay/dial
             this.overlayManagementTable.set(overlayName, new OverlayManagementData());
             return overlay;
         };
-        OvarlayManager.prototype.createPopupMenu = function (overlayName, options) {
-            var overlay = new popup_menu_1.default(this.viewPortEl, overlayName, options);
+        OvarlayManager.prototype.createContextMenu = function (overlayName, options) {
+            var overlay = new context_menu_1.default(this.viewPortEl, overlayName, options);
+            this.overlays.set(overlayName, overlay);
+            var omd = new OverlayManagementData();
+            omd.isAutoCloseableWhenOutfocus = true;
+            this.overlayManagementTable.set(overlayName, omd);
+            return overlay;
+        };
+        OvarlayManager.prototype.createDrawer = function (overlayName, options) {
+            var overlay = new drawer_1.default(this.viewPortEl, overlayName, options);
             this.overlays.set(overlayName, overlay);
             var omd = new OverlayManagementData();
             omd.isAutoCloseableWhenOutfocus = true;
@@ -1377,12 +1579,13 @@ define("core/overlay/overlay_manager", ["require", "exports", "core/overlay/dial
                         case 0:
                             overlay = this.overlays.get(overlayName);
                             omd = this.overlayManagementTable.get(overlayName);
-                            omd.isVisible = true;
                             omd.parentOverlay = options ? options.parent : null;
+                            omd.isVisible = true;
                             this.activateSpecificOverlay(overlayName);
                             return [4 /*yield*/, overlay.show(parcel, options)];
                         case 1:
                             result = _a.sent();
+                            omd.isVisible = false;
                             this.activateTopOverlay();
                             return [2 /*return*/, result];
                     }
@@ -1401,8 +1604,8 @@ define("core/overlay/overlay_manager", ["require", "exports", "core/overlay/dial
                             return [4 /*yield*/, this.show(overlayName, parcel, options)];
                         case 1:
                             result = _a.sent();
-                            this.endModalMode();
                             omd.isModal = false;
+                            this.endModalMode();
                             return [2 /*return*/, result];
                     }
                 });
@@ -1436,7 +1639,6 @@ define("core/overlay/overlay_manager", ["require", "exports", "core/overlay/dial
                 var omd = _this.overlayManagementTable.get(overlay.getName());
                 if (omd.isVisible) {
                     if (omd.isAutoCloseableWhenOutfocus) {
-                        console.log("AUTO_CLOSE");
                         overlay.changeZIndex(_this.FOREGROUND_START_Z_INDEX + visibleCount--);
                     }
                     else if (omd.isModal) {
@@ -1448,7 +1650,6 @@ define("core/overlay/overlay_manager", ["require", "exports", "core/overlay/dial
                     if (visibleOverlayCounter === 0 ||
                         (previousOverlay.isActive() && overlay === previousOmd.parentOverlay)) {
                         overlay.activate();
-                        console.log(visibleOverlayCounter);
                     }
                     else {
                         overlay.inactivate(omd.isModal);
@@ -1500,76 +1701,14 @@ define("core/overlay/overlay_manager", ["require", "exports", "core/overlay/dial
         return OverlayManagementData;
     }());
 });
-define("core/adapter/html_component_adapter", ["require", "exports", "core/module/module_router", "core/overlay/overlay_manager", "core/common/dto", "core/module/module_manager", "core/common/runtime_error"], function (require, exports, module_router_1, overlay_manager_4, dto_4, module_manager_2, runtime_error_4) {
+define("core/adapter/navigation", ["require", "exports", "core/module/module_router", "core/module/module_manager", "core/overlay/overlay_manager", "core/common/runtime_error"], function (require, exports, module_router_1, module_manager_2, overlay_manager_6, runtime_error_4) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
-    exports.htmlComponentAdapters = new Map();
-    var HTMLComponentAdapter = /** @class */ (function () {
-        function HTMLComponentAdapter() {
-            this.isModified = false;
-            this.moduleRouter = module_router_1.default.getInstance();
-            this.moduleManager = module_manager_2.default.getInstance();
-            this.overlayManager = overlay_manager_4.default.getInstance();
-            this.exitCallbackReturnFunctionsObject = {
-                cancelExit: this.cancelExit.bind(this),
-                continueExit: this.continueExit.bind(this)
-            };
-            this.navigation = new Navigation(this);
-        }
-        HTMLComponentAdapter.prototype.setHtmlComponent = function (htmlComponent) {
-            this.htmlComponent = htmlComponent;
-        };
-        HTMLComponentAdapter.prototype.getHtmlComponent = function () {
-            return this.htmlComponent;
-        };
-        HTMLComponentAdapter.prototype.triggerOnLoadHandler = function (param) {
-            if (this.onLoad)
-                this.onLoad(param);
-        };
-        HTMLComponentAdapter.prototype.triggerOnInitializeHandler = function (param) {
-            if (this.onInitialize)
-                this.onInitialize(param);
-        };
-        HTMLComponentAdapter.prototype.triggerOnShowHandler = function (isFirst, param) {
-            if (this.onShow)
-                this.onShow(isFirst, param);
-        };
-        HTMLComponentAdapter.prototype.triggerOnHideHandler = function (param) {
-            if (this.onHide)
-                this.onHide(param);
-        };
-        HTMLComponentAdapter.prototype.triggerOnExitHandler = function (actionType) {
-            if (this.onExit) {
-                this.onExit(actionType, this.exitCallbackReturnFunctionsObject);
-            }
-            else {
-                this.continueExit(new dto_4.Result(actionType, true));
-            }
-        };
-        HTMLComponentAdapter.prototype.triggerOnReceiveMessage = function (command, message) {
-            if (this.onReceiveMessage) {
-                this.onReceiveMessage(command, this.returnMessageResponse.bind(this), message);
-            }
-            else {
-            }
-        };
-        HTMLComponentAdapter.prototype.continueExit = function (result) {
-            this.htmlComponent.continueExitProcess(result);
-        };
-        HTMLComponentAdapter.prototype.cancelExit = function () {
-            this.htmlComponent.cancelExitProcess();
-        };
-        HTMLComponentAdapter.prototype.returnMessageResponse = function (response) {
-            this.htmlComponent.returnMessageResponse(response);
-        };
-        return HTMLComponentAdapter;
-    }());
-    exports.default = HTMLComponentAdapter;
     var Navigation = /** @class */ (function () {
         function Navigation(adapter) {
             this.moduleRouter = module_router_1.default.getInstance();
             this.moduleManager = module_manager_2.default.getInstance();
-            this.overlayManager = overlay_manager_4.default.getInstance();
+            this.overlayManager = overlay_manager_6.default.getInstance();
             this.adapter = adapter;
         }
         Navigation.prototype.getCurrentOverlay = function () {
@@ -1624,7 +1763,7 @@ define("core/adapter/html_component_adapter", ["require", "exports", "core/modul
                 });
             });
         };
-        Navigation.prototype.showPopupMenu = function (overlayName, parcel, targetElement) {
+        Navigation.prototype.showContextMenu = function (overlayName, parcel, targetElement) {
             return __awaiter(this, void 0, void 0, function () {
                 var showOptions, _a, left, bottom;
                 return __generator(this, function (_b) {
@@ -1644,6 +1783,16 @@ define("core/adapter/html_component_adapter", ["require", "exports", "core/modul
                 });
             });
         };
+        Navigation.prototype.showDrawer = function (overlayName, parcel) {
+            return __awaiter(this, void 0, void 0, function () {
+                return __generator(this, function (_a) {
+                    switch (_a.label) {
+                        case 0: return [4 /*yield*/, this.overlayManager.showAsModal(overlayName, parcel)];
+                        case 1: return [2 /*return*/, _a.sent()];
+                    }
+                });
+            });
+        };
         Navigation.prototype.sendMessage = function (destination, command, message) {
             return __awaiter(this, void 0, void 0, function () {
                 return __generator(this, function (_a) {
@@ -1653,6 +1802,73 @@ define("core/adapter/html_component_adapter", ["require", "exports", "core/modul
         };
         return Navigation;
     }());
+    exports.default = Navigation;
+});
+define("core/adapter/html_component_adapter", ["require", "exports", "core/module/module_router", "core/overlay/overlay_manager", "core/common/dto", "core/module/module_manager", "core/adapter/navigation"], function (require, exports, module_router_2, overlay_manager_7, dto_4, module_manager_3, navigation_1) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    exports.htmlComponentAdapters = new Map();
+    var HTMLComponentAdapter = /** @class */ (function () {
+        function HTMLComponentAdapter() {
+            this.isModified = false;
+            this.moduleRouter = module_router_2.default.getInstance();
+            this.moduleManager = module_manager_3.default.getInstance();
+            this.overlayManager = overlay_manager_7.default.getInstance();
+            this.exitCallbackReturnFunctionsObject = {
+                cancelExit: this.cancelExit.bind(this),
+                continueExit: this.continueExit.bind(this)
+            };
+            this.navigation = new navigation_1.default(this);
+        }
+        HTMLComponentAdapter.prototype.setHtmlComponent = function (htmlComponent) {
+            this.htmlComponent = htmlComponent;
+        };
+        HTMLComponentAdapter.prototype.getHtmlComponent = function () {
+            return this.htmlComponent;
+        };
+        HTMLComponentAdapter.prototype.triggerOnLoadHandler = function (param) {
+            if (this.onLoad)
+                this.onLoad(param);
+        };
+        HTMLComponentAdapter.prototype.triggerOnInitializeHandler = function (param) {
+            if (this.onInitialize)
+                this.onInitialize(param);
+        };
+        HTMLComponentAdapter.prototype.triggerOnShowHandler = function (isFirst, param) {
+            if (this.onShow)
+                this.onShow(isFirst, param);
+        };
+        HTMLComponentAdapter.prototype.triggerOnHideHandler = function (param) {
+            if (this.onHide)
+                this.onHide(param);
+        };
+        HTMLComponentAdapter.prototype.triggerOnExitHandler = function (actionType) {
+            if (this.onExit) {
+                this.onExit(actionType, this.exitCallbackReturnFunctionsObject);
+            }
+            else {
+                this.continueExit(new dto_4.Result(actionType, true));
+            }
+        };
+        HTMLComponentAdapter.prototype.triggerOnReceiveMessage = function (command, message) {
+            if (this.onReceiveMessage) {
+                this.onReceiveMessage(command, this.returnMessageResponse.bind(this), message);
+            }
+            else {
+            }
+        };
+        HTMLComponentAdapter.prototype.continueExit = function (result) {
+            this.htmlComponent.continueExitProcess(result);
+        };
+        HTMLComponentAdapter.prototype.cancelExit = function () {
+            this.htmlComponent.cancelExitProcess();
+        };
+        HTMLComponentAdapter.prototype.returnMessageResponse = function (response) {
+            this.htmlComponent.returnMessageResponse(response);
+        };
+        return HTMLComponentAdapter;
+    }());
+    exports.default = HTMLComponentAdapter;
     var __global = window;
     __global.__HTMLComponentAdapter = HTMLComponentAdapter;
     __global.__registerHTMLComponentAdapter = function (moduleIndex, componentClass) {
@@ -1793,7 +2009,7 @@ define("core/module/html_component", ["require", "exports", "core/source_reposit
     }());
     exports.default = HTMLComponent;
 });
-define("core/module/native_component", ["require", "exports", "core/module/html_component", "core/container/container_manager", "core/adapter/html_component_adapter"], function (require, exports, html_component_1, container_manager_4, html_component_adapter_1) {
+define("core/module/native_component", ["require", "exports", "core/module/html_component", "core/container/container_manager", "core/adapter/html_component_adapter"], function (require, exports, html_component_1, container_manager_3, html_component_adapter_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var NativeComponent = /** @class */ (function (_super) {
@@ -1854,7 +2070,7 @@ define("core/module/native_component", ["require", "exports", "core/module/html_
                             this.currentContainer = elementAttachHandler(this.wrapperElement, this.name);
                             //scriptタグを実行
                             this.evalScripts();
-                            containerManager = container_manager_4.default.getInstance();
+                            containerManager = container_manager_3.default.getInstance();
                             this.subContainerInfos.forEach(function (containerInfo, domId) {
                                 var localElementId = domId.replace(localizeRegExp, localPrefix);
                                 var containerEl = document.getElementById(localElementId);
@@ -1879,10 +2095,10 @@ define("core/module/native_component", ["require", "exports", "core/module/html_
             for (var i = 0; i < nodeList.length; i++) {
                 var scriptElement = nodeList[i];
                 var scopeMode = scriptElement.dataset["scopeMode"];
-                if (!scopeMode || scopeMode === "native") {
+                if (scopeMode === "native") {
                     nativeScript += scriptElement.textContent;
                 }
-                else if (scopeMode === "prototype") {
+                else if (!scopeMode || scopeMode === "prototype") { //default
                     prototypeScript += scriptElement.textContent;
                 }
                 else if (scopeMode === "class") {
@@ -1924,14 +2140,15 @@ define("core/module/native_component", ["require", "exports", "core/module/html_
     }(html_component_1.default));
     exports.default = NativeComponent;
 });
-define("core/module/module_manager", ["require", "exports", "core/module/native_component", "core/common/runtime_error", "core/container/container_manager", "core/overlay/overlay_manager"], function (require, exports, native_component_1, runtime_error_5, container_manager_5, overlay_manager_5) {
+define("core/module/module_manager", ["require", "exports", "core/module/native_component", "core/common/runtime_error", "core/container/container_manager", "core/overlay/overlay_manager"], function (require, exports, native_component_1, runtime_error_5, container_manager_4, overlay_manager_8) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var DisplayMode;
     (function (DisplayMode) {
         DisplayMode[DisplayMode["Embedding"] = 0] = "Embedding";
         DisplayMode[DisplayMode["Window"] = 1] = "Window";
-        DisplayMode[DisplayMode["PopupMenu"] = 2] = "PopupMenu";
+        DisplayMode[DisplayMode["ContextMenu"] = 2] = "ContextMenu";
+        DisplayMode[DisplayMode["Drawer"] = 3] = "Drawer";
     })(DisplayMode = exports.DisplayMode || (exports.DisplayMode = {}));
     var ModuleType;
     (function (ModuleType) {
@@ -1956,9 +2173,13 @@ define("core/module/module_manager", ["require", "exports", "core/module/native_
             var md = this.registerDescription(name, sourceUri, DisplayMode.Window, null, null, options);
             md.windowOptions = windowOptions;
         };
-        ModuleManager.prototype.registerPopupMenu = function (name, sourceUri, popupMenuOptions, options) {
-            var md = this.registerDescription(name, sourceUri, DisplayMode.PopupMenu, null, null, options);
-            md.popupMenuOptions = popupMenuOptions;
+        ModuleManager.prototype.registerContextMenu = function (name, sourceUri, contextMenuOptions, options) {
+            var md = this.registerDescription(name, sourceUri, DisplayMode.ContextMenu, null, null, options);
+            md.contextMenuOptions = contextMenuOptions;
+        };
+        ModuleManager.prototype.registerDrawer = function (name, sourceUri, drawerOptions, options) {
+            var md = this.registerDescription(name, sourceUri, DisplayMode.Drawer, null, null, options);
+            md.drawerOptions = drawerOptions;
         };
         ModuleManager.prototype.registerDescription = function (name, sourceUri, displayMode, targetContainerId, isContainerDefault, options) {
             var op = options || {};
@@ -2033,7 +2254,7 @@ define("core/module/module_manager", ["require", "exports", "core/module/native_
                                     }
                                 }
                                 else {
-                                    //それ以外（自身がwindowやpopupのルートコンテナになる場合）
+                                    //それ以外（自身がwindowやcontextmenuのルートコンテナになる場合）
                                     //※依存情報テーブル上はルート上に含めるものとするため何もしない（root.root）
                                 }
                                 var targetDependencyInfo = _this.dependencyInfoMap.get(targetModuleName);
@@ -2056,17 +2277,17 @@ define("core/module/module_manager", ["require", "exports", "core/module/native_
         };
         ModuleManager.prototype.loadSubModules = function (dependencyInfo) {
             return __awaiter(this, void 0, void 0, function () {
-                var containerManager, overlayManager, moduleDescription, displayMode, module, targetContainer, dWindow, dPopup, _i, _a, subModuleName;
+                var containerManager, overlayManager, moduleDescription, displayMode, module, targetContainer, overlay, _i, _a, subModuleName;
                 return __generator(this, function (_b) {
                     switch (_b.label) {
                         case 0:
-                            containerManager = container_manager_5.default.getInstance();
-                            overlayManager = overlay_manager_5.default.getInstance();
+                            containerManager = container_manager_4.default.getInstance();
+                            overlayManager = overlay_manager_8.default.getInstance();
                             moduleDescription = dependencyInfo.moduleDescription;
                             if (dependencyInfo.isProcessed)
                                 throw new runtime_error_5.default("コンテナの循環参照発生");
                             dependencyInfo.isProcessed = true;
-                            if (!(!dependencyInfo.isRoot && !moduleDescription.lazyModuleLoading)) return [3 /*break*/, 8];
+                            if (!(!dependencyInfo.isRoot && !moduleDescription.lazyModuleLoading)) return [3 /*break*/, 6];
                             displayMode = moduleDescription.displayMode;
                             module = this.modules.get(moduleDescription.name);
                             if (!(displayMode === DisplayMode.Embedding)) return [3 /*break*/, 4];
@@ -2081,37 +2302,39 @@ define("core/module/module_manager", ["require", "exports", "core/module/native_
                             }
                             return [3 /*break*/, 3];
                         case 2: throw new runtime_error_5.default("ターゲットコンテナが存在しないか、未ロード");
-                        case 3: return [3 /*break*/, 8];
+                        case 3: return [3 /*break*/, 6];
                         case 4:
-                            if (!(displayMode === DisplayMode.Window)) return [3 /*break*/, 6];
-                            dWindow = overlayManager.createWindow(module.getName(), moduleDescription.windowOptions);
-                            return [4 /*yield*/, dWindow.getContainer().addModule(module)];
+                            overlay = void 0;
+                            switch (displayMode) {
+                                case DisplayMode.Window:
+                                    overlay = overlayManager.createWindow(module.getName(), moduleDescription.windowOptions);
+                                    break;
+                                case DisplayMode.ContextMenu:
+                                    overlay = overlayManager.createContextMenu(module.getName(), moduleDescription.contextMenuOptions);
+                                    break;
+                                case DisplayMode.Drawer:
+                                    overlay = overlayManager.createDrawer(module.getName(), moduleDescription.drawerOptions);
+                                    break;
+                            }
+                            return [4 /*yield*/, overlay.getContainer().addModule(module)];
                         case 5:
                             _b.sent();
-                            dWindow.getContainer().activateModule(module);
-                            return [3 /*break*/, 8];
+                            overlay.getContainer().activateModule(module);
+                            _b.label = 6;
                         case 6:
-                            if (!(displayMode === DisplayMode.PopupMenu)) return [3 /*break*/, 8];
-                            dPopup = overlayManager.createPopupMenu(module.getName(), moduleDescription.popupMenuOptions);
-                            return [4 /*yield*/, dPopup.getContainer().addModule(module)];
-                        case 7:
-                            _b.sent();
-                            dPopup.getContainer().activateModule(module);
-                            _b.label = 8;
-                        case 8:
                             _i = 0, _a = dependencyInfo.subModuleNames;
-                            _b.label = 9;
-                        case 9:
-                            if (!(_i < _a.length)) return [3 /*break*/, 12];
+                            _b.label = 7;
+                        case 7:
+                            if (!(_i < _a.length)) return [3 /*break*/, 10];
                             subModuleName = _a[_i];
                             return [4 /*yield*/, this.loadSubModules(this.dependencyInfoMap.get(subModuleName))];
-                        case 10:
+                        case 8:
                             _b.sent();
-                            _b.label = 11;
-                        case 11:
+                            _b.label = 9;
+                        case 9:
                             _i++;
-                            return [3 /*break*/, 9];
-                        case 12: return [2 /*return*/];
+                            return [3 /*break*/, 7];
+                        case 10: return [2 /*return*/];
                     }
                 });
             });
@@ -2149,7 +2372,40 @@ define("core/module/module_manager", ["require", "exports", "core/module/native_
         return ModuleDependencyInfo;
     }());
 });
-define("fivestage", ["require", "exports", "core/module/module_manager", "core/container/container_manager", "core/overlay/overlay_manager", "core/common/common"], function (require, exports, module_manager_3, container_manager_6, overlay_manager_6, common_2) {
+define("core/configurer", ["require", "exports", "core/module/module_manager"], function (require, exports, module_manager_4) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    var Config = /** @class */ (function () {
+        function Config() {
+            this.moduleManager = module_manager_4.default.getInstance();
+        }
+        Config.getInstance = function () {
+            return Config.instance;
+        };
+        Config.prototype.setAppRootId = function (appRootId) {
+            this.appRootId = appRootId;
+        };
+        Config.prototype.getAppRootId = function () {
+            return this.appRootId;
+        };
+        Config.prototype.register = function (moduleName, sourceUri, targetContainerId, isContainerDefault, options) {
+            this.moduleManager.register(moduleName, sourceUri, targetContainerId, isContainerDefault, options);
+        };
+        Config.prototype.registerWindow = function (moduleName, sourceUri, windowOptions, options) {
+            this.moduleManager.registerWindow(moduleName, sourceUri, windowOptions);
+        };
+        Config.prototype.registerContextMenu = function (moduleName, sourceUri, contextMenuOptions, options) {
+            this.moduleManager.registerContextMenu(moduleName, sourceUri, contextMenuOptions);
+        };
+        Config.prototype.registerDrawer = function (moduleName, sourceUri, drawerOptions, options) {
+            this.moduleManager.registerDrawer(moduleName, sourceUri, drawerOptions);
+        };
+        Config.instance = new Config();
+        return Config;
+    }());
+    exports.default = Config;
+});
+define("fivestage", ["require", "exports", "core/module/module_manager", "core/container/container_manager", "core/overlay/overlay_manager", "core/common/common", "core/configurer", "core/common/runtime_error"], function (require, exports, module_manager_5, container_manager_5, overlay_manager_9, common_2, configurer_1, runtime_error_6) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     console.log("******** start ********");
@@ -2160,42 +2416,75 @@ define("fivestage", ["require", "exports", "core/module/module_manager", "core/c
         common_2.default.currentMouseClientX = e.clientX;
         common_2.default.currentMouseClientY = e.clientY;
     });
-    var moduleManager = module_manager_3.default.getInstance();
-    var containerManager = container_manager_6.default.getInstance();
-    var overlayController = overlay_manager_6.default.getInstance();
-    var rootElement = document.getElementById("app");
-    containerManager.setRootElement(rootElement);
-    overlayController.setViewPortElement(rootElement);
-    moduleManager.register("base", "src/module/base.html", "root", true);
-    moduleManager.register("header", "src/module/header.html", "base.header", true);
-    moduleManager.register("main", "src/module/main.html", "base.body", false);
-    moduleManager.register("main2", "src/module/main2.html", "base.body", false);
-    moduleManager.register("tab", "src/module/tab.html", "base.body", false);
-    moduleManager.register("tab1", "src/module/main.html", "tab.page", false);
-    moduleManager.register("tab2", "src/module/main2.html", "tab.page", false);
-    moduleManager.register("tab3", "src/module/header.html", "tab.page", false);
-    moduleManager.registerWindow("win1", "src/module/main.html", { defaultCaption: "window1" });
-    moduleManager.registerWindow("win2", "src/module/main.html", { size: { width: 600, height: 600 }, defaultCaption: "window2" });
-    moduleManager.registerWindow("win3", "src/module/main.html", { defaultCaption: "window3" });
-    moduleManager.registerPopupMenu("popup1", "src/module/popupmenu.html", { size: { width: 200, height: 300 } });
-    moduleManager.initialize().then(function () {
-        console.log("moduleManager is initialized.");
-        containerManager.initializeRootContainer();
-        var resizeEvent;
-        if (common_2.default.isMsIE) {
-            resizeEvent = document.createEvent("Event");
-            resizeEvent.initEvent("resize", true, false);
+    var __bootloader = function () {
+        var __global = window;
+        if (__global.configurer) {
+            var config = configurer_1.default.getInstance();
+            __global.configurer(config);
+            var appRootEl = document.querySelector(config.getAppRootId());
+            if (!appRootEl) {
+                throw new runtime_error_6.default("有効なルートコンテナが設定されていません。");
+            }
+            container_manager_5.default.getInstance().setRootElement(appRootEl);
+            overlay_manager_9.default.getInstance().setViewPortElement(appRootEl);
+            module_manager_5.default.getInstance().initialize().then(function () {
+                console.log("moduleManager is initialized.");
+                container_manager_5.default.getInstance().initializeRootContainer();
+                var resizeEvent;
+                if (common_2.default.isMsIE) {
+                    resizeEvent = document.createEvent("Event");
+                    resizeEvent.initEvent("resize", true, false);
+                }
+                else {
+                    resizeEvent = new Event("resize");
+                }
+                window.dispatchEvent(resizeEvent);
+            });
         }
         else {
-            resizeEvent = new Event("resize");
+            console.log("configurerが未定義です。");
         }
-        window.dispatchEvent(resizeEvent);
-    });
+    };
+    if (document.readyState === "complete") {
+        __bootloader();
+    }
+    else {
+        window.addEventListener("load", function () {
+            __bootloader();
+        });
+    }
+    // var moduleManager = ModuleManager.getInstance();
+    // var containerManager = ContainerManager.getInstance();
+    // var overlayController = OvarlayManager.getInstance();
+    // const rootElement: HTMLDivElement = document.getElementById("app") as HTMLDivElement;
+    // containerManager.setRootElement(rootElement);
+    // overlayController.setViewPortElement(rootElement);
+    // moduleManager.register("base", "src/module/base.html", "root", true);
+    // moduleManager.register("header", "src/module/header.html", "base.header", true);
+    // moduleManager.register("main", "src/module/main.html", "base.body", false);
+    // moduleManager.register("main2", "src/module/main2.html", "base.body", false);
+    // moduleManager.register("tab", "src/module/tab.html", "base.body", false);
+    // moduleManager.register("tab1", "src/module/main.html", "tab.page", false);
+    // moduleManager.register("tab2", "src/module/main2.html", "tab.page", false);
+    // moduleManager.register("tab3", "src/module/header.html", "tab.page", false);
+    // moduleManager.registerWindow("win1", "src/module/main.html", {defaultCaption: "window1"});
+    // moduleManager.registerWindow("win2", "src/module/main.html", {size: {cssWidth: "600px", cssHeight: "600px"},  defaultCaption: "window2"});
+    // moduleManager.registerWindow("win3", "src/module/main.html", {defaultCaption: "window3"});
+    // moduleManager.registerContextMenu("popup1", "src/module/popupmenu.html", {size: {cssWidth: "200px", cssHeight: "300px"}});
+    // moduleManager.registerDrawer("drawer1", "src/module/popupmenu.html", {});
+    // moduleManager.initialize().then(() => {
+    //     console.log("moduleManager is initialized.");
+    //     containerManager.initializeRootContainer();
+    //     let resizeEvent: Event;
+    //     if(Common.isMsIE){
+    //         resizeEvent = document.createEvent("Event")
+    //         resizeEvent.initEvent("resize", true, false);
+    //     }else{
+    //         resizeEvent = new Event("resize");
+    //     }
+    //     window.dispatchEvent(resizeEvent);
+    // });
     console.log("******** end ********");
-});
-define("core/transition_effect", ["require", "exports"], function (require, exports) {
-    "use strict";
-    Object.defineProperty(exports, "__esModule", { value: true });
 });
 define("core/container/flickable_flat_container", ["require", "exports", "core/container/flat_container"], function (require, exports, flat_container_2) {
     "use strict";

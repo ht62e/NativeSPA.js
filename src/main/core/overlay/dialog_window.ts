@@ -1,21 +1,22 @@
 import Container from "../container/container";
-import Overlay, { ShowOptions } from "./overlay";
 import OvarlayManager from "./overlay_manager";
-import ContainerManager from "../container/container_manager";
-import { Size, Point } from "../common/types";
+import { CssSize } from "../common/types";
 import { Result, ActionType, Parcel } from "../common/dto";
+import ResizableOverlay from "./resizable_overlay";
+import { ShowOptions } from "./overlay";
 
 export interface WindowOptions {
-    size?: Size;
+    size?: CssSize;
     defaultCaption?: string;
+    resizable?: boolean;
+    hideHeader?: boolean;
+    hideFooter?: boolean;
 }
 
-export default class DialogWindow extends Overlay {
-    private static instanceSequence = 0;
-
+export default class DialogWindow extends ResizableOverlay {
     protected wrapperEl: HTMLDivElement;
     protected headerEl: HTMLDivElement;
-    protected bodyEl: HTMLDivElement;
+    protected containerEl: HTMLDivElement;
     protected footerEl: HTMLDivElement;
 
     protected headerTitleEl: HTMLDivElement;
@@ -27,16 +28,14 @@ export default class DialogWindow extends Overlay {
 
     protected isDragging: boolean = false;
 
-    protected container: Container;
-
     protected waitForOverlayCloseResolver: (value?: Result | PromiseLike<Result>) => void;
 
     constructor(viewPortElement: HTMLElement, name: string, options?: WindowOptions) {
         super(viewPortElement, name, options ? options.size : null);
 
-        this.setResizable(true);
-
-        const containerManager = ContainerManager.getInstance();
+        if (options && options.resizable === false) {
+            this.setResizable(false);
+        }
 
         this.wrapperEl = document.createElement("div");
         this.wrapperEl.style.position = "absolute";
@@ -50,6 +49,9 @@ export default class DialogWindow extends Overlay {
         this.headerEl.style.position = "relative";
         this.headerEl.style.display = "flex";
         this.headerEl.style.width = "100%";
+        if (options && options.hideHeader) {
+            this.headerEl.style.display = "none";
+        }
 
         this.headerTitleEl = document.createElement("div");
         this.headerTitleEl.className = "caption";
@@ -66,40 +68,45 @@ export default class DialogWindow extends Overlay {
         this.headerEl.addEventListener("mousedown", this.onHeaderMouseDown.bind(this));
         this.headerEl.addEventListener("dragstart", this.onHeaderDragStart.bind(this));
 
-        this.bodyEl = document.createElement("div");
-        this.bodyEl.className = "fvst_dialog_window_body";
-        this.bodyEl.style.position = "relative";
-        this.bodyEl.style.flexGrow = "1";
-        this.bodyEl.style.flexShrink = "1";
-        this.bodyEl.style.width = "100%";
+        this.containerEl = document.createElement("div");
+        this.containerEl.className = "fvst_dialog_window_body";
+        this.containerEl.style.position = "relative";
+        this.containerEl.style.flexGrow = "1";
+        this.containerEl.style.flexShrink = "1";
+        this.containerEl.style.width = "100%";
 
-        this.container = containerManager.createContainer(
-            "__window_" + String(DialogWindow.instanceSequence++), "", this.bodyEl, null);
+        this.registerAsContainer("window", this.containerEl);
 
         this.footerEl = document.createElement("div");
         this.footerEl.className = "fvst_dialog_window_footer";
         this.footerEl.style.position = "relative";
         this.footerEl.style.width = "100%";
+        if (options && options.hideFooter) {
+            this.footerEl.style.display = "none";
+        }
 
         this.okButtonEl = document.createElement("input");
         this.okButtonEl.type = "button";
+        this.okButtonEl.classList.add("fvst_dialog_window_footer_button", "ok");
         this.okButtonEl.value = "OK";
         this.okButtonEl.addEventListener("click", this.onOkButtonClick.bind(this));
 
         this.cancelButtonEl = document.createElement("input");
         this.cancelButtonEl.type = "button";
+        this.cancelButtonEl.classList.add("fvst_dialog_window_footer_button", "cancel");
         this.cancelButtonEl.value = "キャンセル";
         this.cancelButtonEl.addEventListener("click", this.onCancelButtonClick.bind(this));
 
         this.applyButtonEl = document.createElement("input");
         this.applyButtonEl.type = "button";
+        this.applyButtonEl.classList.add("fvst_dialog_window_footer_button", "apply");
         this.applyButtonEl.value = "適用";        
 
         this.footerEl.appendChild(this.okButtonEl);
         this.footerEl.appendChild(this.cancelButtonEl);
         
         this.wrapperEl.appendChild(this.headerEl);
-        this.wrapperEl.appendChild(this.bodyEl);
+        this.wrapperEl.appendChild(this.containerEl);
         this.wrapperEl.appendChild(this.footerEl);
 
         this.contentEl.className = "fvst_dialog_window_container";
@@ -177,7 +184,7 @@ export default class DialogWindow extends Overlay {
         } else {
             //デフォルト表示位置は表示領域（ビューポート）の中央
             this.moveToViewPortCenter();
-        }        
+        }
 
         this.container.initialize(parcel);
         this.outerFrameTransitionDriver.show();
@@ -187,12 +194,6 @@ export default class DialogWindow extends Overlay {
 
     public async showAsModal(parcel?: Parcel, options?: ShowOptions): Promise<Result> {
         return this.show(parcel, options);
-    }
-
-    public moveToViewPortCenter(): void {
-        const x = Math.round((this.viewPortEl.offsetWidth - this.size.width) / 2);
-        const y = Math.round((this.viewPortEl.offsetHeight - this.size.height) / 2);
-        this.changePosition(x, y);
     }
 
     //override

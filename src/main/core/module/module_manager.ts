@@ -4,8 +4,10 @@ import RuntimeError from "../common/runtime_error";
 import ContainerManager from "../container/container_manager";
 import Container from "../container/container";
 import OvarlayManager from "../overlay/overlay_manager";
-import DialogWindow, { WindowOptions } from "../overlay/dialog_window";
-import PopupMenu, { PopupMenuOptions } from "../overlay/popup_menu";
+import { WindowOptions } from "../overlay/dialog_window";
+import { ContextMenuOptions } from "../overlay/context_menu";
+import { DrawerOptions } from "../overlay/drawer";
+import Overlay from "../overlay/overlay";
 
 export interface ModuleDescription {
     name: string;
@@ -17,10 +19,11 @@ export interface ModuleDescription {
     lazyModuleLoading?: boolean;
     preloadSourceAtLazy?: boolean;
     windowOptions?: WindowOptions;
-    popupMenuOptions?: PopupMenuOptions;
+    contextMenuOptions?: ContextMenuOptions;
+    drawerOptions?: DrawerOptions;
 }
 
-interface registerOptions {
+export interface registerOptions {
     moduleType?: ModuleType;
     displayMode?: DisplayMode;
     isContainerDefault?: boolean;
@@ -32,7 +35,8 @@ interface registerOptions {
 export enum DisplayMode {
     Embedding,
     Window,
-    PopupMenu
+    ContextMenu,
+    Drawer
 }
 
 export enum ModuleType {
@@ -71,9 +75,14 @@ export default class ModuleManager {
         md.windowOptions = windowOptions;
     }
 
-    public registerPopupMenu(name: string, sourceUri: string, popupMenuOptions: PopupMenuOptions, options?: registerOptions) {
-        let md = this.registerDescription(name, sourceUri, DisplayMode.PopupMenu, null, null, options);
-        md.popupMenuOptions = popupMenuOptions;
+    public registerContextMenu(name: string, sourceUri: string, contextMenuOptions: ContextMenuOptions, options?: registerOptions) {
+        let md = this.registerDescription(name, sourceUri, DisplayMode.ContextMenu, null, null, options);
+        md.contextMenuOptions = contextMenuOptions;
+    }
+
+    public registerDrawer(name: string, sourceUri: string, drawerOptions: DrawerOptions, options?: registerOptions) {
+        let md = this.registerDescription(name, sourceUri, DisplayMode.Drawer, null, null, options);
+        md.drawerOptions = drawerOptions;
     }
 
     private registerDescription(name: string, sourceUri: string, displayMode: DisplayMode, 
@@ -148,7 +157,7 @@ export default class ModuleManager {
                     }
                 }
             } else {
-                //それ以外（自身がwindowやpopupのルートコンテナになる場合）
+                //それ以外（自身がwindowやcontextmenuのルートコンテナになる場合）
                 //※依存情報テーブル上はルート上に含めるものとするため何もしない（root.root）
             }
 
@@ -179,6 +188,7 @@ export default class ModuleManager {
             const module = this.modules.get(moduleDescription.name);
 
             if (displayMode === DisplayMode.Embedding) {
+                //組み込み
                 let targetContainer: Container = containerManager.getContainer(moduleDescription.targetContainerId);
                 if (targetContainer) {
                     await targetContainer.addModule(module);
@@ -189,14 +199,22 @@ export default class ModuleManager {
                 } else {
                     throw new RuntimeError("ターゲットコンテナが存在しないか、未ロード");
                 }
-            } else if (displayMode === DisplayMode.Window) {
-                const dWindow: DialogWindow = overlayManager.createWindow(module.getName(), moduleDescription.windowOptions);
-                await dWindow.getContainer().addModule(module);
-                dWindow.getContainer().activateModule(module);
-            } else if (displayMode === DisplayMode.PopupMenu) {
-                const dPopup: PopupMenu = overlayManager.createPopupMenu(module.getName(), moduleDescription.popupMenuOptions);
-                await dPopup.getContainer().addModule(module);
-                dPopup.getContainer().activateModule(module);
+            } else {
+                //オーバーレイ
+                let overlay: Overlay;
+                switch (displayMode) {
+                    case DisplayMode.Window:
+                        overlay = overlayManager.createWindow(module.getName(), moduleDescription.windowOptions);
+                        break;
+                    case DisplayMode.ContextMenu:
+                        overlay = overlayManager.createContextMenu(module.getName(), moduleDescription.contextMenuOptions);
+                        break;
+                    case DisplayMode.Drawer:
+                        overlay = overlayManager.createDrawer(module.getName(), moduleDescription.drawerOptions);
+                        break;
+                }
+                await overlay.getContainer().addModule(module);
+                overlay.getContainer().activateModule(module);
             }
         }
 

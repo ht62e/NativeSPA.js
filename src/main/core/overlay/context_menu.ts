@@ -1,48 +1,40 @@
 import Overlay, { ShowOptions } from "./overlay";
-import { Size } from "../common/types";
-import ContainerManager from "../container/container_manager";
+import { Size, CssSize } from "../common/types";
 import { Parcel, Result } from "../common/dto";
 import Container from "../container/container";
 import Common from "../common/common";
 import OvarlayManager from "./overlay_manager";
 
-export interface PopupMenuOptions {
-    size?: Size;
+export interface ContextMenuOptions {
+    size?: CssSize;
 }
 
-export default class PopupMenu extends Overlay {
-    private static instanceSequence = 0;
-
-    protected bodyEl: HTMLDivElement;
+export default class ContextMenu extends Overlay {
+    protected containerEl: HTMLDivElement;
     protected onetimeSize: Size;
-
-    protected container: Container;
 
     protected waitForOverlayCloseResolver: (value?: Result | PromiseLike<Result>) => void;
 
-    constructor(viewPortElement: HTMLElement, name: string, options: PopupMenuOptions) {
+    constructor(viewPortElement: HTMLElement, name: string, options: ContextMenuOptions) {
         super(viewPortElement, name, options ? options.size : null);
 
-        const containerManager = ContainerManager.getInstance();
+        this.containerEl = document.createElement("div");
+        this.containerEl.className = "";
+        this.containerEl.style.position = "relative";
+        this.containerEl.style.width = "100%";
+        this.containerEl.style.height = "100%";
 
-        this.bodyEl = document.createElement("div");
-        this.bodyEl.className = "";
-        this.bodyEl.style.position = "relative";
-        this.bodyEl.style.width = "100%";
-        this.bodyEl.style.height = "100%";
+        this.registerAsContainer("contextmenu", this.containerEl);
 
-        this.container = containerManager.createContainer(
-            "__popupmenu_" + String(PopupMenu.instanceSequence++), "", this.bodyEl, null);
-
-        this.contentEl.className = "fvst_popup_menu_container";
-        this.contentEl.appendChild(this.bodyEl);
+        this.contentEl.className = "fvst_context_menu_container";
+        this.contentEl.appendChild(this.containerEl);
         this.contentEl.addEventListener("mousedown", this.onContentMouseDown.bind(this));
 
         this.outerFrameTransitionDriver.setCustomTransitionClasses({
-            standyStateClass: "fvst_popup_menu_standy_state",
-            enterTransitionClass: "fvst_popup_menu_enter_transition",
-            leaveTransitionClass: "fvst_popup_menu_leave_transition",
-            endStateClass: "fvst_popup_menu_end_state"
+            standyStateClass: "fvst_context_menu_standy_state",
+            enterTransitionClass: "fvst_context_menu_enter_transition",
+            leaveTransitionClass: "fvst_context_menu_leave_transition",
+            endStateClass: "fvst_context_menu_end_state"
         });
     }
 
@@ -56,21 +48,23 @@ export default class PopupMenu extends Overlay {
 
         x = Common.currentMouseClientX;
         y = Common.currentMouseClientY;
+        const widthPx = this.frameEl.offsetWidth;
+        const heightPx = this.frameEl.offsetHeight;
 
-        const overlayRightSideX: number = x + this.size.width;
-        const overlayBottomSideY: number = y + this.size.height;
+        const overlayRightSideX: number = x + widthPx;
+        const overlayBottomSideY: number = y + heightPx;
 
         const visibleAreaWidth: number = window.document.documentElement.clientWidth;
         const visibleAreaHeight: number = window.document.documentElement.clientHeight;
 
-        const xVisibleAreaIsLargerThanOverlay: boolean = this.size.width < visibleAreaWidth;
-        const yVisibleAreaIsLargerThanOverlay: boolean = this.size.height < visibleAreaHeight;
+        const xVisibleAreaIsLargerThanOverlay: boolean = widthPx < visibleAreaWidth;
+        const yVisibleAreaIsLargerThanOverlay: boolean = heightPx < visibleAreaHeight;
 
         const xCanDisplayOnNormalPosition: boolean = overlayRightSideX <= visibleAreaWidth;
         const yCanDisplayOnNormalPosition: boolean = overlayBottomSideY <= visibleAreaHeight;
 
-        const xCanDisplayOnReversePosition: boolean = x >= this.size.width;
-        const yCanDisplayOnReversePosition: boolean = y >= this.size.height;
+        const xCanDisplayOnReversePosition: boolean = x >= widthPx;
+        const yCanDisplayOnReversePosition: boolean = y >= heightPx;
 
         this.restoreOriginalSize();
 
@@ -79,10 +73,10 @@ export default class PopupMenu extends Overlay {
             if (xCanDisplayOnNormalPosition) {
                 //指定された位置をそのまま左上座標にする
             } else if (xCanDisplayOnReversePosition) {
-                x -= this.size.width;
+                x -= widthPx;
             } else {
                 //右端に寄せる
-                x = visibleAreaWidth - this.size.width;
+                x = visibleAreaWidth - widthPx;
             }
         } else {
             x = 0; //入りきらない場合でも横方向は縮小せずに左端に寄せるだけにする
@@ -93,15 +87,15 @@ export default class PopupMenu extends Overlay {
             if (yCanDisplayOnNormalPosition) {
                 //指定された位置をそのまま左上座標にする
             } else if (yCanDisplayOnReversePosition) {
-                y -= this.size.height;
+                y -= heightPx;
             } else {
                 //下端に寄せる
-                y = visibleAreaHeight - this.size.height;
+                y = visibleAreaHeight - heightPx;
             }
         } else {
             //入りきらない場合は上端に寄せたのち、入りきらない分を一時的に縮小する
             y = 0;
-            this.resize(this.size.width, visibleAreaHeight);
+            this.resize(widthPx + "px", visibleAreaHeight + "px");
         }
 
         this.changePosition(x, y);

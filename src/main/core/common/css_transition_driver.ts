@@ -63,7 +63,7 @@ export default class CssTransitionDriver {
         }
         this.toggleClasses(true);
 
-        if (this.enterTransitionClass) {
+        if (!!this.enterTransitionClass) {
             return new Promise(resolve => {
                 this.showResolver = resolve;
             });
@@ -79,7 +79,7 @@ export default class CssTransitionDriver {
         }
         this.toggleClasses(false);
 
-        if (this.leaveTransitionClass) {
+        if (!!this.leaveTransitionClass) {
             return new Promise(resolve => {
                 this.hideResolver = resolve;
             });
@@ -91,7 +91,7 @@ export default class CssTransitionDriver {
     private toggleClasses(visible: boolean): void {
         if (visible) {
             this.target.style.display = "";
-            this.target.style.visibility = "";
+            this.target.style.visibility = ""; //初回表示まではvisibility:hiddenで非表示状態になっている
 
             window.setTimeout(() => {
                 this.target.style.pointerEvents = "";

@@ -2,8 +2,9 @@ import DialogWindow, { WindowOptions as DialogWindowOptions } from "./dialog_win
 import Overlay, { ShowOptions } from "./overlay";
 import { Parcel, Result, ActionType } from "../common/dto";
 import CssTransitionDriver from "../common/css_transition_driver";
-import PopupMenu, { PopupMenuOptions } from "./popup_menu";
+import ContextMenu, { ContextMenuOptions } from "./context_menu";
 import Container from "../container/container";
+import Drawer, { DrawerOptions } from "./drawer";
 
 export default class OvarlayManager {
     private static instance = new OvarlayManager();
@@ -33,6 +34,7 @@ export default class OvarlayManager {
     private onMouseMoveBindedThis: (event: MouseEvent) => void;
     private onMouseUpBindedThis: (event: FocusEvent) => void;
     private onSelectStartBindedThis: (event: FocusEvent) => void;
+    private windowResizeEventHandlerBindThis: (event: Event) => void;
 
     constructor() {
         this.overlays = new Map<string, Overlay>();
@@ -54,6 +56,7 @@ export default class OvarlayManager {
         this.onMouseMoveBindedThis = this.onMouseMove.bind(this);
         this.onMouseUpBindedThis = this.onMouseUp.bind(this);
         this.onSelectStartBindedThis = this.onSelectStart.bind(this);
+        this.windowResizeEventHandlerBindThis = this.windowResizeEventHandler.bind(this);
     }
 
     public static getInstance(): OvarlayManager {
@@ -103,6 +106,10 @@ export default class OvarlayManager {
         this.changeContentsSelectable(true);
     }
 
+    private windowResizeEventHandler(event: Event): void {
+        
+    }
+
     private onSelectStart(event: Event) {
         if (!this.contentsSelectable) {
             event.preventDefault();
@@ -139,8 +146,17 @@ export default class OvarlayManager {
         return overlay;
     }
 
-    public createPopupMenu(overlayName: string, options?: PopupMenuOptions): PopupMenu {
-        let overlay = new PopupMenu(this.viewPortEl, overlayName, options);
+    public createContextMenu(overlayName: string, options?: ContextMenuOptions): ContextMenu {
+        let overlay = new ContextMenu(this.viewPortEl, overlayName, options);
+        this.overlays.set(overlayName, overlay);
+        const omd = new OverlayManagementData();
+        omd.isAutoCloseableWhenOutfocus = true;
+        this.overlayManagementTable.set(overlayName, omd);
+        return overlay;
+    }
+
+    public createDrawer(overlayName: string, options?: DrawerOptions): Drawer {
+        let overlay = new Drawer(this.viewPortEl, overlayName, options);
         this.overlays.set(overlayName, overlay);
         const omd = new OverlayManagementData();
         omd.isAutoCloseableWhenOutfocus = true;
@@ -170,11 +186,12 @@ export default class OvarlayManager {
         const overlay = this.overlays.get(overlayName);
 
         const omd = this.overlayManagementTable.get(overlayName);
-        omd.isVisible = true;
         omd.parentOverlay = options ? options.parent : null;
+
+        omd.isVisible = true;
         this.activateSpecificOverlay(overlayName);
         const result = await overlay.show(parcel, options);
-
+        omd.isVisible = false;
         this.activateTopOverlay();
 
         return result;
@@ -182,13 +199,12 @@ export default class OvarlayManager {
 
     public async showAsModal(overlayName: string, parcel?: Parcel, options?: ShowOptions): Promise<Result> {
         const omd = this.overlayManagementTable.get(overlayName);
+        
         omd.isModal = true;
-
         this.beginModalMode();
         const result = await this.show(overlayName, parcel, options);
-        this.endModalMode();
-
         omd.isModal = false;
+        this.endModalMode();
 
         return result;
     }
