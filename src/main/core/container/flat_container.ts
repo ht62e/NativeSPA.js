@@ -49,13 +49,15 @@ export default class FlatContainer extends Container {
         });
     }
 
-    public activateModule(module: Module, parcel?: Parcel): void {
+    public async activateModule(module: Module, parcel?: Parcel): Promise<boolean> {
         if (!this.mountedModules.has(module.getName())) {
             throw new RuntimeError("マウントされていないモジュールです。");
         }
         const leftIndex = this.moduleOrders.get(module.getName());
         const transX = Math.round(10000 / this.mountedModules.size * leftIndex) / 100;
         this.scrollBoxElement.style.transform = "translate(-" + String(transX) + "%)";
+
+        return true;
     }
 
     public async forward(module: Module, parcel?: Parcel): Promise<Result> {

@@ -19,7 +19,7 @@ export default abstract class Container {
     
     public abstract async addModule(module: Module): Promise<boolean>;
     public abstract initialize(parcel?: Parcel): void;
-    public abstract activateModule(module: Module, parcel?: Parcel): void;
+    public abstract async activateModule(module: Module, parcel?: Parcel): Promise<boolean>;
     public abstract async forward(module: Module, parcel?: Parcel): Promise<Result>;
     public abstract back(): void;
 

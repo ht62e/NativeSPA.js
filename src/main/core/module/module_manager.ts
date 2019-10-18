@@ -16,7 +16,7 @@ export interface ModuleDescription {
     displayMode?: DisplayMode;
     targetContainerId?: string;
     isContainerDefault?: boolean;
-    lazyModuleLoading?: boolean;
+    lazyLoading?: boolean;
     preloadSourceAtLazy?: boolean;
     windowOptions?: WindowOptions;
     contextMenuOptions?: ContextMenuOptions;
@@ -27,7 +27,7 @@ export interface registerOptions {
     moduleType?: ModuleType;
     displayMode?: DisplayMode;
     isContainerDefault?: boolean;
-    lazyModuleLoading?: boolean;
+    lazyLoading?: boolean;
     preloadSourceAtLazy?: boolean;
 }
 
@@ -96,7 +96,7 @@ export default class ModuleManager {
             displayMode: displayMode,
             moduleType: op.moduleType !== undefined ? op.moduleType : ModuleType.Native,
             isContainerDefault: isContainerDefault,
-            lazyModuleLoading: op.lazyModuleLoading !== undefined ? op.lazyModuleLoading : false,
+            lazyLoading: op.lazyLoading !== undefined ? op.lazyLoading : false,
             preloadSourceAtLazy: op.preloadSourceAtLazy !== undefined ? op.preloadSourceAtLazy : true,
         };
         this.descriptions.push(ds);
@@ -118,14 +118,16 @@ export default class ModuleManager {
                 newModule = new NativeComponent(description.name, description.sourceUri, 
                                                 ModuleManager.instanceSequence++);
             } else {
-                throw new RuntimeError("不明な種類のコンポーネント");
+                throw new RuntimeError("不明な種類のコンポーネントが指定されました。");
             }
 
             //モジュールプールへの登録
             this.modules.set(description.name, newModule);
 
             //モジュールソースのロード　※コンテナへのマウントや初期化は行われない
-            await newModule.fetch();
+            if (!description.lazyLoading) {
+                await newModule.fetch();
+            }
 
             //依存情報テーブルの準備
             this.dependencyInfoMap.set(
@@ -162,28 +164,29 @@ export default class ModuleManager {
             }
 
             let targetDependencyInfo = this.dependencyInfoMap.get(targetModuleName);
-            if (targetDependencyInfo && targetDependencyInfo.subContainerNames.has(targetContainerName)) {
+            // if (targetDependencyInfo && targetDependencyInfo.subContainerNames.has(targetContainerName)) {
                 targetDependencyInfo.addSubModule(moduleName, targetContainerName);
-            } else {
-                throw new RuntimeError("未定義のコンテナが指定された");
-            }
+            // } else {
+            //     throw new RuntimeError("未定義のコンテナが指定された");
+            // }
         });
 
         //ツリールートから順番にモジュールのロードを実行（遅延ロードモジュールを除く
-        await this.loadSubModules(rootDependencyInfo);
+        await this.loadSubModules(ModuleManager.ROOT_NAME);
  
         return true;
     }
 
-    public async loadSubModules(dependencyInfo: ModuleDependencyInfo) {
+    public async loadSubModules(moduleName: string, forceLoading?: boolean) {
+        const dependencyInfo: ModuleDependencyInfo = this.dependencyInfoMap.get(moduleName);
         const containerManager = ContainerManager.getInstance();
         const overlayManager = OvarlayManager.getInstance();
         const moduleDescription: ModuleDescription = dependencyInfo.moduleDescription;
 
-        if (dependencyInfo.isProcessed) throw new RuntimeError("コンテナの循環参照発生");
+        if (dependencyInfo.isProcessed) throw new RuntimeError("コンテナの循環参照を検出しました。");
         dependencyInfo.isProcessed = true;
         
-        if (!dependencyInfo.isRoot && !moduleDescription.lazyModuleLoading) {
+        if (!dependencyInfo.isRoot && (!moduleDescription.lazyLoading || forceLoading)) {
             const displayMode = moduleDescription.displayMode;
             const module = this.modules.get(moduleDescription.name);
 
@@ -197,7 +200,7 @@ export default class ModuleManager {
                         targetContainer.setDefaultModule(module);
                     }
                 } else {
-                    throw new RuntimeError("ターゲットコンテナが存在しないか、未ロード");
+                    throw new RuntimeError("ターゲットコンテナは存在しないか、ロードされていません。");
                 }
             } else {
                 //オーバーレイ
@@ -218,9 +221,15 @@ export default class ModuleManager {
             }
         }
 
+        //if (dependencyInfo.isRoot || !moduleDescription.lazyLoading) {
         for (let subModuleName of dependencyInfo.subModuleNames) {
-            await this.loadSubModules(this.dependencyInfoMap.get(subModuleName));
+            if (!this.dependencyInfoMap.get(subModuleName).moduleDescription.lazyLoading) {
+                await this.loadSubModules(subModuleName);
+            } else {
+                console.log(subModuleName + " is lazy load mode.");
+            }
         }
+        //}
     }
 
     public dispatchMessage(destination: string, command: string, message?: any): Promise<any> {
@@ -230,7 +239,7 @@ export default class ModuleManager {
 
 class ModuleDependencyInfo {
     moduleDescription: ModuleDescription;
-    subContainerNames: Set<string>;
+    //subContainerNames: Set<string>;
     subModuleNames = new Array<string>();
     isProcessed: boolean = false;
     isRoot: boolean;
@@ -238,20 +247,21 @@ class ModuleDependencyInfo {
     constructor(moduleDescription: ModuleDescription, subContainerNames: Array<string>) {
         this.moduleDescription = moduleDescription;
         //this.subContainerNames = new Set(subContainerNames); //IE11非対応
-        this.subContainerNames = new Set();
-        subContainerNames.forEach(name => {
-            this.subContainerNames.add(name);
-        });
+
+        // this.subContainerNames = new Set();
+        // subContainerNames.forEach(name => {
+        //     this.subContainerNames.add(name);
+        // });
 
         this.isRoot = moduleDescription === null;
     }
 
     public addSubModule(subModuleName: string, targetContainerName: string) {
-        if (this.subContainerNames.has(targetContainerName)) {
+        // if (this.subContainerNames.has(targetContainerName)) {
             this.subModuleNames.push(subModuleName);
-        } else {
-            throw new RuntimeError("モジュール [ " + this.moduleDescription.name + " ] 内に指定されたサブコンテナが存在しない。");
-        }
+        // } else {
+        //     throw new RuntimeError("モジュール [ " + this.moduleDescription.name + " ] 内に指定されたサブコンテナが存在しない。");
+        // }
     }
 
 }

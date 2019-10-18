@@ -5,6 +5,8 @@ import CssTransitionDriver from "../common/css_transition_driver";
 import ContextMenu, { ContextMenuOptions } from "./context_menu";
 import Container from "../container/container";
 import Drawer, { DrawerOptions } from "./drawer";
+import ModuleManager from "../module/module_manager";
+import RuntimeError from "../common/runtime_error";
 
 export default class OvarlayManager {
     private static instance = new OvarlayManager();
@@ -183,6 +185,7 @@ export default class OvarlayManager {
     }
 
     public async show(overlayName: string, parcel?: Parcel, options?: ShowOptions): Promise<Result> {
+        await this.checkAndLoadLazyModule(overlayName);
         const overlay = this.overlays.get(overlayName);
 
         const omd = this.overlayManagementTable.get(overlayName);
@@ -198,6 +201,7 @@ export default class OvarlayManager {
     }
 
     public async showAsModal(overlayName: string, parcel?: Parcel, options?: ShowOptions): Promise<Result> {
+        await this.checkAndLoadLazyModule(overlayName);
         const omd = this.overlayManagementTable.get(overlayName);
         
         omd.isModal = true;
@@ -207,6 +211,18 @@ export default class OvarlayManager {
         this.endModalMode();
 
         return result;
+    }
+
+    private async checkAndLoadLazyModule(overlayName: string): Promise<boolean> {
+        if (!this.overlayManagementTable.has(overlayName)) {
+            const moduleManager = ModuleManager.getInstance();
+            await moduleManager.loadSubModules(overlayName, true);
+
+            if (!this.overlayManagementTable.has(overlayName)) {
+                throw new RuntimeError("指定されたモジュールはコンテナに登録されていません。");
+            }
+        }
+        return true;
     }
 
 

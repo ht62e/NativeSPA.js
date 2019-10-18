@@ -3,6 +3,7 @@ import Module from "../module/module";
 import RuntimeError from "../common/runtime_error";
 import { Parcel, Result, ActionType } from "../common/dto";
 import CssTransitionDriver from "../common/css_transition_driver";
+import ModuleManager from "../module/module_manager";
 
 export default class PageContainer extends Container {
     protected cssTransitionDrivers = new Map<string, CssTransitionDriver>();
@@ -63,9 +64,18 @@ export default class PageContainer extends Container {
         });
     }
 
-    public activateModule(module: Module, parcel?: Parcel): void {
-        if (!this.mountedModules.has(module.getName())) throw new RuntimeError("指定されたモジュールはマウントされていません。");
-        
+    public async activateModule(module: Module, parcel?: Parcel): Promise<boolean> {
+        if (!this.mountedModules.has(module.getName())) {
+            const moduleManager = ModuleManager.getInstance();
+            await moduleManager.loadSubModules(module.getName(), true);
+
+            if (!this.mountedModules.has(module.getName())) {
+                throw new RuntimeError("指定されたモジュールはコンテナに登録されていません。");
+            }
+
+            console.log(module.getName() + " is lazy loaded.");
+        }
+
         if (this.activeModule) {
             this.hideModule(this.activeModule);
         }
@@ -79,6 +89,8 @@ export default class PageContainer extends Container {
         this.mountedModules.forEach((m: Module) => {
             if (m !== module && m !== previousActiveModule) this.hideModule(m);
         });
+
+        return true;
     }
 
     protected showModule(targetModule: Module): void {

@@ -23,9 +23,9 @@
 
             config.register("base", "src/module/base.html", "root", true);
             config.register("header", "src/module/header.html", "base.header", true);
-            config.register("main", "src/module/main.html", "base.body", false);
-            config.register("main2", "src/module/main2.html", "base.body", false);
-            config.register("tab", "src/module/tab.html", "base.body", false);
+            config.register("main", "src/module/main.html", "base.body", false, {lazyLoading: true});
+            config.register("main2", "src/module/main2.html", "base.body", false, {lazyLoading: true});
+            config.register("tab", "src/module/tab.html", "base.body", false, {lazyLoading: true});
 
             config.register("tab1", "src/module/main.html", "tab.page", false);
             config.register("tab2", "src/module/main2.html", "tab.page", false);
@@ -33,7 +33,7 @@
 
             config.registerWindow("win1", "src/module/main.html", {defaultCaption: "window1"});
             config.registerWindow("win2", "src/module/main.html", {size: {cssWidth: "600px", cssHeight: "600px"},  defaultCaption: "window2"});
-            config.registerWindow("win3", "src/module/main.html", {defaultCaption: "window3"});
+            config.registerWindow("win3", "src/module/main.html", {defaultCaption: "window3"}, {lazyLoading: true});
 
             config.registerContextMenu("popup1", "src/module/popupmenu.html", {size: {cssWidth: "200px", cssHeight: "300px"}});
 

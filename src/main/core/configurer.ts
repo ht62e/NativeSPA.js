@@ -31,14 +31,14 @@ export default class Config {
     }
 
     public registerWindow(moduleName: string, sourceUri: string, windowOptions: WindowOptions, options?: registerOptions) {
-        this.moduleManager.registerWindow(moduleName, sourceUri, windowOptions);
+        this.moduleManager.registerWindow(moduleName, sourceUri, windowOptions, options);
     }
 
     public registerContextMenu(moduleName: string, sourceUri: string, contextMenuOptions: ContextMenuOptions, options?: registerOptions) {
-        this.moduleManager.registerContextMenu(moduleName, sourceUri, contextMenuOptions);
+        this.moduleManager.registerContextMenu(moduleName, sourceUri, contextMenuOptions, options);
     }
 
     public registerDrawer(moduleName: string, sourceUri: string, drawerOptions: DrawerOptions, options?: registerOptions) {
-        this.moduleManager.registerDrawer(moduleName, sourceUri, drawerOptions);
+        this.moduleManager.registerDrawer(moduleName, sourceUri, drawerOptions, options);
     }
 }
