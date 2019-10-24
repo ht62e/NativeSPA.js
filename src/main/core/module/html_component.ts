@@ -29,7 +29,7 @@ export default abstract class HTMLComponent implements Module {
         this.onCreate();
     }
 
-    public dispachResizeEvent(): void {
+    public dispatchResizeEvent(): void {
         if (!this.wrapperElement) return;
 
         this.subContainerInfos.forEach((containerInfo: ContainerInfo) => {

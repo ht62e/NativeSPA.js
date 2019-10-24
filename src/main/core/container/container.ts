@@ -68,7 +68,7 @@ export default abstract class Container {
 
     public onResize(): void {
         this.mountedModules.forEach((module: Module) => {
-            module.dispachResizeEvent();
+            module.dispatchResizeEvent();
         });
     }
 

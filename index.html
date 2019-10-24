@@ -18,8 +18,13 @@
 
     <script>
 
-        configurer = (config) => {
-            config.setAppRootId("#app");
+        var configurer = function(config) {
+            config.setAppRootId("app");
+            config.setSourceVersion("debug");
+
+            config.loadSharedScript("lib/testlib.js");
+
+            //config.loadSharedScript("lib/testlib.js");
 
             config.register("base", "src/module/base.html", "root", true);
             config.register("header", "src/module/header.html", "base.header", true);

@@ -262,7 +262,7 @@ define("core/container/container", ["require", "exports"], function (require, ex
         };
         Container.prototype.onResize = function () {
             this.mountedModules.forEach(function (module) {
-                module.dispachResizeEvent();
+                module.dispatchResizeEvent();
             });
         };
         return Container;
@@ -278,6 +278,7 @@ define("core/source_repository", ["require", "exports"], function (require, expo
     Object.defineProperty(exports, "__esModule", { value: true });
     var SourceRepository = /** @class */ (function () {
         function SourceRepository() {
+            this.version = "";
             this.msIeMode = false;
             this.cache = new Map();
             var userAgent = window.navigator.userAgent.toLowerCase();
@@ -287,6 +288,9 @@ define("core/source_repository", ["require", "exports"], function (require, expo
         }
         SourceRepository.getInstance = function () {
             return SourceRepository.instance;
+        };
+        SourceRepository.prototype.setSourceVersion = function (version) {
+            this.version = version;
         };
         SourceRepository.prototype.preload = function (sourceUri) {
             return __awaiter(this, void 0, void 0, function () {
@@ -328,7 +332,14 @@ define("core/source_repository", ["require", "exports"], function (require, expo
                                         }
                                     }
                                 };
-                                httpRequest.open("GET", sourceUri + "?ver=" + Date.now().toString(), true);
+                                var versionQuery;
+                                if (_this.version === "" || _this.version.toLocaleLowerCase() === "debug") {
+                                    versionQuery = Date.now().toString();
+                                }
+                                else {
+                                    versionQuery = _this.version;
+                                }
+                                httpRequest.open("GET", sourceUri + "?ver=" + versionQuery, true);
                                 httpRequest.send(null);
                             })];
                     }
@@ -1600,7 +1611,7 @@ define("core/overlay/overlay_manager", ["require", "exports", "core/overlay/dial
                 var overlay, omd, result;
                 return __generator(this, function (_a) {
                     switch (_a.label) {
-                        case 0: return [4 /*yield*/, this.loadLazyModule(overlayName)];
+                        case 0: return [4 /*yield*/, this.checkAndLoadLazyModule(overlayName)];
                         case 1:
                             _a.sent();
                             overlay = this.overlays.get(overlayName);
@@ -1623,7 +1634,7 @@ define("core/overlay/overlay_manager", ["require", "exports", "core/overlay/dial
                 var omd, result;
                 return __generator(this, function (_a) {
                     switch (_a.label) {
-                        case 0: return [4 /*yield*/, this.loadLazyModule(overlayName)];
+                        case 0: return [4 /*yield*/, this.checkAndLoadLazyModule(overlayName)];
                         case 1:
                             _a.sent();
                             omd = this.overlayManagementTable.get(overlayName);
@@ -1639,7 +1650,7 @@ define("core/overlay/overlay_manager", ["require", "exports", "core/overlay/dial
                 });
             });
         };
-        OvarlayManager.prototype.loadLazyModule = function (overlayName) {
+        OvarlayManager.prototype.checkAndLoadLazyModule = function (overlayName) {
             return __awaiter(this, void 0, void 0, function () {
                 var moduleManager;
                 return __generator(this, function (_a) {
@@ -1938,7 +1949,7 @@ define("core/module/html_component", ["require", "exports", "core/source_reposit
             this.htmlAdapter = null;
             this.onCreate();
         }
-        HTMLComponent.prototype.dispachResizeEvent = function () {
+        HTMLComponent.prototype.dispatchResizeEvent = function () {
             if (!this.wrapperElement)
                 return;
             this.subContainerInfos.forEach(function (containerInfo) {
@@ -2424,43 +2435,161 @@ define("core/module/module_manager", ["require", "exports", "core/module/native_
         return ModuleDependencyInfo;
     }());
 });
-define("core/configurer", ["require", "exports", "core/module/module_manager"], function (require, exports, module_manager_6) {
+define("core/common/shared_css_script_loader", ["require", "exports"], function (require, exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
-    var Config = /** @class */ (function () {
-        function Config() {
-            this.moduleManager = module_manager_6.default.getInstance();
+    var SharedCssScriptLoader = /** @class */ (function () {
+        function SharedCssScriptLoader(cssUris, scriptUris) {
+            this.cssUris = [];
+            this.scriptUris = [];
+            this.loadFinishResolver = null;
+            this.currentCssLoadIndex = 0;
+            this.currentScriptLoadIndex = 0;
+            this.cssLoadIsComplete = false;
+            this.scriptLoadIsComplete = false;
+            this.loadedCss = new Set();
+            this.loadedScript = new Set();
+            this.cssUris = cssUris;
+            this.scriptUris = scriptUris;
         }
-        Config.getInstance = function () {
-            return Config.instance;
+        SharedCssScriptLoader.prototype.load = function () {
+            return __awaiter(this, void 0, void 0, function () {
+                var _this = this;
+                return __generator(this, function (_a) {
+                    return [2 /*return*/, new Promise(function (resolve) {
+                            _this.loadFinishResolver = resolve;
+                            _this.loadCss();
+                            _this.loadScript();
+                        })];
+                });
+            });
         };
-        Config.prototype.setAppRootId = function (appRootId) {
+        SharedCssScriptLoader.prototype.onCompleteHandler = function () {
+            if (this.cssLoadIsComplete && this.scriptLoadIsComplete) {
+                this.loadFinishResolver();
+            }
+        };
+        SharedCssScriptLoader.prototype.loadCss = function () {
+            var _this = this;
+            var targetUri = this.cssUris[this.currentCssLoadIndex];
+            var skip = this.loadedCss.has(targetUri) || this.cssUris.length === 0;
+            var element;
+            if (!skip) {
+                var head = document.getElementsByTagName('head')[0];
+                element = document.createElement("link");
+                element.rel = "stylesheet";
+                element.type = "text/css";
+                element.href = targetUri + "?ver=" + new Date().getTime();
+                head.insertBefore(element, head.firstChild);
+                this.loadedScript.add(targetUri);
+            }
+            if (++this.currentCssLoadIndex < this.cssUris.length) {
+                if (!skip) {
+                    element.onload = this.loadCss.bind(this);
+                }
+                else {
+                    this.loadCss();
+                }
+            }
+            else {
+                if (!skip) {
+                    element.onload = function () {
+                        _this.cssLoadIsComplete = true;
+                        _this.onCompleteHandler();
+                    };
+                }
+                else {
+                    this.cssLoadIsComplete = true;
+                    this.onCompleteHandler();
+                }
+            }
+        };
+        SharedCssScriptLoader.prototype.loadScript = function () {
+            var _this = this;
+            var targetUri = this.scriptUris[this.currentScriptLoadIndex];
+            var skip = this.loadedScript.has(targetUri) || this.scriptUris.length === 0;
+            var element;
+            if (!skip) {
+                element = document.createElement("script");
+                element.src = targetUri + "?ver=" + new Date().getTime();
+                document.body.appendChild(element);
+                this.loadedScript.add(targetUri);
+            }
+            if (++this.currentScriptLoadIndex < this.scriptUris.length) {
+                if (!skip) {
+                    element.onload = this.loadScript.bind(this);
+                }
+                else {
+                    this.loadScript();
+                }
+            }
+            else {
+                if (!skip) {
+                    element.onload = function () {
+                        _this.scriptLoadIsComplete = true;
+                        _this.onCompleteHandler();
+                    };
+                }
+                else {
+                    this.scriptLoadIsComplete = true;
+                    this.onCompleteHandler();
+                }
+            }
+        };
+        return SharedCssScriptLoader;
+    }());
+    exports.default = SharedCssScriptLoader;
+});
+define("core/configurer", ["require", "exports", "core/module/module_manager", "core/source_repository", "core/common/shared_css_script_loader"], function (require, exports, module_manager_6, source_repository_2, shared_css_script_loader_1) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    var Configurer = /** @class */ (function () {
+        function Configurer() {
+            this.moduleManager = module_manager_6.default.getInstance();
+            this.cssUris = new Array();
+            this.scriptUris = new Array();
+        }
+        Configurer.getInstance = function () {
+            return Configurer.instance;
+        };
+        Configurer.prototype.setAppRootId = function (appRootId) {
             this.appRootId = appRootId;
         };
-        Config.prototype.getAppRootId = function () {
+        Configurer.prototype.setSourceVersion = function (version) {
+            source_repository_2.default.getInstance().setSourceVersion(version);
+        };
+        Configurer.prototype.getAppRootId = function () {
             return this.appRootId;
         };
-        Config.prototype.register = function (moduleName, sourceUri, targetContainerId, isContainerDefault, options) {
+        Configurer.prototype.getSharedCssScriptLoader = function () {
+            return new shared_css_script_loader_1.default(this.cssUris, this.scriptUris);
+        };
+        Configurer.prototype.register = function (moduleName, sourceUri, targetContainerId, isContainerDefault, options) {
             this.moduleManager.register(moduleName, sourceUri, targetContainerId, isContainerDefault, options);
         };
-        Config.prototype.registerWindow = function (moduleName, sourceUri, windowOptions, options) {
+        Configurer.prototype.registerWindow = function (moduleName, sourceUri, windowOptions, options) {
             this.moduleManager.registerWindow(moduleName, sourceUri, windowOptions, options);
         };
-        Config.prototype.registerContextMenu = function (moduleName, sourceUri, contextMenuOptions, options) {
+        Configurer.prototype.registerContextMenu = function (moduleName, sourceUri, contextMenuOptions, options) {
             this.moduleManager.registerContextMenu(moduleName, sourceUri, contextMenuOptions, options);
         };
-        Config.prototype.registerDrawer = function (moduleName, sourceUri, drawerOptions, options) {
+        Configurer.prototype.registerDrawer = function (moduleName, sourceUri, drawerOptions, options) {
             this.moduleManager.registerDrawer(moduleName, sourceUri, drawerOptions, options);
         };
-        Config.instance = new Config();
-        return Config;
+        Configurer.prototype.loadSharedCss = function (uri) {
+            this.cssUris.push(uri);
+        };
+        Configurer.prototype.loadSharedScript = function (uri) {
+            this.scriptUris.push(uri);
+        };
+        Configurer.instance = new Configurer();
+        return Configurer;
     }());
-    exports.default = Config;
+    exports.default = Configurer;
 });
 define("fivestage", ["require", "exports", "core/module/module_manager", "core/container/container_manager", "core/overlay/overlay_manager", "core/common/common", "core/configurer", "core/common/runtime_error"], function (require, exports, module_manager_7, container_manager_5, overlay_manager_9, common_2, configurer_1, runtime_error_7) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
-    console.log("******** start ********");
     if (document["documentMode"]) {
         common_2.default.isMsIE = true;
     }
@@ -2468,12 +2597,20 @@ define("fivestage", ["require", "exports", "core/module/module_manager", "core/c
         common_2.default.currentMouseClientX = e.clientX;
         common_2.default.currentMouseClientY = e.clientY;
     });
+    var __sharedCssScriptIsLoaded = false;
+    var __moduleManagerIsInitialized = false;
     var __bootloader = function () {
+        console.log("bootloader is called.");
         var __global = window;
         if (__global.configurer) {
-            var config = configurer_1.default.getInstance();
-            __global.configurer(config);
-            var appRootEl = document.querySelector(config.getAppRootId());
+            var configurer = configurer_1.default.getInstance();
+            __global.configurer(configurer);
+            configurer.getSharedCssScriptLoader().load().then(function () {
+                console.log("css and scripts is loaded.");
+                __sharedCssScriptIsLoaded = true;
+                __startApplications();
+            });
+            var appRootEl = document.querySelector("#" + configurer.getAppRootId());
             if (!appRootEl) {
                 throw new runtime_error_7.default("有効なルートコンテナが設定されていません。");
             }
@@ -2481,21 +2618,27 @@ define("fivestage", ["require", "exports", "core/module/module_manager", "core/c
             overlay_manager_9.default.getInstance().setViewPortElement(appRootEl);
             module_manager_7.default.getInstance().initialize().then(function () {
                 console.log("moduleManager is initialized.");
-                container_manager_5.default.getInstance().initializeRootContainer();
-                var resizeEvent;
-                if (common_2.default.isMsIE) {
-                    resizeEvent = document.createEvent("Event");
-                    resizeEvent.initEvent("resize", true, false);
-                }
-                else {
-                    resizeEvent = new Event("resize");
-                }
-                window.dispatchEvent(resizeEvent);
+                __moduleManagerIsInitialized = true;
+                __startApplications();
             });
         }
         else {
             console.log("configurerが未定義です。");
         }
+    };
+    var __startApplications = function () {
+        if (!__sharedCssScriptIsLoaded || !__moduleManagerIsInitialized)
+            return;
+        container_manager_5.default.getInstance().initializeRootContainer();
+        var resizeEvent;
+        if (common_2.default.isMsIE) {
+            resizeEvent = document.createEvent("Event");
+            resizeEvent.initEvent("resize", true, false);
+        }
+        else {
+            resizeEvent = new Event("resize");
+        }
+        window.dispatchEvent(resizeEvent);
     };
     if (document.readyState === "complete") {
         __bootloader();
@@ -2505,7 +2648,6 @@ define("fivestage", ["require", "exports", "core/module/module_manager", "core/c
             __bootloader();
         });
     }
-    console.log("******** end ********");
 });
 define("core/container/flickable_flat_container", ["require", "exports", "core/container/flat_container"], function (require, exports, flat_container_2) {
     "use strict";

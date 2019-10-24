@@ -19,7 +19,7 @@ export default interface Module {
     
     passMessage(command: string, message?: any): Promise<any>;
 
-    dispachResizeEvent(): void;
+    dispatchResizeEvent(): void;
 
     getName(): string;
     getCaption(): string;

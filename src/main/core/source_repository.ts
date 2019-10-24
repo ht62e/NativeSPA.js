@@ -1,10 +1,11 @@
 export default class SourceRepository {
     private static instance: SourceRepository  = new SourceRepository();
 
+    private version: string = "";
     private cache: Map<string, string>
     private msIeMode: boolean = false;
 
-    constructor () {
+    constructor() {
         this.cache = new Map<string, string>();
         let userAgent = window.navigator.userAgent.toLowerCase();
 
@@ -15,6 +16,10 @@ export default class SourceRepository {
 
     public static getInstance(): SourceRepository {
         return SourceRepository.instance;
+    }
+
+    public setSourceVersion(version: string) {
+        this.version = version;
     }
     
     public async preload(sourceUri: string): Promise<boolean> {
@@ -46,8 +51,15 @@ export default class SourceRepository {
                         }
                     }
                 }
+
+                let versionQuery: string;
+                if (this.version === "" || this.version.toLocaleLowerCase() === "debug") {
+                    versionQuery = Date.now().toString();
+                } else {
+                    versionQuery = this.version;
+                }
     
-                httpRequest.open("GET", sourceUri + "?ver=" + Date.now().toString(), true);
+                httpRequest.open("GET", sourceUri + "?ver=" + versionQuery, true);
                 httpRequest.send(null);                
             });
 
