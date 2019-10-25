@@ -235,7 +235,7 @@ define("core/container/container", ["require", "exports"], function (require, ex
             this.parent = parent;
             this.cssTransitionOptions = cssTransitionOptions;
             this.bindDomElement.style.position = "relative";
-            this.bindDomElement.classList.add("fvst_container");
+            this.bindDomElement.classList.add("itm_container");
         }
         Container.prototype.getId = function () {
             return this.id;
@@ -374,7 +374,7 @@ define("core/container/page_container", ["require", "exports", "core/container/c
         function PageContainer(id, bindDomElement, parent, cssTransitionOptions) {
             var _this = _super.call(this, id, bindDomElement, parent, cssTransitionOptions) || this;
             _this.cssTransitionDrivers = new Map();
-            bindDomElement.classList.add("fvst_page_container");
+            bindDomElement.classList.add("itm_page_container");
             return _this;
         }
         PageContainer.prototype.addModule = function (module) {
@@ -523,8 +523,8 @@ define("core/container/flat_container", ["require", "exports", "core/container/c
             _this.scrollBoxElement.style.overflow = "hidden";
             _this.scrollBoxElement.style.width = "100%";
             _this.scrollBoxElement.style.height = "100%";
-            _this.scrollBoxElement.className = "fvst_flat_container_transition";
-            bindDomElement.classList.add("fvst_flat_container");
+            _this.scrollBoxElement.className = "itm_flat_container_transition";
+            bindDomElement.classList.add("itm_flat_container");
             bindDomElement.appendChild(_this.scrollBoxElement);
             return _this;
         }
@@ -731,12 +731,12 @@ define("core/overlay/overlay", ["require", "exports", "core/overlay/overlay_mana
             //キーボードタブキーナビゲーションによってダイアログの外にフォーカスが移ることを
             //防止（検知）するための非表示エレメントの作成（Shift+Tabキー対策）
             this.tabFocusMoveHeadStopper = document.createElement("div");
-            this.tabFocusMoveHeadStopper.className = "fvst_tabfocus_move_stopper";
+            this.tabFocusMoveHeadStopper.className = "itm_tabfocus_move_stopper";
             this.tabFocusMoveHeadStopper.style.height = "0px";
             this.tabFocusMoveHeadStopper.tabIndex = 0;
             this.tabFocusMoveHeadStopper.addEventListener("focusin", this.onTabFocusMoveHeadStopperFocusIn.bind(this));
             this.tabFocusMoveHeadDetector = document.createElement("div");
-            this.tabFocusMoveHeadDetector.className = "fvst_tabfocus_move_detector";
+            this.tabFocusMoveHeadDetector.className = "itm_tabfocus_move_detector";
             this.tabFocusMoveHeadDetector.style.height = "0px";
             this.tabFocusMoveHeadDetector.tabIndex = 0;
             this.tabFocusMoveHeadDetector.addEventListener("focusin", this.onTabFocusMoveHeadDetectorFocusIn.bind(this));
@@ -748,7 +748,7 @@ define("core/overlay/overlay", ["require", "exports", "core/overlay/overlay_mana
             this.contentEl.style.height = "100%";
             //overlayのモーダル表示によって非アクティブ化したときに表示するレイヤー
             this.modalInactiveLayer = document.createElement("div");
-            this.modalInactiveLayer.className = "fvst_modal_background_layer";
+            this.modalInactiveLayer.className = "itm_modal_background_layer";
             this.modalInactiveLayer.style.position = "absolute";
             this.modalInactiveLayer.style.overflow = "hidden";
             this.modalInactiveLayer.style.display = "none";
@@ -758,12 +758,12 @@ define("core/overlay/overlay", ["require", "exports", "core/overlay/overlay_mana
             this.resize(cssWidth, cssHeight);
             //非表示エレメントの作成（Tabキー対策）
             this.tabFocusMoveTailDetector = document.createElement("div");
-            this.tabFocusMoveTailDetector.className = "fvst_tabfocus_move_detector";
+            this.tabFocusMoveTailDetector.className = "itm_tabfocus_move_detector";
             this.tabFocusMoveTailDetector.style.height = "0px";
             this.tabFocusMoveTailDetector.tabIndex = 0;
             this.tabFocusMoveTailDetector.addEventListener("focusin", this.onTabFocusMoveTailDetectorFocusIn.bind(this));
             this.tabFocusMoveTailStopper = document.createElement("div");
-            this.tabFocusMoveTailStopper.className = "fvst_tabfocus_move_stopper";
+            this.tabFocusMoveTailStopper.className = "itm_tabfocus_move_stopper";
             this.tabFocusMoveTailStopper.style.height = "0px";
             this.tabFocusMoveTailStopper.tabIndex = 0;
             this.tabFocusMoveTailStopper.addEventListener("focusin", this.onTabFocusMoveTailStopperFocusIn.bind(this));
@@ -1074,7 +1074,7 @@ define("core/overlay/dialog_window", ["require", "exports", "core/overlay/overla
             _this.wrapperEl.style.width = "100%";
             _this.wrapperEl.style.height = "100%";
             _this.headerEl = document.createElement("div");
-            _this.headerEl.className = "fvst_dialog_window_header";
+            _this.headerEl.className = "itm_dialog_window_header";
             _this.headerEl.style.position = "relative";
             _this.headerEl.style.display = "flex";
             _this.headerEl.style.width = "100%";
@@ -1093,14 +1093,14 @@ define("core/overlay/dialog_window", ["require", "exports", "core/overlay/overla
             _this.headerEl.addEventListener("mousedown", _this.onHeaderMouseDown.bind(_this));
             _this.headerEl.addEventListener("dragstart", _this.onHeaderDragStart.bind(_this));
             _this.containerEl = document.createElement("div");
-            _this.containerEl.className = "fvst_dialog_window_body";
+            _this.containerEl.className = "itm_dialog_window_body";
             _this.containerEl.style.position = "relative";
             _this.containerEl.style.flexGrow = "1";
             _this.containerEl.style.flexShrink = "1";
             _this.containerEl.style.width = "100%";
             _this.registerAsContainer("window", _this.containerEl);
             _this.footerEl = document.createElement("div");
-            _this.footerEl.className = "fvst_dialog_window_footer";
+            _this.footerEl.className = "itm_dialog_window_footer";
             _this.footerEl.style.position = "relative";
             _this.footerEl.style.width = "100%";
             if (options && options.hideFooter) {
@@ -1108,30 +1108,30 @@ define("core/overlay/dialog_window", ["require", "exports", "core/overlay/overla
             }
             _this.okButtonEl = document.createElement("input");
             _this.okButtonEl.type = "button";
-            _this.okButtonEl.classList.add("fvst_dialog_window_footer_button", "ok");
+            _this.okButtonEl.classList.add("itm_dialog_window_footer_button", "ok");
             _this.okButtonEl.value = "OK";
             _this.okButtonEl.addEventListener("click", _this.onOkButtonClick.bind(_this));
             _this.cancelButtonEl = document.createElement("input");
             _this.cancelButtonEl.type = "button";
-            _this.cancelButtonEl.classList.add("fvst_dialog_window_footer_button", "cancel");
+            _this.cancelButtonEl.classList.add("itm_dialog_window_footer_button", "cancel");
             _this.cancelButtonEl.value = "キャンセル";
             _this.cancelButtonEl.addEventListener("click", _this.onCancelButtonClick.bind(_this));
             _this.applyButtonEl = document.createElement("input");
             _this.applyButtonEl.type = "button";
-            _this.applyButtonEl.classList.add("fvst_dialog_window_footer_button", "apply");
+            _this.applyButtonEl.classList.add("itm_dialog_window_footer_button", "apply");
             _this.applyButtonEl.value = "適用";
             _this.footerEl.appendChild(_this.okButtonEl);
             _this.footerEl.appendChild(_this.cancelButtonEl);
             _this.wrapperEl.appendChild(_this.headerEl);
             _this.wrapperEl.appendChild(_this.containerEl);
             _this.wrapperEl.appendChild(_this.footerEl);
-            _this.contentEl.className = "fvst_dialog_window_container";
+            _this.contentEl.className = "itm_dialog_window_container";
             _this.contentEl.appendChild(_this.wrapperEl);
             _this.outerFrameTransitionDriver.setCustomTransitionClasses({
-                standyStateClass: "fvst_dialog_window_standy_state",
-                enterTransitionClass: "fvst_dialog_window_enter_transition",
-                leaveTransitionClass: "fvst_dialog_window_leave_transition",
-                endStateClass: "fvst_dialog_window_end_state"
+                standyStateClass: "itm_dialog_window_standy_state",
+                enterTransitionClass: "itm_dialog_window_enter_transition",
+                leaveTransitionClass: "itm_dialog_window_leave_transition",
+                endStateClass: "itm_dialog_window_end_state"
             });
             return _this;
         }
@@ -1258,14 +1258,14 @@ define("core/overlay/context_menu", ["require", "exports", "core/overlay/overlay
             _this.containerEl.style.width = "100%";
             _this.containerEl.style.height = "100%";
             _this.registerAsContainer("contextmenu", _this.containerEl);
-            _this.contentEl.className = "fvst_context_menu_container";
+            _this.contentEl.className = "itm_context_menu_container";
             _this.contentEl.appendChild(_this.containerEl);
             _this.contentEl.addEventListener("mousedown", _this.onContentMouseDown.bind(_this));
             _this.outerFrameTransitionDriver.setCustomTransitionClasses({
-                standyStateClass: "fvst_context_menu_standy_state",
-                enterTransitionClass: "fvst_context_menu_enter_transition",
-                leaveTransitionClass: "fvst_context_menu_leave_transition",
-                endStateClass: "fvst_context_menu_end_state"
+                standyStateClass: "itm_context_menu_standy_state",
+                enterTransitionClass: "itm_context_menu_enter_transition",
+                leaveTransitionClass: "itm_context_menu_leave_transition",
+                endStateClass: "itm_context_menu_end_state"
             });
             return _this;
         }
@@ -1373,7 +1373,7 @@ define("core/overlay/drawer", ["require", "exports", "core/overlay/overlay", "co
             _this.containerEl.style.width = "100%";
             _this.containerEl.style.height = "100%";
             _this.registerAsContainer("drawer", _this.containerEl);
-            _this.contentEl.className = "fvst_drawer_container";
+            _this.contentEl.className = "itm_drawer_container";
             _this.contentEl.appendChild(_this.containerEl);
             _this.contentEl.addEventListener("mousedown", _this.onContentMouseDown.bind(_this));
             return _this;
@@ -1429,10 +1429,10 @@ define("core/overlay/drawer", ["require", "exports", "core/overlay/overlay", "co
                     break;
             }
             this.outerFrameTransitionDriver.setCustomTransitionClasses({
-                standyStateClass: "fvst_drawer_" + dockTypeName + "_dock_standy_state",
-                enterTransitionClass: "fvst_drawer_enter_transition",
-                leaveTransitionClass: "fvst_drawer_leave_transition",
-                endStateClass: "fvst_drawer_" + dockTypeName + "_dock_end_state"
+                standyStateClass: "itm_drawer_" + dockTypeName + "_dock_standy_state",
+                enterTransitionClass: "itm_drawer_enter_transition",
+                leaveTransitionClass: "itm_drawer_leave_transition",
+                endStateClass: "itm_drawer_" + dockTypeName + "_dock_end_state"
             });
         };
         //Override
@@ -1483,7 +1483,7 @@ define("core/overlay/overlay_manager", ["require", "exports", "core/overlay/dial
             this.overlays = new Map();
             this.overlayManagementTable = new Map();
             this.modalBackgroundLayer = document.createElement("div");
-            this.modalBackgroundLayer.className = "fvst_modal_background_layer";
+            this.modalBackgroundLayer.className = "itm_modal_background_layer";
             this.modalBackgroundLayer.style.position = "absolute";
             this.modalBackgroundLayer.style.overflow = "hidden";
             this.modalBackgroundLayer.style.width = "100%";
@@ -2119,7 +2119,7 @@ define("core/module/native_component", ["require", "exports", "core/module/html_
                             //引数で与えられたコンテナDOMに対して自身をロード
                             this.wrapperElement = document.createElement("div");
                             this.wrapperElement.id = localPrefix + "module";
-                            this.wrapperElement.className = "fvst_html_module";
+                            this.wrapperElement.className = "itm_html_module";
                             this.wrapperElement.style.position = "absolute";
                             this.wrapperElement.style.overflow = "auto";
                             this.wrapperElement.style.width = "100%";
@@ -2587,7 +2587,7 @@ define("core/configurer", ["require", "exports", "core/module/module_manager", "
     }());
     exports.default = Configurer;
 });
-define("fivestage", ["require", "exports", "core/module/module_manager", "core/container/container_manager", "core/overlay/overlay_manager", "core/common/common", "core/configurer", "core/common/runtime_error"], function (require, exports, module_manager_7, container_manager_5, overlay_manager_9, common_2, configurer_1, runtime_error_7) {
+define("intraframe", ["require", "exports", "core/module/module_manager", "core/container/container_manager", "core/overlay/overlay_manager", "core/common/common", "core/configurer", "core/common/runtime_error"], function (require, exports, module_manager_7, container_manager_5, overlay_manager_9, common_2, configurer_1, runtime_error_7) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     if (document["documentMode"]) {
@@ -2674,4 +2674,4 @@ define("core/container/flickable_flat_container", ["require", "exports", "core/c
     }(flat_container_2.default));
     exports.default = FlickableFlatContainer;
 });
-//# sourceMappingURL=fivestage.js.map
+//# sourceMappingURL=intraframe.js.map

@@ -3,7 +3,7 @@
         "target": "ES5",
         "module": "amd",
         "sourceMap": true,
-        "outFile": "./src/build/debug/fivestage.js",
+        "outFile": "./src/build/debug/intraframe.js",
         "lib": [
             "dom",
             "es5",

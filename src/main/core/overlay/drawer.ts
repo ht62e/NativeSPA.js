@@ -39,7 +39,7 @@ export default class Drawer extends Overlay {
 
         this.registerAsContainer("drawer", this.containerEl);
 
-        this.contentEl.className = "fvst_drawer_container";
+        this.contentEl.className = "itm_drawer_container";
         this.contentEl.appendChild(this.containerEl);
         this.contentEl.addEventListener("mousedown", this.onContentMouseDown.bind(this));
         
@@ -90,10 +90,10 @@ export default class Drawer extends Overlay {
             case DockType.Bottom: dockTypeName = "bottom"; break;
         }
         this.outerFrameTransitionDriver.setCustomTransitionClasses({
-            standyStateClass: "fvst_drawer_" + dockTypeName + "_dock_standy_state",
-            enterTransitionClass: "fvst_drawer_enter_transition",
-            leaveTransitionClass: "fvst_drawer_leave_transition",
-            endStateClass: "fvst_drawer_" + dockTypeName + "_dock_end_state"
+            standyStateClass: "itm_drawer_" + dockTypeName + "_dock_standy_state",
+            enterTransitionClass: "itm_drawer_enter_transition",
+            leaveTransitionClass: "itm_drawer_leave_transition",
+            endStateClass: "itm_drawer_" + dockTypeName + "_dock_end_state"
         });
     }
     

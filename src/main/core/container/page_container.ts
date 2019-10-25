@@ -10,7 +10,7 @@ export default class PageContainer extends Container {
 
     constructor(id: string, bindDomElement: HTMLDivElement, parent: Container, cssTransitionOptions?: CssTransitionOptions) {
         super(id, bindDomElement, parent, cssTransitionOptions);
-        bindDomElement.classList.add("fvst_page_container");
+        bindDomElement.classList.add("itm_page_container");
     }
 
     public async addModule(module: Module): Promise<boolean> {       

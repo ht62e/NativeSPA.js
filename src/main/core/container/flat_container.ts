@@ -17,9 +17,9 @@ export default class FlatContainer extends Container {
         this.scrollBoxElement.style.width = "100%";
         this.scrollBoxElement.style.height = "100%";
 
-        this.scrollBoxElement.className = "fvst_flat_container_transition";
+        this.scrollBoxElement.className = "itm_flat_container_transition";
 
-        bindDomElement.classList.add("fvst_flat_container");
+        bindDomElement.classList.add("itm_flat_container");
         bindDomElement.appendChild(this.scrollBoxElement);
     }
 

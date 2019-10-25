@@ -26,15 +26,15 @@ export default class ContextMenu extends Overlay {
 
         this.registerAsContainer("contextmenu", this.containerEl);
 
-        this.contentEl.className = "fvst_context_menu_container";
+        this.contentEl.className = "itm_context_menu_container";
         this.contentEl.appendChild(this.containerEl);
         this.contentEl.addEventListener("mousedown", this.onContentMouseDown.bind(this));
 
         this.outerFrameTransitionDriver.setCustomTransitionClasses({
-            standyStateClass: "fvst_context_menu_standy_state",
-            enterTransitionClass: "fvst_context_menu_enter_transition",
-            leaveTransitionClass: "fvst_context_menu_leave_transition",
-            endStateClass: "fvst_context_menu_end_state"
+            standyStateClass: "itm_context_menu_standy_state",
+            enterTransitionClass: "itm_context_menu_enter_transition",
+            leaveTransitionClass: "itm_context_menu_leave_transition",
+            endStateClass: "itm_context_menu_end_state"
         });
     }
 

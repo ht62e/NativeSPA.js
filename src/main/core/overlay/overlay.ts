@@ -85,13 +85,13 @@ export default abstract class Overlay {
         //キーボードタブキーナビゲーションによってダイアログの外にフォーカスが移ることを
         //防止（検知）するための非表示エレメントの作成（Shift+Tabキー対策）
         this.tabFocusMoveHeadStopper = document.createElement("div");
-        this.tabFocusMoveHeadStopper.className = "fvst_tabfocus_move_stopper";
+        this.tabFocusMoveHeadStopper.className = "itm_tabfocus_move_stopper";
         this.tabFocusMoveHeadStopper.style.height = "0px";
         this.tabFocusMoveHeadStopper.tabIndex = 0;
         this.tabFocusMoveHeadStopper.addEventListener("focusin", this.onTabFocusMoveHeadStopperFocusIn.bind(this));
 
         this.tabFocusMoveHeadDetector = document.createElement("div");
-        this.tabFocusMoveHeadDetector.className = "fvst_tabfocus_move_detector";
+        this.tabFocusMoveHeadDetector.className = "itm_tabfocus_move_detector";
         this.tabFocusMoveHeadDetector.style.height = "0px";
         this.tabFocusMoveHeadDetector.tabIndex = 0;
         this.tabFocusMoveHeadDetector.addEventListener("focusin", this.onTabFocusMoveHeadDetectorFocusIn.bind(this));
@@ -105,7 +105,7 @@ export default abstract class Overlay {
 
         //overlayのモーダル表示によって非アクティブ化したときに表示するレイヤー
         this.modalInactiveLayer = document.createElement("div");
-        this.modalInactiveLayer.className = "fvst_modal_background_layer";
+        this.modalInactiveLayer.className = "itm_modal_background_layer";
         this.modalInactiveLayer.style.position = "absolute";
         this.modalInactiveLayer.style.overflow = "hidden";
         this.modalInactiveLayer.style.display = "none";
@@ -118,13 +118,13 @@ export default abstract class Overlay {
 
         //非表示エレメントの作成（Tabキー対策）
         this.tabFocusMoveTailDetector = document.createElement("div");
-        this.tabFocusMoveTailDetector.className = "fvst_tabfocus_move_detector";
+        this.tabFocusMoveTailDetector.className = "itm_tabfocus_move_detector";
         this.tabFocusMoveTailDetector.style.height = "0px";
         this.tabFocusMoveTailDetector.tabIndex = 0;
         this.tabFocusMoveTailDetector.addEventListener("focusin", this.onTabFocusMoveTailDetectorFocusIn.bind(this));
         
         this.tabFocusMoveTailStopper = document.createElement("div");
-        this.tabFocusMoveTailStopper.className = "fvst_tabfocus_move_stopper";
+        this.tabFocusMoveTailStopper.className = "itm_tabfocus_move_stopper";
         this.tabFocusMoveTailStopper.style.height = "0px";
         this.tabFocusMoveTailStopper.tabIndex = 0;
         this.tabFocusMoveTailStopper.addEventListener("focusin", this.onTabFocusMoveTailStopperFocusIn.bind(this));

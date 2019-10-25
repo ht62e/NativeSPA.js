@@ -45,7 +45,7 @@ export default class DialogWindow extends ResizableOverlay {
         this.wrapperEl.style.height = "100%";
 
         this.headerEl = document.createElement("div");
-        this.headerEl.className = "fvst_dialog_window_header";
+        this.headerEl.className = "itm_dialog_window_header";
         this.headerEl.style.position = "relative";
         this.headerEl.style.display = "flex";
         this.headerEl.style.width = "100%";
@@ -69,7 +69,7 @@ export default class DialogWindow extends ResizableOverlay {
         this.headerEl.addEventListener("dragstart", this.onHeaderDragStart.bind(this));
 
         this.containerEl = document.createElement("div");
-        this.containerEl.className = "fvst_dialog_window_body";
+        this.containerEl.className = "itm_dialog_window_body";
         this.containerEl.style.position = "relative";
         this.containerEl.style.flexGrow = "1";
         this.containerEl.style.flexShrink = "1";
@@ -78,7 +78,7 @@ export default class DialogWindow extends ResizableOverlay {
         this.registerAsContainer("window", this.containerEl);
 
         this.footerEl = document.createElement("div");
-        this.footerEl.className = "fvst_dialog_window_footer";
+        this.footerEl.className = "itm_dialog_window_footer";
         this.footerEl.style.position = "relative";
         this.footerEl.style.width = "100%";
         if (options && options.hideFooter) {
@@ -87,19 +87,19 @@ export default class DialogWindow extends ResizableOverlay {
 
         this.okButtonEl = document.createElement("input");
         this.okButtonEl.type = "button";
-        this.okButtonEl.classList.add("fvst_dialog_window_footer_button", "ok");
+        this.okButtonEl.classList.add("itm_dialog_window_footer_button", "ok");
         this.okButtonEl.value = "OK";
         this.okButtonEl.addEventListener("click", this.onOkButtonClick.bind(this));
 
         this.cancelButtonEl = document.createElement("input");
         this.cancelButtonEl.type = "button";
-        this.cancelButtonEl.classList.add("fvst_dialog_window_footer_button", "cancel");
+        this.cancelButtonEl.classList.add("itm_dialog_window_footer_button", "cancel");
         this.cancelButtonEl.value = "キャンセル";
         this.cancelButtonEl.addEventListener("click", this.onCancelButtonClick.bind(this));
 
         this.applyButtonEl = document.createElement("input");
         this.applyButtonEl.type = "button";
-        this.applyButtonEl.classList.add("fvst_dialog_window_footer_button", "apply");
+        this.applyButtonEl.classList.add("itm_dialog_window_footer_button", "apply");
         this.applyButtonEl.value = "適用";        
 
         this.footerEl.appendChild(this.okButtonEl);
@@ -109,14 +109,14 @@ export default class DialogWindow extends ResizableOverlay {
         this.wrapperEl.appendChild(this.containerEl);
         this.wrapperEl.appendChild(this.footerEl);
 
-        this.contentEl.className = "fvst_dialog_window_container";
+        this.contentEl.className = "itm_dialog_window_container";
         this.contentEl.appendChild(this.wrapperEl);
 
         this.outerFrameTransitionDriver.setCustomTransitionClasses({
-            standyStateClass: "fvst_dialog_window_standy_state",
-            enterTransitionClass: "fvst_dialog_window_enter_transition",
-            leaveTransitionClass: "fvst_dialog_window_leave_transition",
-            endStateClass: "fvst_dialog_window_end_state"
+            standyStateClass: "itm_dialog_window_standy_state",
+            enterTransitionClass: "itm_dialog_window_enter_transition",
+            leaveTransitionClass: "itm_dialog_window_leave_transition",
+            endStateClass: "itm_dialog_window_end_state"
         });
     }
 

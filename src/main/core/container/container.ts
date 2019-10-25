@@ -31,7 +31,7 @@ export default abstract class Container {
         this.parent = parent;
         this.cssTransitionOptions = cssTransitionOptions;
         this.bindDomElement.style.position = "relative";
-        this.bindDomElement.classList.add("fvst_container");
+        this.bindDomElement.classList.add("itm_container");
     }
 
     public getId(): string {
