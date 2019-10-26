@@ -41,6 +41,8 @@
 </script>
 
 <script data-scope-mode="prototype">
+    
+
     this.textArea1 = document.getElementById("\:textarea1");
 
     document.getElementById("\:all").addEventListener("dblclick", (function() {
@@ -116,6 +118,7 @@
 
     this.onShow = function(isFirst, param) {
         this.textArea1.value += "onShow is called." + "\n";
+        this.setCaption("this is main : " + Date.now());
     }
 
     this.onHide = function(param) {

@@ -1,5 +1,5 @@
 import Module from "./module";
-import NativeComponent from "./native_component";
+import PlainHtmlModule from "./plain_html_module";
 import RuntimeError from "../common/runtime_error";
 import ContainerManager from "../container/container_manager";
 import Container from "../container/container";
@@ -115,7 +115,7 @@ export default class ModuleManager {
             
             //モジュールインスタンス生成
             if (description.moduleType === ModuleType.Native || !description.moduleType) {
-                newModule = new NativeComponent(description.name, description.sourceUri, 
+                newModule = new PlainHtmlModule(description.name, description.sourceUri, 
                                                 ModuleManager.instanceSequence++);
             } else {
                 throw new RuntimeError("不明な種類のコンポーネントが指定されました。");
@@ -172,12 +172,12 @@ export default class ModuleManager {
         });
 
         //ツリールートから順番にモジュールのロードを実行（遅延ロードモジュールを除く
-        await this.loadSubModules(ModuleManager.ROOT_NAME);
+        await this.loadModuleRecursively(ModuleManager.ROOT_NAME);
  
         return true;
     }
 
-    public async loadSubModules(moduleName: string, forceLoading?: boolean) {
+    public async loadModuleRecursively(moduleName: string, forceLoading?: boolean) {
         const dependencyInfo: ModuleDependencyInfo = this.dependencyInfoMap.get(moduleName);
         const containerManager = ContainerManager.getInstance();
         const overlayManager = OvarlayManager.getInstance();
@@ -196,7 +196,6 @@ export default class ModuleManager {
                 if (targetContainer) {
                     await targetContainer.addModule(module);
                     if (moduleDescription.isContainerDefault) {
-                        //targetContainer.activateModule(module);
                         targetContainer.setDefaultModule(module);
                     }
                 } else {
@@ -217,14 +216,14 @@ export default class ModuleManager {
                         break;
                 }
                 await overlay.getContainer().addModule(module);
-                overlay.getContainer().activateModule(module);
+                overlay.getContainer().setDefaultModule(module);
             }
         }
 
         //if (dependencyInfo.isRoot || !moduleDescription.lazyLoading) {
         for (let subModuleName of dependencyInfo.subModuleNames) {
             if (!this.dependencyInfoMap.get(subModuleName).moduleDescription.lazyLoading) {
-                await this.loadSubModules(subModuleName);
+                await this.loadModuleRecursively(subModuleName);
             } else {
                 console.log(subModuleName + " is lazy load mode.");
             }

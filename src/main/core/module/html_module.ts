@@ -1,10 +1,11 @@
-import Container, { ContainerInfo } from "../container/container";
+import Container, { ContainerInfo, ContainerNavigationInfo } from "../container/container";
 import Module from "./module";
 import SourceRepository from "../source_repository";
-import HTMLComponentAdapter from "../adapter/html_component_adapter";
+import HtmlModuleAdapter from "../adapter/html_module_adapter";
 import { Result, ActionType, Parcel } from "../common/dto";
+import CssTransitionDriver from "../common/css_transition_driver";
 
-export default abstract class HTMLComponent implements Module {
+export default abstract class HtmlModule implements Module {
     protected isFetched: boolean = false;
     protected isMounted: boolean = false;
     protected isInitialized: boolean = false;
@@ -13,7 +14,10 @@ export default abstract class HTMLComponent implements Module {
     protected currentContainer: Container;
     protected subContainerInfos = new Map<string, ContainerInfo>();
 
-    protected htmlAdapter: HTMLComponentAdapter = null;
+    protected caption: string = "";
+    protected cssTransitionDriver: CssTransitionDriver;
+
+    protected htmlAdapter: HtmlModuleAdapter = null;
 
     private exitResolver: (value?: boolean | PromiseLike<boolean>) => void;
     private exitForWaitResolver: (value?: Result | PromiseLike<Result>) => void;
@@ -27,6 +31,14 @@ export default abstract class HTMLComponent implements Module {
 
     constructor(protected name: string, protected sourceUri: string, protected moduleIndex: number) {
         this.onCreate();
+    }
+
+    public setCaption(caption: string) {
+        this.caption = caption;
+    }
+
+    public subContainerNavigationEventHandler(subContainerId: string, currentInfo: ContainerNavigationInfo, histories: Array<ContainerNavigationInfo>): boolean {
+        return this.htmlAdapter.triggerOnSubContainerNavigated(subContainerId, currentInfo, histories);
     }
 
     public dispatchResizeEvent(): void {
@@ -52,24 +64,33 @@ export default abstract class HTMLComponent implements Module {
             containerInfo.container.initialize(parcel);
         });
 
-        this.htmlAdapter.triggerOnInitializeHandler(parcel);
+        this.htmlAdapter.triggerOnInitialize(parcel);
     }
 
-    public show(): void {
-        this.wrapperElement.style.display = "";
-        this.wrapperElement.style.visibility = "";
-        this.htmlAdapter.triggerOnShowHandler(false, null);
+    public show(withoutTransition?: boolean): void {
+        if (this.cssTransitionDriver) {
+            this.cssTransitionDriver.show(withoutTransition);
+        } else {
+            this.wrapperElement.style.display = "";
+            this.wrapperElement.style.visibility = "";
+        }
+
+        this.htmlAdapter.triggerOnShow(false, null);
 
         this.subContainerInfos.forEach((containerInfo: ContainerInfo) => {
             containerInfo.container.onShow();
         });
     }
 
-    public hide(): void {
-        if (this.wrapperElement.style.visibility !== "hidden") {
-            this.wrapperElement.style.display = "none";
+    public hide(withoutTransition?: boolean): void {
+        if (this.cssTransitionDriver) {
+            this.cssTransitionDriver.hide(withoutTransition);
+        } else {
+            if (this.wrapperElement.style.visibility !== "hidden") {
+                this.wrapperElement.style.display = "none";
+            }
         }
-        this.htmlAdapter.triggerOnHideHandler(null);
+        this.htmlAdapter.triggerOnHide(null);
     }
 
     
@@ -84,7 +105,7 @@ export default abstract class HTMLComponent implements Module {
         //通常、backナビゲーション時にcontainerオブジェクト経由でコールされる
         return new Promise(resolve => {
             this.exitResolver = resolve;
-            this.htmlAdapter.triggerOnExitHandler(actionType);
+            this.htmlAdapter.triggerOnExit(actionType);
         });
     }
 
@@ -124,7 +145,7 @@ export default abstract class HTMLComponent implements Module {
         throw this.wrapperElement;
     }
 
-    public getCurrentContainer(): Container {
+    public getOwnerContainer(): Container {
         return this.currentContainer;
     }
 
@@ -141,7 +162,7 @@ export default abstract class HTMLComponent implements Module {
     }
 
     public getCaption(): string {
-        return this.name;
+        return this.caption;
     }
     
 }

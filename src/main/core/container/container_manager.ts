@@ -2,6 +2,7 @@ import RuntimeError from "../common/runtime_error";
 import Container from "./container";
 import PageContainer from "./page_container";
 import FlatContainer from "./flat_container";
+import Module from "../module/module";
 
 export default class ContainerManager {
     private static instance = new ContainerManager();
@@ -29,7 +30,7 @@ export default class ContainerManager {
         this.rootContainer.onResize();
     }
 
-    public createContainer(id: string, type: string, bindDomElement: HTMLDivElement, parent: Container): Container {
+    public createContainer(id: string, type: string, bindDomElement: HTMLDivElement, owner: Module): Container {
         if (this.containers.has(id)) {
             throw new RuntimeError("コンテナID '" + id + "' は既に登録されています。");
         }
@@ -38,11 +39,11 @@ export default class ContainerManager {
 
         if (!type || type === "separated") {
             //newContainer = new PageContainer(id, bindDomElement);
-            newContainer = new PageContainer(id, bindDomElement, parent, {
+            newContainer = new PageContainer(id, bindDomElement, owner, {
                 enableCssTransition: true
             });
         } else if ("continuous") {
-            newContainer = new FlatContainer(id, bindDomElement, parent);
+            newContainer = new FlatContainer(id, bindDomElement, owner);
         }
         
         this.containers.set(id, newContainer);

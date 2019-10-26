@@ -7,8 +7,8 @@ export default class FlatContainer extends Container {
     protected scrollBoxElement: HTMLDivElement;
     protected moduleOrders = new Map<string, number>();
 
-    constructor(id: string, bindDomElement: HTMLDivElement, parent: Container, cssTransitionOptions?: CssTransitionOptions) {
-        super(id, bindDomElement, parent, cssTransitionOptions);
+    constructor(id: string, bindDomElement: HTMLDivElement, owner: Module, cssTransitionOptions?: CssTransitionOptions) {
+        super(id, bindDomElement, owner, cssTransitionOptions);
 
         this.scrollBoxElement = document.createElement("div");
 
@@ -47,6 +47,10 @@ export default class FlatContainer extends Container {
             m.initialize(parcel);
             m.show();
         });
+
+        if (this.defaultModule) {
+            this.forward(this.defaultModule, parcel);
+        }
     }
 
     public async activateModule(module: Module, parcel?: Parcel): Promise<boolean> {
@@ -56,6 +60,10 @@ export default class FlatContainer extends Container {
         const leftIndex = this.moduleOrders.get(module.getName());
         const transX = Math.round(10000 / this.mountedModules.size * leftIndex) / 100;
         this.scrollBoxElement.style.transform = "translate(-" + String(transX) + "%)";
+
+        this.activeModule = module;
+
+        this.triggerSubContainerNavigationEvent();
 
         return true;
     }

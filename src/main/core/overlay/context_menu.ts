@@ -48,8 +48,8 @@ export default class ContextMenu extends Overlay {
 
         x = Common.currentMouseClientX;
         y = Common.currentMouseClientY;
-        const widthPx = this.frameEl.offsetWidth;
-        const heightPx = this.frameEl.offsetHeight;
+        const widthPx = this.offsetSizeCache.width;
+        const heightPx = this.offsetSizeCache.height;
 
         const overlayRightSideX: number = x + widthPx;
         const overlayBottomSideY: number = y + heightPx;

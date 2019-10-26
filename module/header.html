@@ -18,14 +18,23 @@
         this.navigation.showDrawer("drawer1");
     }).bind(this));
 
+    this.onMessageReceived = function(command, doResponse, message) {
+        console.log(command);
+        console.log(message);
+        document.getElementById("\:title").innerText = message.caption;
+    }
+
 </script>
 
-<div id="\:menu_button"></div>
+<div id="\:menu_button">
+    
+</div>
 <div id="\:title">
     Window Title
+</div>
+<div id="\:logout">
     <input type="button" id="\:show_main_button" value="show main">
 </div>
-<div id="\:logout">ログアウト　</div>
 
 <style>
     #\:module {

@@ -5,7 +5,7 @@ import { CssTransitionDriverClasses } from "../common/css_transition_driver";
 export default abstract class Container {
     protected id: string;
     protected bindDomElement: HTMLDivElement;
-    protected parent: Container;
+    protected owner: Module;
     protected cssTransitionOptions: CssTransitionOptions;
 
     protected activeModule: Module;
@@ -19,19 +19,24 @@ export default abstract class Container {
     
     public abstract async addModule(module: Module): Promise<boolean>;
     public abstract initialize(parcel?: Parcel): void;
-    public abstract async activateModule(module: Module, parcel?: Parcel): Promise<boolean>;
     public abstract async forward(module: Module, parcel?: Parcel): Promise<Result>;
     public abstract back(): void;
 
     protected abstract showPreviousModule(): void;
 
-    constructor(id: string, bindDomElement: HTMLDivElement, parent: Container, cssTransitionOptions?: CssTransitionOptions) {
+    constructor(id: string, bindDomElement: HTMLDivElement, owner: Module, cssTransitionOptions?: CssTransitionOptions) {
         this.id = id;
         this.bindDomElement = bindDomElement;
-        this.parent = parent;
+        this.owner = owner;
         this.cssTransitionOptions = cssTransitionOptions;
         this.bindDomElement.style.position = "relative";
         this.bindDomElement.classList.add("itm_container");
+    }
+
+    protected triggerSubContainerNavigationEvent() {
+        if (this.owner) {
+            this.owner.getOwnerContainer().subContainerNavigationEventHandler(this, this.activeModule);
+        }
     }
 
     public getId(): string {
@@ -42,8 +47,12 @@ export default abstract class Container {
         return this.bindDomElement;
     }
 
-    public getParent(): Container {
-        return this.parent;
+    // public getParent(): Container {
+    //     return this.parent;
+    // }
+
+    public getOwner(): Module {
+        return this.owner;
     }
 
     public getActiveModule(): Module {
@@ -62,6 +71,10 @@ export default abstract class Container {
         this.containerResult = result;
     }
 
+    public getModuleChangeHistory() {
+        return this.moduleChangeHistory;
+    }
+
     public onShow(): void {
 
     }
@@ -70,6 +83,29 @@ export default abstract class Container {
         this.mountedModules.forEach((module: Module) => {
             module.dispatchResizeEvent();
         });
+    }
+
+    public subContainerNavigationEventHandler(container: Container, module: Module) {
+        if (!this.activeModule) return;
+        
+        const info: ContainerNavigationInfo = {
+            moduleName: module.getName(),
+            caption: module.getCaption()
+        };
+        const histories = new Array<ContainerNavigationInfo>();
+        const moduleHistories: Array<Module> = container.getModuleChangeHistory();
+        moduleHistories.forEach((m: Module) => {
+            histories.push({
+                moduleName: m.getName(),
+                caption: m.getCaption()
+            });
+        });
+
+        const allowBubbling = this.activeModule.subContainerNavigationEventHandler(
+                                container.getId(), info, histories)    
+        if (allowBubbling !== false) {
+            this.triggerSubContainerNavigationEvent();
+        }
     }
 
     
@@ -84,4 +120,10 @@ export interface ContainerInfo {
 export interface CssTransitionOptions {
     enableCssTransition: boolean,
     cssTransitionDriverClasses?: CssTransitionDriverClasses
+}
+
+export interface ContainerNavigationInfo {
+    moduleName: string;
+    caption: string;
+
 }

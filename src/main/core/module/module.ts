@@ -1,22 +1,23 @@
-import Container from "../container/container";
+import Container, { ContainerNavigationInfo, CssTransitionOptions } from "../container/container";
 import { Parcel, ActionType, Result } from "../common/dto";
 
 export default interface Module {
     fetch(): Promise<boolean>;
-    mount(elementAttachHandler: (element: HTMLDivElement) => Container): Promise<boolean>;
+    mount(elementAttachHandler: (element: HTMLDivElement) => Container,
+            cssTransitionOptions?: CssTransitionOptions): Promise<boolean>;
     initialize(parcel: Parcel): void;
     exit(actionType: ActionType): Promise<boolean>;
     
 
     waitForExit(): Promise<Result>;
     
-    show(): void;
+    show(nonTransition?: boolean): void;
     hide(): void;
     changeModuleCssPosition(left: string, top: string);
     changeModuleCssSize(width: string, height: string);
 
     //apply(): Result;
-    
+    subContainerNavigationEventHandler(subContainerId: string, currentInfo: ContainerNavigationInfo, histories: Array<ContainerNavigationInfo>): boolean;
     passMessage(command: string, message?: any): Promise<any>;
 
     dispatchResizeEvent(): void;
@@ -24,8 +25,10 @@ export default interface Module {
     getName(): string;
     getCaption(): string;
     getElement(): HTMLDivElement;
-    getCurrentContainer(): Container;
+    getOwnerContainer(): Container;
     getSubContainerNames(): Array<string>;
+
+    setCaption(caption: string);
 
 }
 

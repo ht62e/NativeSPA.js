@@ -2,14 +2,12 @@ import Container, { CssTransitionOptions } from "./container";
 import Module from "../module/module";
 import RuntimeError from "../common/runtime_error";
 import { Parcel, Result, ActionType } from "../common/dto";
-import CssTransitionDriver from "../common/css_transition_driver";
 import ModuleManager from "../module/module_manager";
 
 export default class PageContainer extends Container {
-    protected cssTransitionDrivers = new Map<string, CssTransitionDriver>();
 
-    constructor(id: string, bindDomElement: HTMLDivElement, parent: Container, cssTransitionOptions?: CssTransitionOptions) {
-        super(id, bindDomElement, parent, cssTransitionOptions);
+    constructor(id: string, bindDomElement: HTMLDivElement, owner: Module, cssTransitionOptions?: CssTransitionOptions) {
+        super(id, bindDomElement, owner, cssTransitionOptions);
         bindDomElement.classList.add("itm_page_container");
     }
 
@@ -17,29 +15,28 @@ export default class PageContainer extends Container {
         this.mountedModules.set(module.getName(), module);
 
         await module.mount((element: HTMLDivElement): Container => {
-            if (this.cssTransitionOptions && this.cssTransitionOptions.enableCssTransition) {
-                const driver = new CssTransitionDriver(element);
-                driver.setCustomTransitionClasses(this.cssTransitionOptions.cssTransitionDriverClasses);
-                this.cssTransitionDrivers.set(module.getName(), driver);
-            }
             this.bindDomElement.appendChild(element);
             return this;
-        });
+        }, this.cssTransitionOptions);
 
         return true;
     }
 
     public initialize(parcel?: Parcel): void {
+        this.moduleChangeHistory = new Array<Module>();
+        this.hideAllModules();
+
         if (this.defaultModule) {
-            this.forward(this.defaultModule, parcel);
+            this.forward(this.defaultModule, parcel, true);
         }
     }
 
-    public async forward(module: Module, parcel?: Parcel): Promise<Result> {
+    public async forward(module: Module, parcel?: Parcel, withoutTransition?: boolean): Promise<Result> {
         if (this.moduleChangeHistory.indexOf(module) !== -1) return;
         this.moduleChangeHistory.push(module);
 
-        this.activateModule(module, parcel);        
+        await this.initializeModule(module, parcel);
+        this.activateModule(module, withoutTransition);
 
         const result = await module.waitForExit();
 
@@ -64,10 +61,10 @@ export default class PageContainer extends Container {
         });
     }
 
-    public async activateModule(module: Module, parcel?: Parcel): Promise<boolean> {
+    protected async initializeModule(module: Module, parcel?: Parcel): Promise<boolean> {
         if (!this.mountedModules.has(module.getName())) {
             const moduleManager = ModuleManager.getInstance();
-            await moduleManager.loadSubModules(module.getName(), true);
+            await moduleManager.loadModuleRecursively(module.getName(), true);
 
             if (!this.mountedModules.has(module.getName())) {
                 throw new RuntimeError("指定されたモジュールはコンテナに登録されていません。");
@@ -75,40 +72,19 @@ export default class PageContainer extends Container {
 
             console.log(module.getName() + " is lazy loaded.");
         }
-
-        if (this.activeModule) {
-            this.hideModule(this.activeModule);
-        }
-
+        
         module.initialize(parcel);
-        this.showModule(module);
-        const previousActiveModule = this.activeModule;
-        this.activeModule = module;
-
-        //その他モジュールの非表示化
-        this.mountedModules.forEach((m: Module) => {
-            if (m !== module && m !== previousActiveModule) this.hideModule(m);
-        });
 
         return true;
     }
 
-    protected showModule(targetModule: Module): void {
-        let driver: CssTransitionDriver;
-        if (driver = this.cssTransitionDrivers.get(targetModule.getName())) {  
-            driver.show();
-        } else {
-            targetModule.show();
+    protected activateModule(module: Module, withoutTransition?: boolean) {
+        if (this.activeModule) {
+            this.activeModule.hide();
         }
-    }
-
-    protected hideModule(targetModule: Module): void {
-        let driver: CssTransitionDriver;
-        if (driver = this.cssTransitionDrivers.get(targetModule.getName())) {
-            driver.hide();
-        } else {
-            targetModule.hide();
-        }
+        this.activeModule = module;
+        module.show(withoutTransition);
+        this.triggerSubContainerNavigationEvent();
     }
 
     protected showPreviousModule(): void {
@@ -118,9 +94,15 @@ export default class PageContainer extends Container {
         if (this.moduleChangeHistory.length > 0) {
             this.activateModule(this.moduleChangeHistory[this.moduleChangeHistory.length - 1]);
         } else {
-            if (this.activeModule) {
-                this.hideModule(this.activeModule);
+            if (this.activeModule && this.activeModule !== this.defaultModule) {
+                this.activeModule.hide();
             }
         }
+    }
+
+    protected hideAllModules(): void {
+        this.mountedModules.forEach((m: Module) => {
+            m.hide();
+        });        
     }
 }

@@ -1,9 +1,10 @@
-import Container, { ContainerInfo } from "../container/container";
-import HTMLComponent from "./html_component";
+import Container, { ContainerInfo, CssTransitionOptions } from "../container/container";
+import HtmlModule from "./html_module";
 import ContainerManager from "../container/container_manager";
-import { htmlComponentAdapters } from "../adapter/html_component_adapter";
+import { htmlModuleAdapters } from "../adapter/html_module_adapter";
+import CssTransitionDriver from "../common/css_transition_driver";
 
-export default class NativeComponent extends HTMLComponent {
+export default class PlainHtmlModule extends HtmlModule {
     private prototypeTemplateBegin: string;
     private prototypeTemplateEnd: string;
 
@@ -11,13 +12,13 @@ export default class NativeComponent extends HTMLComponent {
         this.prototypeTemplateBegin = 
         `(function() {
             var Com = function(moduleIndex) {
-                this.super = __HTMLComponentAdapter.prototype;
-                __HTMLComponentAdapter.call(this, moduleIndex);
+                this.super = __HtmlModuleAdapter.prototype;
+                __HtmlModuleAdapter.call(this, moduleIndex);
         `;
     
         this.prototypeTemplateEnd = 
         `   }
-            Object.setPrototypeOf(Com.prototype, __HTMLComponentAdapter.prototype);
+            Object.setPrototypeOf(Com.prototype, __HtmlModuleAdapter.prototype);
             __registerHTMLComponentAdapter(${this.moduleIndex}, new Com(${this.moduleIndex}));
          })();
         `;
@@ -42,7 +43,8 @@ export default class NativeComponent extends HTMLComponent {
         }
     }
 
-    async mount(elementAttachHandler: (element: HTMLDivElement, ownerModuleName: string) => Container): Promise<boolean> {
+    async mount(elementAttachHandler: (element: HTMLDivElement, ownerModuleName: string) => Container,
+                cssTransitionOptions?: CssTransitionOptions): Promise<boolean> {
         if (!this.isFetched) await this.fetch();
 
         const localPrefix = "_" + this.moduleIndex.toString() + "_";
@@ -62,6 +64,11 @@ export default class NativeComponent extends HTMLComponent {
         this.wrapperElement.style.visibility = "hidden";
         
         this.wrapperElement.innerHTML = this.source;
+
+        if (cssTransitionOptions && cssTransitionOptions.enableCssTransition) {
+            this.cssTransitionDriver = new CssTransitionDriver(this.wrapperElement);
+            this.cssTransitionDriver.setCustomTransitionClasses(cssTransitionOptions.cssTransitionDriverClasses);
+        }
         
         this.currentContainer = elementAttachHandler(this.wrapperElement, this.name);
 
@@ -74,14 +81,14 @@ export default class NativeComponent extends HTMLComponent {
             let localElementId = domId.replace(localizeRegExp, localPrefix);
             let containerEl: HTMLDivElement = document.getElementById(localElementId) as HTMLDivElement;
             let containerId: string = this.name + "." + containerInfo.name;
-            containerInfo.container = containerManager.createContainer(containerId, containerInfo.type, containerEl, this.currentContainer);
+            containerInfo.container = containerManager.createContainer(containerId, containerInfo.type, containerEl, this);
         });
 
         this.isMounted = true;
 
-        this.htmlAdapter = htmlComponentAdapters.get(this.moduleIndex);
+        this.htmlAdapter = htmlModuleAdapters.get(this.moduleIndex);
         this.htmlAdapter.setHtmlComponent(this);
-        this.htmlAdapter.triggerOnLoadHandler("name is " + this.name);
+        this.htmlAdapter.triggerOnLoad("name is " + this.name);
 
         return true;
     }

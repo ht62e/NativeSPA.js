@@ -88,7 +88,6 @@ define("core/common/css_transition_driver", ["require", "exports"], function (re
     Object.defineProperty(exports, "__esModule", { value: true });
     var CssTransitionDriver = /** @class */ (function () {
         function CssTransitionDriver(target, customClasses) {
-            var _this = this;
             this.standyStateClass = "standy_state";
             this.enterTransitionClass = "enter_transition";
             this.leaveTransitionClass = "leave_transition";
@@ -97,27 +96,19 @@ define("core/common/css_transition_driver", ["require", "exports"], function (re
             this.hideResolver = null;
             this.target = target;
             this.setCustomTransitionClasses(customClasses);
-            this.target.addEventListener("transitionend", function (event) {
-                if (_this.hideResolver) {
-                    _this.target.style.display = "none";
-                    if (_this.standyStateClass) {
-                        _this.target.classList.add(_this.standyStateClass);
-                    }
-                    if (_this.leaveTransitionClass) {
-                        _this.target.classList.remove(_this.leaveTransitionClass);
-                    }
-                    if (_this.endStateClass) {
-                        _this.target.classList.remove(_this.endStateClass);
-                    }
-                    _this.hideResolver(true);
-                    _this.hideResolver = null;
-                }
-                if (_this.showResolver) {
-                    _this.showResolver(true);
-                    _this.showResolver = null;
-                }
-            });
+            this.target.addEventListener("transitionend", this.onTransitionEnd.bind(this));
         }
+        CssTransitionDriver.prototype.onTransitionEnd = function (event) {
+            if (this.hideResolver) {
+                this.setStandbyStateClasses();
+                this.hideResolver(true);
+                this.hideResolver = null;
+            }
+            if (this.showResolver) {
+                this.showResolver(true);
+                this.showResolver = null;
+            }
+        };
         CssTransitionDriver.prototype.setCustomTransitionClasses = function (classes) {
             if (classes) {
                 if (classes.standyStateClass !== undefined)
@@ -133,8 +124,9 @@ define("core/common/css_transition_driver", ["require", "exports"], function (re
                 this.target.classList.add(this.standyStateClass);
             }
         };
-        CssTransitionDriver.prototype.show = function () {
+        CssTransitionDriver.prototype.show = function (withoutTransition) {
             return __awaiter(this, void 0, void 0, function () {
+                var transitionIsUsed;
                 var _this = this;
                 return __generator(this, function (_a) {
                     if (this.hideResolver) {
@@ -142,8 +134,8 @@ define("core/common/css_transition_driver", ["require", "exports"], function (re
                         this.hideResolver(true);
                         this.hideResolver = null;
                     }
-                    this.toggleClasses(true);
-                    if (!!this.enterTransitionClass) {
+                    transitionIsUsed = this.toggleClasses(true, withoutTransition);
+                    if (transitionIsUsed) {
                         return [2 /*return*/, new Promise(function (resolve) {
                                 _this.showResolver = resolve;
                             })];
@@ -155,36 +147,44 @@ define("core/common/css_transition_driver", ["require", "exports"], function (re
                 });
             });
         };
-        CssTransitionDriver.prototype.hide = function () {
+        CssTransitionDriver.prototype.hide = function (withoutTransition) {
             return __awaiter(this, void 0, void 0, function () {
+                var transitionIsUsed;
                 var _this = this;
                 return __generator(this, function (_a) {
+                    if (this.target.style.display === "none" || this.target.style.visibility === "hidden")
+                        return [2 /*return*/];
                     if (this.showResolver) {
                         this.showResolver(true);
                         this.showResolver = null;
                     }
-                    this.toggleClasses(false);
-                    if (!!this.leaveTransitionClass) {
+                    transitionIsUsed = this.toggleClasses(false, withoutTransition);
+                    if (transitionIsUsed) {
                         return [2 /*return*/, new Promise(function (resolve) {
                                 _this.hideResolver = resolve;
                             })];
                     }
                     else {
+                        this.setStandbyStateClasses();
                         return [2 /*return*/, Promise.resolve(true)];
                     }
                     return [2 /*return*/];
                 });
             });
         };
-        CssTransitionDriver.prototype.toggleClasses = function (visible) {
+        CssTransitionDriver.prototype.toggleClasses = function (visible, withoutTransition) {
             var _this = this;
+            var transitionIsUsed = true;
             if (visible) {
                 this.target.style.display = "";
                 this.target.style.visibility = ""; //初回表示まではvisibility:hiddenで非表示状態になっている
                 window.setTimeout(function () {
                     _this.target.style.pointerEvents = "";
-                    if (_this.enterTransitionClass) {
+                    if (_this.enterTransitionClass && !withoutTransition) {
                         _this.target.classList.add(_this.enterTransitionClass);
+                    }
+                    else {
+                        transitionIsUsed = false;
                     }
                     if (_this.standyStateClass) {
                         _this.target.classList.remove(_this.standyStateClass);
@@ -205,15 +205,29 @@ define("core/common/css_transition_driver", ["require", "exports"], function (re
                 if (this.enterTransitionClass) {
                     this.target.classList.remove(this.enterTransitionClass);
                 }
-                if (this.leaveTransitionClass) {
+                if (this.leaveTransitionClass && !withoutTransition) {
                     this.target.classList.add(this.leaveTransitionClass);
                 }
                 else {
                     this.target.style.display = "none";
+                    transitionIsUsed = false;
                 }
                 if (this.endStateClass) {
                     this.target.classList.add(this.endStateClass);
                 }
+            }
+            return transitionIsUsed;
+        };
+        CssTransitionDriver.prototype.setStandbyStateClasses = function () {
+            this.target.style.display = "none";
+            if (this.standyStateClass) {
+                this.target.classList.add(this.standyStateClass);
+            }
+            if (this.leaveTransitionClass) {
+                this.target.classList.remove(this.leaveTransitionClass);
+            }
+            if (this.endStateClass) {
+                this.target.classList.remove(this.endStateClass);
             }
         };
         return CssTransitionDriver;
@@ -224,7 +238,7 @@ define("core/container/container", ["require", "exports"], function (require, ex
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var Container = /** @class */ (function () {
-        function Container(id, bindDomElement, parent, cssTransitionOptions) {
+        function Container(id, bindDomElement, owner, cssTransitionOptions) {
             this.mountedModules = new Map();
             this.moduleChangeHistory = new Array();
             this.inBackProcess = false;
@@ -232,19 +246,27 @@ define("core/container/container", ["require", "exports"], function (require, ex
             this.containerResult = null;
             this.id = id;
             this.bindDomElement = bindDomElement;
-            this.parent = parent;
+            this.owner = owner;
             this.cssTransitionOptions = cssTransitionOptions;
             this.bindDomElement.style.position = "relative";
             this.bindDomElement.classList.add("itm_container");
         }
+        Container.prototype.triggerSubContainerNavigationEvent = function () {
+            if (this.owner) {
+                this.owner.getOwnerContainer().subContainerNavigationEventHandler(this, this.activeModule);
+            }
+        };
         Container.prototype.getId = function () {
             return this.id;
         };
         Container.prototype.getElement = function () {
             return this.bindDomElement;
         };
-        Container.prototype.getParent = function () {
-            return this.parent;
+        // public getParent(): Container {
+        //     return this.parent;
+        // }
+        Container.prototype.getOwner = function () {
+            return this.owner;
         };
         Container.prototype.getActiveModule = function () {
             return this.activeModule;
@@ -258,12 +280,35 @@ define("core/container/container", ["require", "exports"], function (require, ex
         Container.prototype.setContainerResult = function (result) {
             this.containerResult = result;
         };
+        Container.prototype.getModuleChangeHistory = function () {
+            return this.moduleChangeHistory;
+        };
         Container.prototype.onShow = function () {
         };
         Container.prototype.onResize = function () {
             this.mountedModules.forEach(function (module) {
                 module.dispatchResizeEvent();
             });
+        };
+        Container.prototype.subContainerNavigationEventHandler = function (container, module) {
+            if (!this.activeModule)
+                return;
+            var info = {
+                moduleName: module.getName(),
+                caption: module.getCaption()
+            };
+            var histories = new Array();
+            var moduleHistories = container.getModuleChangeHistory();
+            moduleHistories.forEach(function (m) {
+                histories.push({
+                    moduleName: m.getName(),
+                    caption: m.getCaption()
+                });
+            });
+            var allowBubbling = this.activeModule.subContainerNavigationEventHandler(container.getId(), info, histories);
+            if (allowBubbling !== false) {
+                this.triggerSubContainerNavigationEvent();
+            }
         };
         return Container;
     }());
@@ -366,14 +411,13 @@ define("core/common/runtime_error", ["require", "exports"], function (require, e
     }(Error));
     exports.default = RuntimeError;
 });
-define("core/container/page_container", ["require", "exports", "core/container/container", "core/common/runtime_error", "core/common/dto", "core/common/css_transition_driver", "core/module/module_manager"], function (require, exports, container_1, runtime_error_1, dto_1, css_transition_driver_1, module_manager_1) {
+define("core/container/page_container", ["require", "exports", "core/container/container", "core/common/runtime_error", "core/common/dto", "core/module/module_manager"], function (require, exports, container_1, runtime_error_1, dto_1, module_manager_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var PageContainer = /** @class */ (function (_super) {
         __extends(PageContainer, _super);
-        function PageContainer(id, bindDomElement, parent, cssTransitionOptions) {
-            var _this = _super.call(this, id, bindDomElement, parent, cssTransitionOptions) || this;
-            _this.cssTransitionDrivers = new Map();
+        function PageContainer(id, bindDomElement, owner, cssTransitionOptions) {
+            var _this = _super.call(this, id, bindDomElement, owner, cssTransitionOptions) || this;
             bindDomElement.classList.add("itm_page_container");
             return _this;
         }
@@ -385,14 +429,9 @@ define("core/container/page_container", ["require", "exports", "core/container/c
                         case 0:
                             this.mountedModules.set(module.getName(), module);
                             return [4 /*yield*/, module.mount(function (element) {
-                                    if (_this.cssTransitionOptions && _this.cssTransitionOptions.enableCssTransition) {
-                                        var driver = new css_transition_driver_1.default(element);
-                                        driver.setCustomTransitionClasses(_this.cssTransitionOptions.cssTransitionDriverClasses);
-                                        _this.cssTransitionDrivers.set(module.getName(), driver);
-                                    }
                                     _this.bindDomElement.appendChild(element);
                                     return _this;
-                                })];
+                                }, this.cssTransitionOptions)];
                         case 1:
                             _a.sent();
                             return [2 /*return*/, true];
@@ -401,11 +440,13 @@ define("core/container/page_container", ["require", "exports", "core/container/c
             });
         };
         PageContainer.prototype.initialize = function (parcel) {
+            this.moduleChangeHistory = new Array();
+            this.hideAllModules();
             if (this.defaultModule) {
-                this.forward(this.defaultModule, parcel);
+                this.forward(this.defaultModule, parcel, true);
             }
         };
-        PageContainer.prototype.forward = function (module, parcel) {
+        PageContainer.prototype.forward = function (module, parcel, withoutTransition) {
             return __awaiter(this, void 0, void 0, function () {
                 var result;
                 return __generator(this, function (_a) {
@@ -414,9 +455,12 @@ define("core/container/page_container", ["require", "exports", "core/container/c
                             if (this.moduleChangeHistory.indexOf(module) !== -1)
                                 return [2 /*return*/];
                             this.moduleChangeHistory.push(module);
-                            this.activateModule(module, parcel);
-                            return [4 /*yield*/, module.waitForExit()];
+                            return [4 /*yield*/, this.initializeModule(module, parcel)];
                         case 1:
+                            _a.sent();
+                            this.activateModule(module, withoutTransition);
+                            return [4 /*yield*/, module.waitForExit()];
+                        case 2:
                             result = _a.sent();
                             if (!this.inBackProcess) {
                                 //backメソッドではなく、モジュールの自主的な終了の場合はページを前に戻す
@@ -440,16 +484,15 @@ define("core/container/page_container", ["require", "exports", "core/container/c
                 }
             });
         };
-        PageContainer.prototype.activateModule = function (module, parcel) {
+        PageContainer.prototype.initializeModule = function (module, parcel) {
             return __awaiter(this, void 0, void 0, function () {
-                var moduleManager, previousActiveModule;
-                var _this = this;
+                var moduleManager;
                 return __generator(this, function (_a) {
                     switch (_a.label) {
                         case 0:
                             if (!!this.mountedModules.has(module.getName())) return [3 /*break*/, 2];
                             moduleManager = module_manager_1.default.getInstance();
-                            return [4 /*yield*/, moduleManager.loadSubModules(module.getName(), true)];
+                            return [4 /*yield*/, moduleManager.loadModuleRecursively(module.getName(), true)];
                         case 1:
                             _a.sent();
                             if (!this.mountedModules.has(module.getName())) {
@@ -458,40 +501,19 @@ define("core/container/page_container", ["require", "exports", "core/container/c
                             console.log(module.getName() + " is lazy loaded.");
                             _a.label = 2;
                         case 2:
-                            if (this.activeModule) {
-                                this.hideModule(this.activeModule);
-                            }
                             module.initialize(parcel);
-                            this.showModule(module);
-                            previousActiveModule = this.activeModule;
-                            this.activeModule = module;
-                            //その他モジュールの非表示化
-                            this.mountedModules.forEach(function (m) {
-                                if (m !== module && m !== previousActiveModule)
-                                    _this.hideModule(m);
-                            });
                             return [2 /*return*/, true];
                     }
                 });
             });
         };
-        PageContainer.prototype.showModule = function (targetModule) {
-            var driver;
-            if (driver = this.cssTransitionDrivers.get(targetModule.getName())) {
-                driver.show();
+        PageContainer.prototype.activateModule = function (module, withoutTransition) {
+            if (this.activeModule) {
+                this.activeModule.hide();
             }
-            else {
-                targetModule.show();
-            }
-        };
-        PageContainer.prototype.hideModule = function (targetModule) {
-            var driver;
-            if (driver = this.cssTransitionDrivers.get(targetModule.getName())) {
-                driver.hide();
-            }
-            else {
-                targetModule.hide();
-            }
+            this.activeModule = module;
+            module.show(withoutTransition);
+            this.triggerSubContainerNavigationEvent();
         };
         PageContainer.prototype.showPreviousModule = function () {
             if (this.moduleChangeHistory.length > 0) {
@@ -501,10 +523,15 @@ define("core/container/page_container", ["require", "exports", "core/container/c
                 this.activateModule(this.moduleChangeHistory[this.moduleChangeHistory.length - 1]);
             }
             else {
-                if (this.activeModule) {
-                    this.hideModule(this.activeModule);
+                if (this.activeModule && this.activeModule !== this.defaultModule) {
+                    this.activeModule.hide();
                 }
             }
+        };
+        PageContainer.prototype.hideAllModules = function () {
+            this.mountedModules.forEach(function (m) {
+                m.hide();
+            });
         };
         return PageContainer;
     }(container_1.default));
@@ -515,8 +542,8 @@ define("core/container/flat_container", ["require", "exports", "core/container/c
     Object.defineProperty(exports, "__esModule", { value: true });
     var FlatContainer = /** @class */ (function (_super) {
         __extends(FlatContainer, _super);
-        function FlatContainer(id, bindDomElement, parent, cssTransitionOptions) {
-            var _this = _super.call(this, id, bindDomElement, parent, cssTransitionOptions) || this;
+        function FlatContainer(id, bindDomElement, owner, cssTransitionOptions) {
+            var _this = _super.call(this, id, bindDomElement, owner, cssTransitionOptions) || this;
             _this.moduleOrders = new Map();
             _this.scrollBoxElement = document.createElement("div");
             _this.scrollBoxElement.style.position = "absolute";
@@ -557,6 +584,9 @@ define("core/container/flat_container", ["require", "exports", "core/container/c
                 m.initialize(parcel);
                 m.show();
             });
+            if (this.defaultModule) {
+                this.forward(this.defaultModule, parcel);
+            }
         };
         FlatContainer.prototype.activateModule = function (module, parcel) {
             return __awaiter(this, void 0, void 0, function () {
@@ -568,6 +598,8 @@ define("core/container/flat_container", ["require", "exports", "core/container/c
                     leftIndex = this.moduleOrders.get(module.getName());
                     transX = Math.round(10000 / this.mountedModules.size * leftIndex) / 100;
                     this.scrollBoxElement.style.transform = "translate(-" + String(transX) + "%)";
+                    this.activeModule = module;
+                    this.triggerSubContainerNavigationEvent();
                     return [2 /*return*/, true];
                 });
             });
@@ -619,19 +651,19 @@ define("core/container/container_manager", ["require", "exports", "core/common/r
         ContainerManager.prototype.windowResizeEventHandler = function (event) {
             this.rootContainer.onResize();
         };
-        ContainerManager.prototype.createContainer = function (id, type, bindDomElement, parent) {
+        ContainerManager.prototype.createContainer = function (id, type, bindDomElement, owner) {
             if (this.containers.has(id)) {
                 throw new runtime_error_3.default("コンテナID '" + id + "' は既に登録されています。");
             }
             var newContainer = null;
             if (!type || type === "separated") {
                 //newContainer = new PageContainer(id, bindDomElement);
-                newContainer = new page_container_1.default(id, bindDomElement, parent, {
+                newContainer = new page_container_1.default(id, bindDomElement, owner, {
                     enableCssTransition: true
                 });
             }
             else if ("continuous") {
-                newContainer = new flat_container_1.default(id, bindDomElement, parent);
+                newContainer = new flat_container_1.default(id, bindDomElement, owner);
             }
             this.containers.set(id, newContainer);
             return newContainer;
@@ -707,7 +739,7 @@ define("core/common/types", ["require", "exports"], function (require, exports) 
     }());
     exports.CssSize = CssSize;
 });
-define("core/overlay/overlay", ["require", "exports", "core/overlay/overlay_manager", "core/common/types", "core/common/css_transition_driver", "core/container/container_manager"], function (require, exports, overlay_manager_1, types_1, css_transition_driver_2, container_manager_2) {
+define("core/overlay/overlay", ["require", "exports", "core/overlay/overlay_manager", "core/common/types", "core/common/css_transition_driver", "core/container/container_manager"], function (require, exports, overlay_manager_1, types_1, css_transition_driver_1, container_manager_2) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var Overlay = /** @class */ (function () {
@@ -754,7 +786,7 @@ define("core/overlay/overlay", ["require", "exports", "core/overlay/overlay_mana
             this.modalInactiveLayer.style.display = "none";
             this.modalInactiveLayer.style.width = "100%";
             this.modalInactiveLayer.style.height = "100%";
-            this.modalInactiveLayerTransitionDriver = new css_transition_driver_2.default(this.modalInactiveLayer);
+            this.modalInactiveLayerTransitionDriver = new css_transition_driver_1.default(this.modalInactiveLayer);
             this.resize(cssWidth, cssHeight);
             //非表示エレメントの作成（Tabキー対策）
             this.tabFocusMoveTailDetector = document.createElement("div");
@@ -777,7 +809,7 @@ define("core/overlay/overlay", ["require", "exports", "core/overlay/overlay_mana
             this.frameEl.appendChild(this.modalInactiveLayer);
             viewPortElement.appendChild(this.frameEl);
             this.cacheCurrentOffsetSize();
-            this.outerFrameTransitionDriver = new css_transition_driver_2.default(this.frameEl);
+            this.outerFrameTransitionDriver = new css_transition_driver_1.default(this.frameEl);
         }
         Overlay.prototype.__dispachMouseMoveEvent = function (x, y, deltaX, deltaY) {
         };
@@ -1276,8 +1308,8 @@ define("core/overlay/context_menu", ["require", "exports", "core/overlay/overlay
             var x, y;
             x = common_1.default.currentMouseClientX;
             y = common_1.default.currentMouseClientY;
-            var widthPx = this.frameEl.offsetWidth;
-            var heightPx = this.frameEl.offsetHeight;
+            var widthPx = this.offsetSizeCache.width;
+            var heightPx = this.offsetSizeCache.height;
             var overlayRightSideX = x + widthPx;
             var overlayBottomSideY = y + heightPx;
             var visibleAreaWidth = window.document.documentElement.clientWidth;
@@ -1466,7 +1498,7 @@ define("core/overlay/drawer", ["require", "exports", "core/overlay/overlay", "co
     }(overlay_3.default));
     exports.default = Drawer;
 });
-define("core/overlay/overlay_manager", ["require", "exports", "core/overlay/dialog_window", "core/common/dto", "core/common/css_transition_driver", "core/overlay/context_menu", "core/overlay/drawer", "core/module/module_manager", "core/common/runtime_error"], function (require, exports, dialog_window_1, dto_3, css_transition_driver_3, context_menu_1, drawer_1, module_manager_3, runtime_error_4) {
+define("core/overlay/overlay_manager", ["require", "exports", "core/overlay/dialog_window", "core/common/dto", "core/common/css_transition_driver", "core/overlay/context_menu", "core/overlay/drawer", "core/module/module_manager", "core/common/runtime_error"], function (require, exports, dialog_window_1, dto_3, css_transition_driver_2, context_menu_1, drawer_1, module_manager_3, runtime_error_4) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var OvarlayManager = /** @class */ (function () {
@@ -1490,7 +1522,7 @@ define("core/overlay/overlay_manager", ["require", "exports", "core/overlay/dial
             this.modalBackgroundLayer.style.height = "100%";
             this.modalBackgroundLayer.style.display = "none";
             this.modalBackgroundLayer.style.zIndex = String(this.MODAL_START_Z_INDEX);
-            this.modalBackgroundLayerTransitionDriver = new css_transition_driver_3.default(this.modalBackgroundLayer);
+            this.modalBackgroundLayerTransitionDriver = new css_transition_driver_2.default(this.modalBackgroundLayer);
             this.onFocusInBindedThis = this.onFocusIn.bind(this);
             this.onMouseDownBindedThis = this.onMouseDown.bind(this);
             this.onMouseMoveBindedThis = this.onMouseMove.bind(this);
@@ -1658,7 +1690,7 @@ define("core/overlay/overlay_manager", ["require", "exports", "core/overlay/dial
                         case 0:
                             if (!!this.overlayManagementTable.has(overlayName)) return [3 /*break*/, 2];
                             moduleManager = module_manager_3.default.getInstance();
-                            return [4 /*yield*/, moduleManager.loadSubModules(overlayName, true)];
+                            return [4 /*yield*/, moduleManager.loadModuleRecursively(overlayName, true)];
                         case 1:
                             _a.sent();
                             if (!this.overlayManagementTable.has(overlayName)) {
@@ -1773,9 +1805,9 @@ define("core/adapter/navigation", ["require", "exports", "core/module/module_rou
         Navigation.prototype.getCurrentOverlay = function () {
             //呼び出し元モジュールのコンテナの最上位コンテナを取得
             var i = 0; //循環時の無限ループ防止用カウンタ
-            var container = this.adapter.getHtmlComponent().getCurrentContainer();
-            while (container.getParent()) {
-                container = container.getParent();
+            var container = this.adapter.getHtmlComponent().getOwnerContainer();
+            while (container.getOwner()) {
+                container = container.getOwner().getOwnerContainer();
                 if (i++ > 100) {
                     throw new runtime_error_5.default("コンテナの親子関係に循環が発生しています。");
                 }
@@ -1793,7 +1825,7 @@ define("core/adapter/navigation", ["require", "exports", "core/module/module_rou
                     else {
                         finalTargetId =
                             this.adapter.getHtmlComponent().
-                                getCurrentContainer().getId() + "::" + targetIdentifier;
+                                getOwnerContainer().getId() + "::" + targetIdentifier;
                     }
                     return [2 /*return*/, this.moduleRouter.forward(finalTargetId, parcel)];
                 });
@@ -1852,23 +1884,16 @@ define("core/adapter/navigation", ["require", "exports", "core/module/module_rou
                 });
             });
         };
-        Navigation.prototype.sendMessage = function (destination, command, message) {
-            return __awaiter(this, void 0, void 0, function () {
-                return __generator(this, function (_a) {
-                    return [2 /*return*/, this.moduleManager.dispatchMessage(destination, command, message)];
-                });
-            });
-        };
         return Navigation;
     }());
     exports.default = Navigation;
 });
-define("core/adapter/html_component_adapter", ["require", "exports", "core/module/module_router", "core/overlay/overlay_manager", "core/common/dto", "core/module/module_manager", "core/adapter/navigation"], function (require, exports, module_router_2, overlay_manager_7, dto_4, module_manager_5, navigation_1) {
+define("core/adapter/html_module_adapter", ["require", "exports", "core/module/module_router", "core/overlay/overlay_manager", "core/common/dto", "core/module/module_manager", "core/adapter/navigation"], function (require, exports, module_router_2, overlay_manager_7, dto_4, module_manager_5, navigation_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
-    exports.htmlComponentAdapters = new Map();
-    var HTMLComponentAdapter = /** @class */ (function () {
-        function HTMLComponentAdapter() {
+    exports.htmlModuleAdapters = new Map();
+    var HtmlModuleAdapter = /** @class */ (function () {
+        function HtmlModuleAdapter() {
             this.isModified = false;
             this.moduleRouter = module_router_2.default.getInstance();
             this.moduleManager = module_manager_5.default.getInstance();
@@ -1879,29 +1904,39 @@ define("core/adapter/html_component_adapter", ["require", "exports", "core/modul
             };
             this.navigation = new navigation_1.default(this);
         }
-        HTMLComponentAdapter.prototype.setHtmlComponent = function (htmlComponent) {
-            this.htmlComponent = htmlComponent;
+        HtmlModuleAdapter.prototype.setHtmlComponent = function (htmlModule) {
+            this.htmlModule = htmlModule;
         };
-        HTMLComponentAdapter.prototype.getHtmlComponent = function () {
-            return this.htmlComponent;
+        HtmlModuleAdapter.prototype.getHtmlComponent = function () {
+            return this.htmlModule;
         };
-        HTMLComponentAdapter.prototype.triggerOnLoadHandler = function (param) {
+        HtmlModuleAdapter.prototype.setCaption = function (caption) {
+            this.htmlModule.setCaption(caption);
+        };
+        HtmlModuleAdapter.prototype.sendMessage = function (destination, command, message) {
+            return __awaiter(this, void 0, void 0, function () {
+                return __generator(this, function (_a) {
+                    return [2 /*return*/, this.moduleManager.dispatchMessage(destination, command, message)];
+                });
+            });
+        };
+        HtmlModuleAdapter.prototype.triggerOnLoad = function (param) {
             if (this.onLoad)
                 this.onLoad(param);
         };
-        HTMLComponentAdapter.prototype.triggerOnInitializeHandler = function (param) {
+        HtmlModuleAdapter.prototype.triggerOnInitialize = function (param) {
             if (this.onInitialize)
                 this.onInitialize(param);
         };
-        HTMLComponentAdapter.prototype.triggerOnShowHandler = function (isFirst, param) {
+        HtmlModuleAdapter.prototype.triggerOnShow = function (isFirst, param) {
             if (this.onShow)
                 this.onShow(isFirst, param);
         };
-        HTMLComponentAdapter.prototype.triggerOnHideHandler = function (param) {
+        HtmlModuleAdapter.prototype.triggerOnHide = function (param) {
             if (this.onHide)
                 this.onHide(param);
         };
-        HTMLComponentAdapter.prototype.triggerOnExitHandler = function (actionType) {
+        HtmlModuleAdapter.prototype.triggerOnExit = function (actionType) {
             if (this.onExit) {
                 this.onExit(actionType, this.exitCallbackReturnFunctionsObject);
             }
@@ -1909,36 +1944,44 @@ define("core/adapter/html_component_adapter", ["require", "exports", "core/modul
                 this.continueExit(new dto_4.Result(actionType, true));
             }
         };
-        HTMLComponentAdapter.prototype.triggerOnReceiveMessage = function (command, message) {
-            if (this.onReceiveMessage) {
-                this.onReceiveMessage(command, this.returnMessageResponse.bind(this), message);
+        HtmlModuleAdapter.prototype.triggerOnReceiveMessage = function (command, message) {
+            if (this.onMessageReceived) {
+                this.onMessageReceived(command, this.returnMessageResponse.bind(this), message);
             }
             else {
             }
         };
-        HTMLComponentAdapter.prototype.continueExit = function (result) {
-            this.htmlComponent.continueExitProcess(result);
+        HtmlModuleAdapter.prototype.triggerOnSubContainerNavigated = function (subContainerId, currentInfo, histories) {
+            if (this.onSubContainerNavigated) {
+                return this.onSubContainerNavigated(subContainerId, currentInfo, histories);
+            }
+            else {
+                return null;
+            }
         };
-        HTMLComponentAdapter.prototype.cancelExit = function () {
-            this.htmlComponent.cancelExitProcess();
+        HtmlModuleAdapter.prototype.continueExit = function (result) {
+            this.htmlModule.continueExitProcess(result);
         };
-        HTMLComponentAdapter.prototype.returnMessageResponse = function (response) {
-            this.htmlComponent.returnMessageResponse(response);
+        HtmlModuleAdapter.prototype.cancelExit = function () {
+            this.htmlModule.cancelExitProcess();
         };
-        return HTMLComponentAdapter;
+        HtmlModuleAdapter.prototype.returnMessageResponse = function (response) {
+            this.htmlModule.returnMessageResponse(response);
+        };
+        return HtmlModuleAdapter;
     }());
-    exports.default = HTMLComponentAdapter;
+    exports.default = HtmlModuleAdapter;
     var __global = window;
-    __global.__HTMLComponentAdapter = HTMLComponentAdapter;
+    __global.__HtmlModuleAdapter = HtmlModuleAdapter;
     __global.__registerHTMLComponentAdapter = function (moduleIndex, componentClass) {
-        exports.htmlComponentAdapters.set(moduleIndex, componentClass);
+        exports.htmlModuleAdapters.set(moduleIndex, componentClass);
     };
 });
-define("core/module/html_component", ["require", "exports", "core/source_repository"], function (require, exports, source_repository_1) {
+define("core/module/html_module", ["require", "exports", "core/source_repository"], function (require, exports, source_repository_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
-    var HTMLComponent = /** @class */ (function () {
-        function HTMLComponent(name, sourceUri, moduleIndex) {
+    var HtmlModule = /** @class */ (function () {
+        function HtmlModule(name, sourceUri, moduleIndex) {
             this.name = name;
             this.sourceUri = sourceUri;
             this.moduleIndex = moduleIndex;
@@ -1946,17 +1989,24 @@ define("core/module/html_component", ["require", "exports", "core/source_reposit
             this.isMounted = false;
             this.isInitialized = false;
             this.subContainerInfos = new Map();
+            this.caption = "";
             this.htmlAdapter = null;
             this.onCreate();
         }
-        HTMLComponent.prototype.dispatchResizeEvent = function () {
+        HtmlModule.prototype.setCaption = function (caption) {
+            this.caption = caption;
+        };
+        HtmlModule.prototype.subContainerNavigationEventHandler = function (subContainerId, currentInfo, histories) {
+            return this.htmlAdapter.triggerOnSubContainerNavigated(subContainerId, currentInfo, histories);
+        };
+        HtmlModule.prototype.dispatchResizeEvent = function () {
             if (!this.wrapperElement)
                 return;
             this.subContainerInfos.forEach(function (containerInfo) {
                 containerInfo.container.onResize();
             });
         };
-        HTMLComponent.prototype.fetch = function () {
+        HtmlModule.prototype.fetch = function () {
             return __awaiter(this, void 0, void 0, function () {
                 var repository, _a;
                 return __generator(this, function (_b) {
@@ -1974,45 +2024,55 @@ define("core/module/html_component", ["require", "exports", "core/source_reposit
                 });
             });
         };
-        HTMLComponent.prototype.initialize = function (parcel) {
+        HtmlModule.prototype.initialize = function (parcel) {
             this.subContainerInfos.forEach(function (containerInfo) {
                 containerInfo.container.initialize(parcel);
             });
-            this.htmlAdapter.triggerOnInitializeHandler(parcel);
+            this.htmlAdapter.triggerOnInitialize(parcel);
         };
-        HTMLComponent.prototype.show = function () {
-            this.wrapperElement.style.display = "";
-            this.wrapperElement.style.visibility = "";
-            this.htmlAdapter.triggerOnShowHandler(false, null);
+        HtmlModule.prototype.show = function (withoutTransition) {
+            if (this.cssTransitionDriver) {
+                this.cssTransitionDriver.show(withoutTransition);
+            }
+            else {
+                this.wrapperElement.style.display = "";
+                this.wrapperElement.style.visibility = "";
+            }
+            this.htmlAdapter.triggerOnShow(false, null);
             this.subContainerInfos.forEach(function (containerInfo) {
                 containerInfo.container.onShow();
             });
         };
-        HTMLComponent.prototype.hide = function () {
-            if (this.wrapperElement.style.visibility !== "hidden") {
-                this.wrapperElement.style.display = "none";
+        HtmlModule.prototype.hide = function (withoutTransition) {
+            if (this.cssTransitionDriver) {
+                this.cssTransitionDriver.hide(withoutTransition);
             }
-            this.htmlAdapter.triggerOnHideHandler(null);
+            else {
+                if (this.wrapperElement.style.visibility !== "hidden") {
+                    this.wrapperElement.style.display = "none";
+                }
+            }
+            this.htmlAdapter.triggerOnHide(null);
         };
-        HTMLComponent.prototype.waitForExit = function () {
+        HtmlModule.prototype.waitForExit = function () {
             var _this = this;
             return new Promise(function (resolve) {
                 _this.exitForWaitResolver = resolve;
             });
         };
-        HTMLComponent.prototype.exit = function (actionType) {
+        HtmlModule.prototype.exit = function (actionType) {
             return __awaiter(this, void 0, void 0, function () {
                 var _this = this;
                 return __generator(this, function (_a) {
                     //通常、backナビゲーション時にcontainerオブジェクト経由でコールされる
                     return [2 /*return*/, new Promise(function (resolve) {
                             _this.exitResolver = resolve;
-                            _this.htmlAdapter.triggerOnExitHandler(actionType);
+                            _this.htmlAdapter.triggerOnExit(actionType);
                         })];
                 });
             });
         };
-        HTMLComponent.prototype.continueExitProcess = function (result) {
+        HtmlModule.prototype.continueExitProcess = function (result) {
             if (this.exitResolver) {
                 this.exitResolver(true);
                 this.exitResolver = null;
@@ -2022,13 +2082,13 @@ define("core/module/html_component", ["require", "exports", "core/source_reposit
                 this.exitForWaitResolver = null;
             }
         };
-        HTMLComponent.prototype.cancelExitProcess = function () {
+        HtmlModule.prototype.cancelExitProcess = function () {
             if (this.exitResolver) {
                 this.exitResolver(false);
                 this.exitResolver = null;
             }
         };
-        HTMLComponent.prototype.passMessage = function (command, message) {
+        HtmlModule.prototype.passMessage = function (command, message) {
             return __awaiter(this, void 0, void 0, function () {
                 var _this = this;
                 return __generator(this, function (_a) {
@@ -2039,50 +2099,50 @@ define("core/module/html_component", ["require", "exports", "core/source_reposit
                 });
             });
         };
-        HTMLComponent.prototype.returnMessageResponse = function (messageResponse) {
+        HtmlModule.prototype.returnMessageResponse = function (messageResponse) {
             if (this.passMessage) {
                 this.passMessageResolver(messageResponse);
                 this.passMessageResolver = null;
             }
         };
-        HTMLComponent.prototype.getElement = function () {
+        HtmlModule.prototype.getElement = function () {
             throw this.wrapperElement;
         };
-        HTMLComponent.prototype.getCurrentContainer = function () {
+        HtmlModule.prototype.getOwnerContainer = function () {
             return this.currentContainer;
         };
-        HTMLComponent.prototype.getSubContainerNames = function () {
+        HtmlModule.prototype.getSubContainerNames = function () {
             var ary = new Array();
             this.subContainerInfos.forEach(function (c) {
                 ary.push(c.name);
             });
             return ary;
         };
-        HTMLComponent.prototype.getName = function () {
+        HtmlModule.prototype.getName = function () {
             return this.name;
         };
-        HTMLComponent.prototype.getCaption = function () {
-            return this.name;
+        HtmlModule.prototype.getCaption = function () {
+            return this.caption;
         };
-        return HTMLComponent;
+        return HtmlModule;
     }());
-    exports.default = HTMLComponent;
+    exports.default = HtmlModule;
 });
-define("core/module/native_component", ["require", "exports", "core/module/html_component", "core/container/container_manager", "core/adapter/html_component_adapter"], function (require, exports, html_component_1, container_manager_3, html_component_adapter_1) {
+define("core/module/plain_html_module", ["require", "exports", "core/module/html_module", "core/container/container_manager", "core/adapter/html_module_adapter", "core/common/css_transition_driver"], function (require, exports, html_module_1, container_manager_3, html_module_adapter_1, css_transition_driver_3) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
-    var NativeComponent = /** @class */ (function (_super) {
-        __extends(NativeComponent, _super);
-        function NativeComponent() {
+    var PlainHtmlModule = /** @class */ (function (_super) {
+        __extends(PlainHtmlModule, _super);
+        function PlainHtmlModule() {
             return _super !== null && _super.apply(this, arguments) || this;
         }
-        NativeComponent.prototype.onCreate = function () {
+        PlainHtmlModule.prototype.onCreate = function () {
             this.prototypeTemplateBegin =
-                "(function() {\n            var Com = function(moduleIndex) {\n                this.super = __HTMLComponentAdapter.prototype;\n                __HTMLComponentAdapter.call(this, moduleIndex);\n        ";
+                "(function() {\n            var Com = function(moduleIndex) {\n                this.super = __HtmlModuleAdapter.prototype;\n                __HtmlModuleAdapter.call(this, moduleIndex);\n        ";
             this.prototypeTemplateEnd =
-                "   }\n            Object.setPrototypeOf(Com.prototype, __HTMLComponentAdapter.prototype);\n            __registerHTMLComponentAdapter(" + this.moduleIndex + ", new Com(" + this.moduleIndex + "));\n         })();\n        ";
+                "   }\n            Object.setPrototypeOf(Com.prototype, __HtmlModuleAdapter.prototype);\n            __registerHTMLComponentAdapter(" + this.moduleIndex + ", new Com(" + this.moduleIndex + "));\n         })();\n        ";
         };
-        NativeComponent.prototype.loadSubContainerInfos = function () {
+        PlainHtmlModule.prototype.loadSubContainerInfos = function () {
             var match;
             //高速化のためタグ全体を個別に抽出してから各属性を抽出する
             var tagExtractRegExp = /<div .*?data-container-name[ =].*?>/g;
@@ -2100,7 +2160,7 @@ define("core/module/native_component", ["require", "exports", "core/module/html_
                 });
             }
         };
-        NativeComponent.prototype.mount = function (elementAttachHandler) {
+        PlainHtmlModule.prototype.mount = function (elementAttachHandler, cssTransitionOptions) {
             return __awaiter(this, void 0, void 0, function () {
                 var localPrefix, localizeRegExp, containerManager;
                 var _this = this;
@@ -2126,6 +2186,10 @@ define("core/module/native_component", ["require", "exports", "core/module/html_
                             this.wrapperElement.style.height = "100%";
                             this.wrapperElement.style.visibility = "hidden";
                             this.wrapperElement.innerHTML = this.source;
+                            if (cssTransitionOptions && cssTransitionOptions.enableCssTransition) {
+                                this.cssTransitionDriver = new css_transition_driver_3.default(this.wrapperElement);
+                                this.cssTransitionDriver.setCustomTransitionClasses(cssTransitionOptions.cssTransitionDriverClasses);
+                            }
                             this.currentContainer = elementAttachHandler(this.wrapperElement, this.name);
                             //scriptタグを実行
                             this.evalScripts();
@@ -2134,18 +2198,18 @@ define("core/module/native_component", ["require", "exports", "core/module/html_
                                 var localElementId = domId.replace(localizeRegExp, localPrefix);
                                 var containerEl = document.getElementById(localElementId);
                                 var containerId = _this.name + "." + containerInfo.name;
-                                containerInfo.container = containerManager.createContainer(containerId, containerInfo.type, containerEl, _this.currentContainer);
+                                containerInfo.container = containerManager.createContainer(containerId, containerInfo.type, containerEl, _this);
                             });
                             this.isMounted = true;
-                            this.htmlAdapter = html_component_adapter_1.htmlComponentAdapters.get(this.moduleIndex);
+                            this.htmlAdapter = html_module_adapter_1.htmlModuleAdapters.get(this.moduleIndex);
                             this.htmlAdapter.setHtmlComponent(this);
-                            this.htmlAdapter.triggerOnLoadHandler("name is " + this.name);
+                            this.htmlAdapter.triggerOnLoad("name is " + this.name);
                             return [2 /*return*/, true];
                     }
                 });
             });
         };
-        NativeComponent.prototype.evalScripts = function () {
+        PlainHtmlModule.prototype.evalScripts = function () {
             var nativeScript = "";
             var prototypeScript = "";
             var classScript = "";
@@ -2187,19 +2251,19 @@ define("core/module/native_component", ["require", "exports", "core/module/html_
                 this.wrapperElement.removeChild(element);
             }
         };
-        NativeComponent.prototype.changeModuleCssPosition = function (left, top) {
+        PlainHtmlModule.prototype.changeModuleCssPosition = function (left, top) {
             this.wrapperElement.style.left = left;
             this.wrapperElement.style.top = top;
         };
-        NativeComponent.prototype.changeModuleCssSize = function (width, height) {
+        PlainHtmlModule.prototype.changeModuleCssSize = function (width, height) {
             this.wrapperElement.style.width = width;
             this.wrapperElement.style.height = height;
         };
-        return NativeComponent;
-    }(html_component_1.default));
-    exports.default = NativeComponent;
+        return PlainHtmlModule;
+    }(html_module_1.default));
+    exports.default = PlainHtmlModule;
 });
-define("core/module/module_manager", ["require", "exports", "core/module/native_component", "core/common/runtime_error", "core/container/container_manager", "core/overlay/overlay_manager"], function (require, exports, native_component_1, runtime_error_6, container_manager_4, overlay_manager_8) {
+define("core/module/module_manager", ["require", "exports", "core/module/plain_html_module", "core/common/runtime_error", "core/container/container_manager", "core/overlay/overlay_manager"], function (require, exports, plain_html_module_1, runtime_error_6, container_manager_4, overlay_manager_8) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var DisplayMode;
@@ -2275,7 +2339,7 @@ define("core/module/module_manager", ["require", "exports", "core/module/native_
                             newModule = null;
                             //モジュールインスタンス生成
                             if (description.moduleType === ModuleType.Native || !description.moduleType) {
-                                newModule = new native_component_1.default(description.name, description.sourceUri, ModuleManager.instanceSequence++);
+                                newModule = new plain_html_module_1.default(description.name, description.sourceUri, ModuleManager.instanceSequence++);
                             }
                             else {
                                 throw new runtime_error_6.default("不明な種類のコンポーネントが指定されました。");
@@ -2325,7 +2389,7 @@ define("core/module/module_manager", ["require", "exports", "core/module/native_
                                 // }
                             });
                             //ツリールートから順番にモジュールのロードを実行（遅延ロードモジュールを除く
-                            return [4 /*yield*/, this.loadSubModules(ModuleManager.ROOT_NAME)];
+                            return [4 /*yield*/, this.loadModuleRecursively(ModuleManager.ROOT_NAME)];
                         case 6:
                             //ツリールートから順番にモジュールのロードを実行（遅延ロードモジュールを除く
                             _b.sent();
@@ -2334,7 +2398,7 @@ define("core/module/module_manager", ["require", "exports", "core/module/native_
                 });
             });
         };
-        ModuleManager.prototype.loadSubModules = function (moduleName, forceLoading) {
+        ModuleManager.prototype.loadModuleRecursively = function (moduleName, forceLoading) {
             return __awaiter(this, void 0, void 0, function () {
                 var dependencyInfo, containerManager, overlayManager, moduleDescription, displayMode, module, targetContainer, overlay, _i, _a, subModuleName;
                 return __generator(this, function (_b) {
@@ -2357,7 +2421,6 @@ define("core/module/module_manager", ["require", "exports", "core/module/native_
                         case 1:
                             _b.sent();
                             if (moduleDescription.isContainerDefault) {
-                                //targetContainer.activateModule(module);
                                 targetContainer.setDefaultModule(module);
                             }
                             return [3 /*break*/, 3];
@@ -2379,7 +2442,7 @@ define("core/module/module_manager", ["require", "exports", "core/module/native_
                             return [4 /*yield*/, overlay.getContainer().addModule(module)];
                         case 5:
                             _b.sent();
-                            overlay.getContainer().activateModule(module);
+                            overlay.getContainer().setDefaultModule(module);
                             _b.label = 6;
                         case 6:
                             _i = 0, _a = dependencyInfo.subModuleNames;
@@ -2388,7 +2451,7 @@ define("core/module/module_manager", ["require", "exports", "core/module/native_
                             if (!(_i < _a.length)) return [3 /*break*/, 11];
                             subModuleName = _a[_i];
                             if (!!this.dependencyInfoMap.get(subModuleName).moduleDescription.lazyLoading) return [3 /*break*/, 9];
-                            return [4 /*yield*/, this.loadSubModules(subModuleName)];
+                            return [4 /*yield*/, this.loadModuleRecursively(subModuleName)];
                         case 8:
                             _b.sent();
                             return [3 /*break*/, 10];

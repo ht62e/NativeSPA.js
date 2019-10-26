@@ -1,3 +1,13 @@
+<script>
+    this.onSubContainerNavigated = function(subContainerId, currentInfo, histories) {
+        console.log(subContainerId);
+        console.log(currentInfo);
+        console.log(histories);
+        this.sendMessage("header", "change_caption", {caption: currentInfo.caption});
+    }
+
+</script>
+
 <div id="\:all">
     <div id="\:header" data-container-name="header"></div>
     <div id="\:body" data-container-name="body"></div>

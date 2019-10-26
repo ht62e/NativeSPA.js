@@ -216,7 +216,7 @@ export default class OvarlayManager {
     private async checkAndLoadLazyModule(overlayName: string): Promise<boolean> {
         if (!this.overlayManagementTable.has(overlayName)) {
             const moduleManager = ModuleManager.getInstance();
-            await moduleManager.loadSubModules(overlayName, true);
+            await moduleManager.loadModuleRecursively(overlayName, true);
 
             if (!this.overlayManagementTable.has(overlayName)) {
                 throw new RuntimeError("指定されたモジュールはコンテナに登録されていません。");
