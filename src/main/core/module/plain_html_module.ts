@@ -3,6 +3,7 @@ import HtmlModule from "./html_module";
 import ContainerManager from "../container/container_manager";
 import { htmlModuleAdapters } from "../adapter/html_module_adapter";
 import CssTransitionDriver from "../common/css_transition_driver";
+import SourceRepository from "../source_repository";
 
 export default class PlainHtmlModule extends HtmlModule {
     private prototypeTemplateBegin: string;
@@ -72,8 +73,7 @@ export default class PlainHtmlModule extends HtmlModule {
         
         this.currentContainer = elementAttachHandler(this.wrapperElement, this.name);
 
-        //scriptタグを実行
-        this.evalScripts();
+        await this.evalScripts();
 
         //サブコンテナをContainerManagerで生成・登録
         const containerManager = ContainerManager.getInstance();
@@ -93,7 +93,8 @@ export default class PlainHtmlModule extends HtmlModule {
         return true;
     }
 
-    private evalScripts(): void {
+    private async evalScripts(): Promise<void> {
+        let jsSource = "";
         let nativeScript = "";
         let prototypeScript = "";
         let classScript = "";
@@ -104,13 +105,21 @@ export default class PlainHtmlModule extends HtmlModule {
         for (let i = 0; i < nodeList.length; i++) {
             const scriptElement: HTMLScriptElement = nodeList[i] as HTMLScriptElement;
             const scopeMode: string = scriptElement.dataset["scopeMode"];
+            const sourceUri: string = scriptElement.dataset["source"];
+
+            if (sourceUri) {
+                const repository = SourceRepository.getInstance();
+                jsSource = await repository.fetch(sourceUri);
+            } else {
+                jsSource = scriptElement.textContent;
+            }
 
             if (scopeMode === "native") {
-                nativeScript += scriptElement.textContent;
+                nativeScript += jsSource;
             } else if (!scopeMode || scopeMode === "prototype")  { //default
-                prototypeScript += scriptElement.textContent;
+                prototypeScript += jsSource;
             } else if (scopeMode === "class") {
-                classScript += scriptElement.textContent;
+                classScript += jsSource;
             }
             initialScriptElements.push(scriptElement);            
         }

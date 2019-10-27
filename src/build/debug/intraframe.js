@@ -2124,11 +2124,14 @@ define("core/module/html_module", ["require", "exports", "core/source_repository
         HtmlModule.prototype.getCaption = function () {
             return this.caption;
         };
+        HtmlModule.prototype.extractTemplateContent = function (source) {
+            return "";
+        };
         return HtmlModule;
     }());
     exports.default = HtmlModule;
 });
-define("core/module/plain_html_module", ["require", "exports", "core/module/html_module", "core/container/container_manager", "core/adapter/html_module_adapter", "core/common/css_transition_driver"], function (require, exports, html_module_1, container_manager_3, html_module_adapter_1, css_transition_driver_3) {
+define("core/module/plain_html_module", ["require", "exports", "core/module/html_module", "core/container/container_manager", "core/adapter/html_module_adapter", "core/common/css_transition_driver", "core/source_repository"], function (require, exports, html_module_1, container_manager_3, html_module_adapter_1, css_transition_driver_3, source_repository_2) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var PlainHtmlModule = /** @class */ (function (_super) {
@@ -2191,8 +2194,9 @@ define("core/module/plain_html_module", ["require", "exports", "core/module/html
                                 this.cssTransitionDriver.setCustomTransitionClasses(cssTransitionOptions.cssTransitionDriverClasses);
                             }
                             this.currentContainer = elementAttachHandler(this.wrapperElement, this.name);
-                            //scriptタグを実行
-                            this.evalScripts();
+                            return [4 /*yield*/, this.evalScripts()];
+                        case 3:
+                            _a.sent();
                             containerManager = container_manager_3.default.getInstance();
                             this.subContainerInfos.forEach(function (containerInfo, domId) {
                                 var localElementId = domId.replace(localizeRegExp, localPrefix);
@@ -2210,46 +2214,74 @@ define("core/module/plain_html_module", ["require", "exports", "core/module/html
             });
         };
         PlainHtmlModule.prototype.evalScripts = function () {
-            var nativeScript = "";
-            var prototypeScript = "";
-            var classScript = "";
-            var initialScriptElements = new Array();
-            var nodeList = this.wrapperElement.querySelectorAll("script");
-            for (var i = 0; i < nodeList.length; i++) {
-                var scriptElement = nodeList[i];
-                var scopeMode = scriptElement.dataset["scopeMode"];
-                if (scopeMode === "native") {
-                    nativeScript += scriptElement.textContent;
-                }
-                else if (!scopeMode || scopeMode === "prototype") { //default
-                    prototypeScript += scriptElement.textContent;
-                }
-                else if (scopeMode === "class") {
-                    classScript += scriptElement.textContent;
-                }
-                initialScriptElements.push(scriptElement);
-            }
-            var nativeScriptElement = document.createElement("script");
-            nativeScriptElement.textContent = nativeScript;
-            this.wrapperElement.appendChild(nativeScriptElement);
-            //prototypeScriptとclassScriptは1つのHTMLファイルにつき1種類だけ
-            if (classScript) {
-                var classScriptElement = document.createElement("script");
-                classScriptElement.textContent = classScript;
-                this.wrapperElement.appendChild(classScriptElement);
-            }
-            else {
-                var prototypeScriptElement = document.createElement("script");
-                prototypeScript = this.prototypeTemplateBegin +
-                    prototypeScript +
-                    this.prototypeTemplateEnd;
-                prototypeScriptElement.textContent = prototypeScript;
-                this.wrapperElement.appendChild(prototypeScriptElement);
-            }
-            for (var _i = 0, initialScriptElements_1 = initialScriptElements; _i < initialScriptElements_1.length; _i++) {
-                var element = initialScriptElements_1[_i];
-                this.wrapperElement.removeChild(element);
-            }
+            return __awaiter(this, void 0, void 0, function () {
+                var jsSource, nativeScript, prototypeScript, classScript, initialScriptElements, nodeList, i, scriptElement, scopeMode, sourceUri, repository, nativeScriptElement, classScriptElement, prototypeScriptElement, _i, initialScriptElements_1, element;
+                return __generator(this, function (_a) {
+                    switch (_a.label) {
+                        case 0:
+                            jsSource = "";
+                            nativeScript = "";
+                            prototypeScript = "";
+                            classScript = "";
+                            initialScriptElements = new Array();
+                            nodeList = this.wrapperElement.querySelectorAll("script");
+                            i = 0;
+                            _a.label = 1;
+                        case 1:
+                            if (!(i < nodeList.length)) return [3 /*break*/, 6];
+                            scriptElement = nodeList[i];
+                            scopeMode = scriptElement.dataset["scopeMode"];
+                            sourceUri = scriptElement.dataset["source"];
+                            if (!sourceUri) return [3 /*break*/, 3];
+                            repository = source_repository_2.default.getInstance();
+                            return [4 /*yield*/, repository.fetch(sourceUri)];
+                        case 2:
+                            jsSource = _a.sent();
+                            return [3 /*break*/, 4];
+                        case 3:
+                            jsSource = scriptElement.textContent;
+                            _a.label = 4;
+                        case 4:
+                            if (scopeMode === "native") {
+                                nativeScript += jsSource;
+                            }
+                            else if (!scopeMode || scopeMode === "prototype") { //default
+                                prototypeScript += jsSource;
+                            }
+                            else if (scopeMode === "class") {
+                                classScript += jsSource;
+                            }
+                            initialScriptElements.push(scriptElement);
+                            _a.label = 5;
+                        case 5:
+                            i++;
+                            return [3 /*break*/, 1];
+                        case 6:
+                            nativeScriptElement = document.createElement("script");
+                            nativeScriptElement.textContent = nativeScript;
+                            this.wrapperElement.appendChild(nativeScriptElement);
+                            //prototypeScriptとclassScriptは1つのHTMLファイルにつき1種類だけ
+                            if (classScript) {
+                                classScriptElement = document.createElement("script");
+                                classScriptElement.textContent = classScript;
+                                this.wrapperElement.appendChild(classScriptElement);
+                            }
+                            else {
+                                prototypeScriptElement = document.createElement("script");
+                                prototypeScript = this.prototypeTemplateBegin +
+                                    prototypeScript +
+                                    this.prototypeTemplateEnd;
+                                prototypeScriptElement.textContent = prototypeScript;
+                                this.wrapperElement.appendChild(prototypeScriptElement);
+                            }
+                            for (_i = 0, initialScriptElements_1 = initialScriptElements; _i < initialScriptElements_1.length; _i++) {
+                                element = initialScriptElements_1[_i];
+                                this.wrapperElement.removeChild(element);
+                            }
+                            return [2 /*return*/];
+                    }
+                });
+            });
         };
         PlainHtmlModule.prototype.changeModuleCssPosition = function (left, top) {
             this.wrapperElement.style.left = left;
@@ -2603,7 +2635,7 @@ define("core/common/shared_css_script_loader", ["require", "exports"], function 
     }());
     exports.default = SharedCssScriptLoader;
 });
-define("core/configurer", ["require", "exports", "core/module/module_manager", "core/source_repository", "core/common/shared_css_script_loader"], function (require, exports, module_manager_6, source_repository_2, shared_css_script_loader_1) {
+define("core/configurer", ["require", "exports", "core/module/module_manager", "core/source_repository", "core/common/shared_css_script_loader"], function (require, exports, module_manager_6, source_repository_3, shared_css_script_loader_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var Configurer = /** @class */ (function () {
@@ -2619,7 +2651,7 @@ define("core/configurer", ["require", "exports", "core/module/module_manager", "
             this.appRootId = appRootId;
         };
         Configurer.prototype.setSourceVersion = function (version) {
-            source_repository_2.default.getInstance().setSourceVersion(version);
+            source_repository_3.default.getInstance().setSourceVersion(version);
         };
         Configurer.prototype.getAppRootId = function () {
             return this.appRootId;

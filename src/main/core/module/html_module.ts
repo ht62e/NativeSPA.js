@@ -165,6 +165,10 @@ export default abstract class HtmlModule implements Module {
         return this.caption;
     }
     
+    protected extractTemplateContent(source: string): string {
+        
+        return "";
+    }
 }
 
 
