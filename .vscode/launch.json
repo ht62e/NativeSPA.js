@@ -8,7 +8,7 @@
             "type": "chrome",
             "request": "launch",
             "name": "Launch Chrome With DevMode",
-            "file": "${workspaceRoot}/index.html",
+            "file": "${workspaceRoot}/sample/index.html",
             "sourceMaps": true,
             "webRoot": "${workspaceFolder}",
             "runtimeArgs": [

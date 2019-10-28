@@ -2685,6 +2685,7 @@ define("core/configurer", ["require", "exports", "core/module/module_manager", "
 define("intraframe", ["require", "exports", "core/module/module_manager", "core/container/container_manager", "core/overlay/overlay_manager", "core/common/common", "core/configurer", "core/common/runtime_error"], function (require, exports, module_manager_7, container_manager_5, overlay_manager_9, common_2, configurer_1, runtime_error_7) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
+    console.log("aaaa");
     if (document["documentMode"]) {
         common_2.default.isMsIE = true;
     }
