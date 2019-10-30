@@ -1,4 +1,3 @@
-import ModuleRouter from "../module/module_router";
 import HtmlModule from "../module/html_module";
 import OvarlayManager from "../overlay/overlay_manager";
 import { Parcel, ActionType, Result } from "../common/dto";
@@ -12,7 +11,6 @@ export default abstract class HtmlModuleAdapter {
     protected htmlModule: HtmlModule;
     protected isModified: boolean = false;
 
-    protected moduleRouter: ModuleRouter = ModuleRouter.getInstance();
     protected moduleManager: ModuleManager = ModuleManager.getInstance();
     protected overlayManager: OvarlayManager = OvarlayManager.getInstance();
 
@@ -32,12 +30,16 @@ export default abstract class HtmlModuleAdapter {
         this.htmlModule = htmlModule;
     }
 
-    public getHtmlComponent(): HtmlModule {
+    public getHtmlModule(): HtmlModule {
         return this.htmlModule;
     }
 
     public setCaption(caption: string) {
         this.htmlModule.setCaption(caption);
+    }
+
+    public exit(actionType: ActionType) {
+        this.htmlModule.exit(actionType);
     }
 
     public async sendMessage(destination: string, command: string, message?: any): Promise<any> {

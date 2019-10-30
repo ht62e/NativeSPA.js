@@ -29,7 +29,7 @@ export default class FlatContainer extends Container {
     }
 
     public async addModule(module: Module): Promise<boolean> {
-        this.mountedModules.set(module.getName(), module);
+        this.mountedModules.set(module.getName(), [module]);
         this.moduleOrders.set(module.getName(), this.mountedModules.size - 1);
 
         await module.mount((element: HTMLDivElement): Container => {
@@ -43,9 +43,9 @@ export default class FlatContainer extends Container {
 
     public initialize(parcel?: Parcel): void {
         this.updateAllModulePositionAndSize();
-        this.mountedModules.forEach((m: Module) => {
-            m.initialize(parcel);
-            m.show();
+        this.mountedModules.forEach((m: Array<Module>) => {
+            m[0].initialize(parcel);
+            m[0].show();
         });
 
         if (this.defaultModule) {
@@ -80,11 +80,11 @@ export default class FlatContainer extends Container {
     protected updateAllModulePositionAndSize() {
         const leftValueCommon = "calc(100% / " + this.mountedModules.size + " * "; //+ leftIndex + ")";
         const widthValue = String(Math.round(1.0 / this.mountedModules.size * 10000) / 100) + "%";
-        this.mountedModules.forEach((m: Module) => {
-            const order = this.moduleOrders.get(m.getName());
+        this.mountedModules.forEach((m: Array<Module>) => {
+            const order = this.moduleOrders.get(m[0].getName());
             const leftValue = leftValueCommon + order + ")";
-            m.changeModuleCssPosition(leftValue, "0px");
-            m.changeModuleCssSize(widthValue, "100%");
+            m[0].changeModuleCssPosition(leftValue, "0px");
+            m[0].changeModuleCssSize(widthValue, "100%");
         });        
     }
 

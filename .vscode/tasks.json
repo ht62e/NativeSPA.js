@@ -1,10 +1,9 @@
 {
-// tasks.json 形式の詳細についての資料は、
-    // https://go.microsoft.com/fwlink/?LinkId=733558 をご覧ください
     "version": "2.0.0",
+    "command": "tsc",
     "tasks": [
         {
-            "label": "build",
+            "label": "debug-build",
             "type": "typescript",
             "tsconfig": "tsconfig.json",
             "problemMatcher": [
@@ -14,6 +13,15 @@
                 "kind": "build",
                 "isDefault": true
             }
+        },
+        {
+            "label": "release-build",
+            "type": "typescript",
+            "tsconfig": "tsconfig.release.json",
+            "problemMatcher": [
+                "$tsc"
+            ],
+            "group": "build"
         }
     ]
 }

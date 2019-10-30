@@ -11,8 +11,12 @@ export default class PageContainer extends Container {
         bindDomElement.classList.add("itm_page_container");
     }
 
-    public async addModule(module: Module): Promise<boolean> {       
-        this.mountedModules.set(module.getName(), module);
+    public async addModule(module: Module): Promise<boolean> {
+        const moduleName = module.getName();
+        if (!this.mountedModules.has(moduleName)) {
+            this.mountedModules.set(moduleName, new Array<Module>());
+        } 
+        this.mountedModules.get(moduleName).push(module);
 
         await module.mount((element: HTMLDivElement): Container => {
             this.bindDomElement.appendChild(element);
@@ -31,10 +35,21 @@ export default class PageContainer extends Container {
         }
     }
 
+    public async jump(module: Module, parcel?: Parcel, withoutTransition?: boolean): Promise<Result> {
+        this.moduleChangeHistory.length = 0;
+        this.moduleChangeHistory.push(module);
+
+        return await this.navigate(module, parcel, withoutTransition);
+    }    
+
     public async forward(module: Module, parcel?: Parcel, withoutTransition?: boolean): Promise<Result> {
         if (this.moduleChangeHistory.indexOf(module) !== -1) return;
         this.moduleChangeHistory.push(module);
 
+        return await this.navigate(module, parcel, withoutTransition);
+    }
+
+    private async navigate(module: Module, parcel?: Parcel, withoutTransition?: boolean): Promise<Result> {
         await this.initializeModule(module, parcel);
         this.activateModule(module, withoutTransition);
 
@@ -101,8 +116,14 @@ export default class PageContainer extends Container {
     }
 
     protected hideAllModules(): void {
-        this.mountedModules.forEach((m: Module) => {
-            m.hide();
-        });        
+        // this.mountedModules.forEach((m: Module) => {
+        //     m.hide();
+        // });
+
+        this.mountedModules.forEach((moduleInstances: Array<Module>) => {
+            moduleInstances.forEach((module: Module) => {
+                module.hide();
+            })
+        });
     }
 }

@@ -1,16 +1,16 @@
 import HtmlModuleAdapter from "./html_module_adapter";
-import ModuleRouter from "../module/module_router";
 import ModuleManager from "../module/module_manager";
 import OvarlayManager from "../overlay/overlay_manager";
 import Overlay, { ShowOptions } from "../overlay/overlay";
 import Container from "../container/container";
 import RuntimeError from "../common/runtime_error";
 import { Parcel, Result, ActionType } from "../common/dto";
+import ContainerManager from "../container/container_manager";
+import Module from "../module/module";
 
 export default class Navigation {
     private adapter: HtmlModuleAdapter;
-    private moduleRouter: ModuleRouter = ModuleRouter.getInstance();
-    private moduleManager: ModuleManager = ModuleManager.getInstance();
+    private containerManager: ContainerManager = ContainerManager.getInstance();
     private overlayManager: OvarlayManager = OvarlayManager.getInstance();
 
     constructor(adapter: HtmlModuleAdapter) {
@@ -20,7 +20,7 @@ export default class Navigation {
     private getCurrentOverlay(): Overlay {
         //呼び出し元モジュールのコンテナの最上位コンテナを取得
         let i = 0; //循環時の無限ループ防止用カウンタ
-        let container: Container = this.adapter.getHtmlComponent().getOwnerContainer();
+        let container: Container = this.adapter.getHtmlModule().getOwnerContainer();
         while (container.getOwner()) {
             container = container.getOwner().getOwnerContainer();
             if (i++ > 100) {
@@ -33,19 +33,32 @@ export default class Navigation {
     }
 
     public async forward(targetIdentifier: string, parcel?: Parcel): Promise<Result> {
-        let finalTargetId;
-        if (targetIdentifier.split("::").length > 1) {
-            finalTargetId = targetIdentifier;
+        let targetContainerId;
+        let moduleName;
+        const tiParts: Array<string> = targetIdentifier.split("::");
+
+        if (tiParts.length > 1) {
+            targetContainerId = tiParts[0];
+            moduleName  = tiParts[1];
         } else {
-            finalTargetId = 
-                this.adapter.getHtmlComponent().
-                getOwnerContainer().getId() + "::" + targetIdentifier;
+            targetContainerId = this.adapter.getHtmlModule().getOwnerContainer().getId();
+            moduleName = targetIdentifier;
         }
-        return this.moduleRouter.forward(finalTargetId, parcel);
+
+        const target: Container = ContainerManager.getInstance().getContainer(targetContainerId);
+        const module: Module = ModuleManager.getInstance().getModule(moduleName);
+
+        return target.forward(module, parcel);
     }
 
-    public startExitProcess(actionType: ActionType) {
-        this.adapter.getHtmlComponent().exit(actionType);
+    public back(targetContainerId: string): void {
+        let containerId;
+        if (targetContainerId) {
+            containerId = targetContainerId;
+        } else {
+            containerId = this.adapter.getHtmlModule().getOwnerContainer().getId();
+        }
+        this.containerManager.getContainer(containerId).back();
     }
 
     public async showWindow(overlayName: string, parcel?: Parcel, options?: ShowOptions): Promise<Result> {

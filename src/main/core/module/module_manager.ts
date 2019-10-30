@@ -188,7 +188,7 @@ export default class ModuleManager {
         
         if (!dependencyInfo.isRoot && (!moduleDescription.lazyLoading || forceLoading)) {
             const displayMode = moduleDescription.displayMode;
-            const module = this.modules.get(moduleDescription.name);
+            const module: Module = this.modules.get(moduleDescription.name);
 
             if (displayMode === DisplayMode.Embedding) {
                 //組み込み

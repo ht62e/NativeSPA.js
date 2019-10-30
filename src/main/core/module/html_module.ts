@@ -26,8 +26,8 @@ export default abstract class HtmlModule implements Module {
     protected abstract onCreate(): void;
     protected abstract loadSubContainerInfos(): void;
     public abstract async mount(elementAttachHandler: (element: HTMLDivElement, ownerModuleName: string) => Container): Promise<boolean>;
-    public abstract changeModuleCssPosition(left: string, top: string);
-    public abstract changeModuleCssSize(width: string, height: string);
+    public abstract changeModuleCssPosition(left: string, top: string): void;
+    public abstract changeModuleCssSize(width: string, height: string): void;
 
     constructor(protected name: string, protected sourceUri: string, protected moduleIndex: number) {
         this.onCreate();

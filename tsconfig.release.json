@@ -1,10 +1,10 @@
 {
     "compilerOptions": {
         "target": "ES5",
-        "sourceMap": true,
+        "sourceMap": false,
         "rootDir": "./src/main",
-        "module": "amd",
-        "outFile": "./build/amd/intraframe.js",
+        "module": "es2015",
+        "outDir": "./build/es2015",
         "lib": [
             "dom",
             "es5",

@@ -9,7 +9,8 @@ export default abstract class Container {
     protected cssTransitionOptions: CssTransitionOptions;
 
     protected activeModule: Module;
-    protected mountedModules = new Map<string, Module>();
+    //protected mountedModules = new Map<string, Module>();
+    protected mountedModules = new Map<string, Array<Module>>();
     protected moduleChangeHistory = new Array<Module>();
     protected defaultModule: Module;
     protected inBackProcess: boolean = false;
@@ -80,8 +81,13 @@ export default abstract class Container {
     }
 
     public onResize(): void {
-        this.mountedModules.forEach((module: Module) => {
-            module.dispatchResizeEvent();
+        // this.mountedModules.forEach((module: Module) => {
+        //     module.dispatchResizeEvent();
+        // });
+        this.mountedModules.forEach((moduleInstances: Array<Module>) => {
+            moduleInstances.forEach((module: Module) => {
+                module.dispatchResizeEvent();
+            })
         });
     }
 
