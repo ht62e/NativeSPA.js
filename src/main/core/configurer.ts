@@ -1,4 +1,4 @@
-import ModuleManager, { registerOptions } from "./module/module_manager";
+import ModuleManager, { RegisterOptions } from "./module/module_manager";
 import { WindowOptions } from "./overlay/dialog_window";
 import { ContextMenuOptions } from "./overlay/context_menu";
 import { DrawerOptions } from "./overlay/drawer";
@@ -40,19 +40,23 @@ export default class Configurer {
     }
 
     public register(moduleName: string , sourceUri: string, targetContainerId: string, 
-                    isContainerDefault: boolean, options?: registerOptions): void {
+                    isContainerDefault: boolean, options?: RegisterOptions): void {
         this.moduleManager.register(moduleName, sourceUri, targetContainerId, isContainerDefault, options);
     }
 
-    public registerWindow(moduleName: string, sourceUri: string, windowOptions: WindowOptions, options?: registerOptions) {
+    public registerRootModule(moduleName: string, sourceUri: string) {
+        this.moduleManager.register(moduleName, sourceUri, ModuleManager.ROOT_CONTAINER_ID, true, null);
+    }
+
+    public registerWindow(moduleName: string, sourceUri: string, windowOptions: WindowOptions, options?: RegisterOptions) {
         this.moduleManager.registerWindow(moduleName, sourceUri, windowOptions, options);
     }
 
-    public registerContextMenu(moduleName: string, sourceUri: string, contextMenuOptions: ContextMenuOptions, options?: registerOptions) {
+    public registerContextMenu(moduleName: string, sourceUri: string, contextMenuOptions: ContextMenuOptions, options?: RegisterOptions) {
         this.moduleManager.registerContextMenu(moduleName, sourceUri, contextMenuOptions, options);
     }
 
-    public registerDrawer(moduleName: string, sourceUri: string, drawerOptions: DrawerOptions, options?: registerOptions) {
+    public registerDrawer(moduleName: string, sourceUri: string, drawerOptions: DrawerOptions, options?: RegisterOptions) {
         this.moduleManager.registerDrawer(moduleName, sourceUri, drawerOptions, options);
     }
 

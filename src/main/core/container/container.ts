@@ -12,15 +12,15 @@ export default abstract class Container {
     //protected mountedModules = new Map<string, Module>();
     protected mountedModules = new Map<string, Array<Module>>();
     protected moduleChangeHistory = new Array<Module>();
-    protected defaultModule: Module;
+    protected defaultModuleName: string;
     protected inBackProcess: boolean = false;
 
     protected containerParcel: Parcel = null;
     protected containerResult: Result = null;
     
-    public abstract async addModule(module: Module): Promise<boolean>;
+    public abstract async addModule(module: Module): Promise<void>;
     public abstract initialize(parcel?: Parcel): void;
-    public abstract async forward(module: Module, parcel?: Parcel): Promise<Result>;
+    public abstract async forward(moduleName: string, parcel?: Parcel): Promise<Result>;
     public abstract back(): void;
 
     protected abstract showPreviousModule(): void;
@@ -60,8 +60,8 @@ export default abstract class Container {
         return this.activeModule;
     }
 
-    public setDefaultModule(module: Module): void {
-        this.defaultModule = module;
+    public setDefaultModule(moduleName: string): void {
+        this.defaultModuleName = moduleName;
     }
 
     public getContainerResult(): Result {

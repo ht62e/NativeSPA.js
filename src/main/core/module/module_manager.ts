@@ -10,25 +10,23 @@ import { DrawerOptions } from "../overlay/drawer";
 import Overlay from "../overlay/overlay";
 
 export interface ModuleDescription {
-    name: string;
+    moduleName: string;
     sourceUri: string;
     moduleType?: ModuleType;
     displayMode?: DisplayMode;
     targetContainerId?: string;
     isContainerDefault?: boolean;
     lazyLoading?: boolean;
-    preloadSourceAtLazy?: boolean;
+    forcePrefetch?: boolean;
     windowOptions?: WindowOptions;
     contextMenuOptions?: ContextMenuOptions;
     drawerOptions?: DrawerOptions;
 }
 
-export interface registerOptions {
+export interface RegisterOptions {
     moduleType?: ModuleType;
-    displayMode?: DisplayMode;
-    isContainerDefault?: boolean;
     lazyLoading?: boolean;
-    preloadSourceAtLazy?: boolean;
+    forcePrefetch?: boolean;
 }
 
 
@@ -47,18 +45,24 @@ export enum ModuleType {
 }
 
 export default class ModuleManager {
+    public static ROOT_CONTAINER_ID: string = "root.root";
+
     private static instance = new ModuleManager();
-    public static ROOT_NAME: string = "root";
     private static instanceSequence = 0;
 
-    private descriptions: Array<ModuleDescription>;
+    private descriptions: Map<string, ModuleDescription>;
     private modules: Map<string, Module>;
+    private prefetchedModules: Map<string, Module>;
+
+    private subModuleList: Map<string, Array<string>>;
 
     private dependencyInfoMap = new Map<String, ModuleDependencyInfo>();     
 
     constructor() {
-        this.descriptions = [];
+        this.descriptions = new Map<string, ModuleDescription>();
         this.modules = new Map<string, Module>();
+        this.prefetchedModules = new Map<string, Module>();
+        this.subModuleList = new Map<string, Array<string>>();
     }
 
     public static getInstance(): ModuleManager {
@@ -66,40 +70,40 @@ export default class ModuleManager {
     }
 
     public register(name: string, sourceUri: string, targetContainerId: string, 
-                    isContainerDefault: boolean, options?: registerOptions) {
+                    isContainerDefault: boolean, options?: RegisterOptions) {
         this.registerDescription(name, sourceUri, DisplayMode.Embedding, targetContainerId, isContainerDefault, options);
     }
 
-    public registerWindow(name: string, sourceUri: string, windowOptions: WindowOptions, options?: registerOptions) {
+    public registerWindow(name: string, sourceUri: string, windowOptions: WindowOptions, options?: RegisterOptions) {
         let md = this.registerDescription(name, sourceUri, DisplayMode.Window, null, null, options);
         md.windowOptions = windowOptions;
     }
 
-    public registerContextMenu(name: string, sourceUri: string, contextMenuOptions: ContextMenuOptions, options?: registerOptions) {
+    public registerContextMenu(name: string, sourceUri: string, contextMenuOptions: ContextMenuOptions, options?: RegisterOptions) {
         let md = this.registerDescription(name, sourceUri, DisplayMode.ContextMenu, null, null, options);
         md.contextMenuOptions = contextMenuOptions;
     }
 
-    public registerDrawer(name: string, sourceUri: string, drawerOptions: DrawerOptions, options?: registerOptions) {
+    public registerDrawer(name: string, sourceUri: string, drawerOptions: DrawerOptions, options?: RegisterOptions) {
         let md = this.registerDescription(name, sourceUri, DisplayMode.Drawer, null, null, options);
         md.drawerOptions = drawerOptions;
     }
 
-    private registerDescription(name: string, sourceUri: string, displayMode: DisplayMode, 
+    private registerDescription(moduleName: string, sourceUri: string, displayMode: DisplayMode, 
                                 targetContainerId: string, isContainerDefault: boolean,
-                                options?: registerOptions): ModuleDescription {
-        const op: registerOptions = options || {};
+                                options?: RegisterOptions): ModuleDescription {
+        const op: RegisterOptions = options || {};
         const ds: ModuleDescription = {
-            name: name,
+            moduleName: moduleName,
             sourceUri: sourceUri,
             targetContainerId: targetContainerId,
             displayMode: displayMode,
             moduleType: op.moduleType !== undefined ? op.moduleType : ModuleType.Native,
             isContainerDefault: isContainerDefault,
             lazyLoading: op.lazyLoading !== undefined ? op.lazyLoading : false,
-            preloadSourceAtLazy: op.preloadSourceAtLazy !== undefined ? op.preloadSourceAtLazy : true,
+            forcePrefetch: op.forcePrefetch !== undefined ? op.forcePrefetch : true,
         };
-        this.descriptions.push(ds);
+        this.descriptions.set(moduleName, ds);
         return ds;
     }
 
@@ -109,127 +113,197 @@ export default class ModuleManager {
     }
 
     public async initialize(): Promise<boolean> {        
-        //モジュール定義からモジュールインスタンスの生成と依存情報テーブルの生成（初期化）
-        for (let description of this.descriptions) {
-            let newModule: Module = null;
-            
-            //モジュールインスタンス生成
-            if (description.moduleType === ModuleType.Native || !description.moduleType) {
-                newModule = new PlainHtmlModule(description.name, description.sourceUri, 
-                                                ModuleManager.instanceSequence++);
-            } else {
-                throw new RuntimeError("不明な種類のコンポーネントが指定されました。");
+        this.descriptions.forEach(async (description) => {
+            //プリフェッチ
+            if (description.forcePrefetch) {
+                const module: Module = await this.fetchModule(description.moduleName);
+                this.prefetchedModules.set(description.moduleName, module);
             }
 
-            //モジュールプールへの登録
-            this.modules.set(description.name, newModule);
-
-            //モジュールソースのロード　※コンテナへのマウントや初期化は行われない
-            if (!description.lazyLoading) {
-                await newModule.fetch();
+            //サブモジュールリスト生成
+            console.log(description);
+            const targetModule: string = description.targetContainerId.split(".")[0];
+            if (!this.subModuleList.has(targetModule)) {
+                this.subModuleList.set(targetModule, new Array<string>());
             }
+            this.subModuleList.get(targetModule).push(description.moduleName);
 
-            //依存情報テーブルの準備
-            this.dependencyInfoMap.set(
-                description.name, 
-                new ModuleDependencyInfo(
-                    description,
-                    newModule.getSubContainerNames())
-            );
-        }
-
-        //ルートとなる依存情報テーブルの生成
-        const rootDependencyInfo = new ModuleDependencyInfo(null, [ModuleManager.ROOT_NAME]);
-        this.dependencyInfoMap.set(ModuleManager.ROOT_NAME, rootDependencyInfo);
-
-        //モジュール定義の情報を基に依存情報を互いにリンクする
-        this.dependencyInfoMap.forEach((dependencyInfo: ModuleDependencyInfo, moduleName: string) => {
-            if (dependencyInfo === rootDependencyInfo) return;
-
-            let targetModuleName: string = ModuleManager.ROOT_NAME;
-            let targetContainerName: string = ModuleManager.ROOT_NAME;
-
-            if (dependencyInfo.moduleDescription.displayMode === DisplayMode.Embedding) {
-                //コンテナに埋め込んで使用するモジュールの場合
-                if (dependencyInfo.moduleDescription.targetContainerId) {
-                    const parts: Array<string> = dependencyInfo.moduleDescription.targetContainerId.split(".");
-                    if (parts.length === 2) {
-                        targetModuleName = parts[0];
-                        targetContainerName = parts[1];
-                    }
-                }
-            } else {
-                //それ以外（自身がwindowやcontextmenuのルートコンテナになる場合）
-                //※依存情報テーブル上はルート上に含めるものとするため何もしない（root.root）
-            }
-
-            let targetDependencyInfo = this.dependencyInfoMap.get(targetModuleName);
-            // if (targetDependencyInfo && targetDependencyInfo.subContainerNames.has(targetContainerName)) {
-                targetDependencyInfo.addSubModule(moduleName, targetContainerName);
-            // } else {
-            //     throw new RuntimeError("未定義のコンテナが指定された");
-            // }
+            //TODO descriptionsに存在しないmoduleNameのsubModuleListのリストがあったなら警告を出すか止める
         });
+        // for (let description of this.descriptions) {
+        //     let newModule: Module = null;
+            
+        //     //モジュールインスタンス生成
+        //     if (description.moduleType === ModuleType.Native || !description.moduleType) {
+        //         newModule = new PlainHtmlModule(description.name, description.sourceUri, 
+        //                                         ModuleManager.instanceSequence++);
+        //     } else {
+        //         throw new RuntimeError("不明な種類のコンポーネントが指定されました。");
+        //     }
+
+        //     //モジュールプールへの登録
+        //     this.modules.set(description.name, newModule);
+
+        //     //モジュールソースのロード　※コンテナへのマウントや初期化は行われない
+        //     if (!description.lazyLoading) {
+        //         await newModule.fetch();
+        //     }
+
+        //     //依存情報テーブルの準備
+        //     this.dependencyInfoMap.set(
+        //         description.name, 
+        //         new ModuleDependencyInfo(
+        //             description,
+        //             newModule.getSubContainerNames())
+        //     );
+        // }
+
+        // //ルートとなる依存情報テーブルの生成
+        // const rootDependencyInfo = new ModuleDependencyInfo(null, [ModuleManager.ROOT_NAME]);
+        // this.dependencyInfoMap.set(ModuleManager.ROOT_NAME, rootDependencyInfo);
+
+        // //モジュール定義の情報を基に依存情報を互いにリンクする
+        // this.dependencyInfoMap.forEach((dependencyInfo: ModuleDependencyInfo, moduleName: string) => {
+        //     if (dependencyInfo === rootDependencyInfo) return;
+
+        //     let targetModuleName: string = ModuleManager.ROOT_NAME;
+        //     let targetContainerName: string = ModuleManager.ROOT_NAME;
+
+        //     if (dependencyInfo.moduleDescription.displayMode === DisplayMode.Embedding) {
+        //         //コンテナに埋め込んで使用するモジュールの場合
+        //         if (dependencyInfo.moduleDescription.targetContainerId) {
+        //             const parts: Array<string> = dependencyInfo.moduleDescription.targetContainerId.split(".");
+        //             if (parts.length === 2) {
+        //                 targetModuleName = parts[0];
+        //                 targetContainerName = parts[1];
+        //             }
+        //         }
+        //     } else {
+        //         //それ以外（自身がwindowやcontextmenuのルートコンテナになる場合）
+        //         //※依存情報テーブル上はルート上に含めるものとするため何もしない（root.root）
+        //     }
+
+        //     let targetDependencyInfo = this.dependencyInfoMap.get(targetModuleName);
+        //     // if (targetDependencyInfo && targetDependencyInfo.subContainerNames.has(targetContainerName)) {
+        //         targetDependencyInfo.addSubModule(moduleName, targetContainerName);
+        //     // } else {
+        //     //     throw new RuntimeError("未定義のコンテナが指定された");
+        //     // }
+        // });
 
         //ツリールートから順番にモジュールのロードを実行（遅延ロードモジュールを除く
-        await this.loadModuleRecursively(ModuleManager.ROOT_NAME);
+        await this.loadModuleRecursively("root");
  
         return true;
     }
 
-    public async loadModuleRecursively(moduleName: string, forceLoading?: boolean) {
-        const dependencyInfo: ModuleDependencyInfo = this.dependencyInfoMap.get(moduleName);
-        const containerManager = ContainerManager.getInstance();
-        const overlayManager = OvarlayManager.getInstance();
-        const moduleDescription: ModuleDescription = dependencyInfo.moduleDescription;
+    protected async fetchModule(moduleName: string): Promise<Module> {
+        let module: Module;
 
-        if (dependencyInfo.isProcessed) throw new RuntimeError("コンテナの循環参照を検出しました。");
-        dependencyInfo.isProcessed = true;
-        
-        if (!dependencyInfo.isRoot && (!moduleDescription.lazyLoading || forceLoading)) {
-            const displayMode = moduleDescription.displayMode;
-            const module: Module = this.modules.get(moduleDescription.name);
+        if (this.prefetchedModules.has(moduleName)) {
+            module = this.prefetchedModules.get(moduleName);
+            this.prefetchedModules.delete(moduleName);
+        } else {
+            const description: ModuleDescription = this.descriptions.get(moduleName);
+            if (!description) {
+                throw new RuntimeError("指定されたモジュール " + moduleName + " は定義されていません。");
+            }
+            if (description.moduleType === ModuleType.Native || !description.moduleType) {
+                module = new PlainHtmlModule(moduleName, description.sourceUri, ModuleManager.instanceSequence++);
+            } else {
+                throw new RuntimeError("不明な種類のコンポーネントが指定されました。");
+            }
 
-            if (displayMode === DisplayMode.Embedding) {
-                //組み込み
-                let targetContainer: Container = containerManager.getContainer(moduleDescription.targetContainerId);
-                if (targetContainer) {
-                    await targetContainer.addModule(module);
-                    if (moduleDescription.isContainerDefault) {
-                        targetContainer.setDefaultModule(module);
-                    }
-                } else {
-                    throw new RuntimeError("ターゲットコンテナは存在しないか、ロードされていません。");
+            await module.fetch();
+        }
+
+        return module;
+    }
+
+    public async loadModuleRecursively(moduleName: string): Promise<Module> {
+        if (moduleName !== "root") {
+            const containerManager = ContainerManager.getInstance();
+            const module: Module = await this.fetchModule(moduleName);
+            const moduleDescription: ModuleDescription = this.descriptions.get(moduleName);
+
+            const mountTargetContainer = containerManager.getContainer(moduleDescription.targetContainerId);
+            if (mountTargetContainer) {
+                await mountTargetContainer.addModule(module);
+                if (moduleDescription.isContainerDefault) {
+                    mountTargetContainer.setDefaultModule(moduleName);
                 }
             } else {
-                //オーバーレイ
-                let overlay: Overlay;
-                switch (displayMode) {
-                    case DisplayMode.Window:
-                        overlay = overlayManager.createWindow(module.getName(), moduleDescription.windowOptions);
-                        break;
-                    case DisplayMode.ContextMenu:
-                        overlay = overlayManager.createContextMenu(module.getName(), moduleDescription.contextMenuOptions);
-                        break;
-                    case DisplayMode.Drawer:
-                        overlay = overlayManager.createDrawer(module.getName(), moduleDescription.drawerOptions);
-                        break;
-                }
-                await overlay.getContainer().addModule(module);
-                overlay.getContainer().setDefaultModule(module);
+                throw new RuntimeError("ターゲットコンテナは存在しないか、ロードされていません。");
             }
         }
 
-        //if (dependencyInfo.isRoot || !moduleDescription.lazyLoading) {
-        for (let subModuleName of dependencyInfo.subModuleNames) {
-            if (!this.dependencyInfoMap.get(subModuleName).moduleDescription.lazyLoading) {
+        const subModules: Array<string> = this.subModuleList.get(moduleName);
+        if (!subModules) return
+
+        for (const subModuleName of subModules) {
+            const subModuleDescription = this.descriptions.get(subModuleName)
+            if (!subModuleDescription.lazyLoading) {
                 await this.loadModuleRecursively(subModuleName);
             } else {
                 console.log(subModuleName + " is lazy load mode.");
-            }
+            } 
         }
-        //}
+           
     }
+
+    // public async loadModuleRecursively(moduleName: string, forceLoading?: boolean) {
+    //     const dependencyInfo: ModuleDependencyInfo = this.dependencyInfoMap.get(moduleName);
+    //     const containerManager = ContainerManager.getInstance();
+    //     const overlayManager = OvarlayManager.getInstance();
+    //     const moduleDescription: ModuleDescription = dependencyInfo.moduleDescription;
+
+    //     if (dependencyInfo.isProcessed) throw new RuntimeError("コンテナの循環参照を検出しました。");
+    //     dependencyInfo.isProcessed = true;
+        
+    //     if (!dependencyInfo.isRoot && (!moduleDescription.lazyLoading || forceLoading)) {
+    //         const displayMode = moduleDescription.displayMode;
+    //         const module: Module = this.modules.get(moduleDescription.moduleName);
+
+    //         if (displayMode === DisplayMode.Embedding) {
+    //             //組み込み
+    //             let targetContainer: Container = containerManager.getContainer(moduleDescription.targetContainerId);
+    //             if (targetContainer) {
+    //                 await targetContainer.addModule(module);
+    //                 if (moduleDescription.isContainerDefault) {
+    //                     targetContainer.setDefaultModule(module);
+    //                 }
+    //             } else {
+    //                 throw new RuntimeError("ターゲットコンテナは存在しないか、ロードされていません。");
+    //             }
+    //         } else {
+    //             //オーバーレイ
+    //             let overlay: Overlay;
+    //             switch (displayMode) {
+    //                 case DisplayMode.Window:
+    //                     overlay = overlayManager.createWindow(module.getName(), moduleDescription.windowOptions);
+    //                     break;
+    //                 case DisplayMode.ContextMenu:
+    //                     overlay = overlayManager.createContextMenu(module.getName(), moduleDescription.contextMenuOptions);
+    //                     break;
+    //                 case DisplayMode.Drawer:
+    //                     overlay = overlayManager.createDrawer(module.getName(), moduleDescription.drawerOptions);
+    //                     break;
+    //             }
+    //             await overlay.getContainer().addModule(module);
+    //             overlay.getContainer().setDefaultModule(module);
+    //         }
+    //     }
+
+    //     //if (dependencyInfo.isRoot || !moduleDescription.lazyLoading) {
+    //     for (let subModuleName of dependencyInfo.subModuleNames) {
+    //         if (!this.dependencyInfoMap.get(subModuleName).moduleDescription.lazyLoading) {
+    //             await this.loadModuleRecursively(subModuleName);
+    //         } else {
+    //             console.log(subModuleName + " is lazy load mode.");
+    //         }
+    //     }
+    //     //}
+    // }
 
     public dispatchMessage(destination: string, command: string, message?: any): Promise<any> {
         return this.getModule(destination).passMessage(command, message);

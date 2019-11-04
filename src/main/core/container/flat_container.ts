@@ -28,7 +28,7 @@ export default class FlatContainer extends Container {
 
     }
 
-    public async addModule(module: Module): Promise<boolean> {
+    public async addModule(module: Module): Promise<void> {
         this.mountedModules.set(module.getName(), [module]);
         this.moduleOrders.set(module.getName(), this.mountedModules.size - 1);
 
@@ -37,8 +37,6 @@ export default class FlatContainer extends Container {
             this.scrollBoxElement.style.width = "calc(100% * " + this.mountedModules.size + ")";
             return this;
         });
-
-        return true;
     }
 
     public initialize(parcel?: Parcel): void {
@@ -48,8 +46,8 @@ export default class FlatContainer extends Container {
             m[0].show();
         });
 
-        if (this.defaultModule) {
-            this.forward(this.defaultModule, parcel);
+        if (this.defaultModuleName) {
+            this.forward(this.defaultModuleName, parcel);
         }
     }
 
@@ -68,7 +66,8 @@ export default class FlatContainer extends Container {
         return true;
     }
 
-    public async forward(module: Module, parcel?: Parcel): Promise<Result> {
+    public async forward(moduleName: string, parcel?: Parcel): Promise<Result> {
+        const module: Module = this.mountedModules.get(moduleName)[0];
         this.activateModule(module, parcel);
         return null;
     }

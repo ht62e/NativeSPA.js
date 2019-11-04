@@ -46,9 +46,9 @@ export default class Navigation {
         }
 
         const target: Container = ContainerManager.getInstance().getContainer(targetContainerId);
-        const module: Module = ModuleManager.getInstance().getModule(moduleName);
+        //const module: Module = ModuleManager.getInstance().getModule(moduleName);
 
-        return target.forward(module, parcel);
+        return target.forward(moduleName, parcel);
     }
 
     public back(targetContainerId: string): void {
