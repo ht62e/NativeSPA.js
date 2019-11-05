@@ -3,7 +3,7 @@ import OvarlayManager from "./overlay_manager";
 import { Point, Size, CssSize } from "../common/types";
 import CssTransitionDriver from "../common/css_transition_driver";
 import { Parcel, Result } from "../common/dto";
-import ContainerManager from "../container/container_manager";
+import ContainerFactory from "../container/container_factory";
 
 export interface ShowOptions {
     position?: Point;
@@ -152,10 +152,9 @@ export default abstract class Overlay {
     }
 
     protected registerAsContainer(className: string, targetEl: HTMLDivElement) {
-        const containerManager = ContainerManager.getInstance();
         let seq: number = Overlay.instanceSequenceTable.get(className);
         if (seq === undefined) seq = 0;
-        this.container = containerManager.createContainer(
+        this.container = ContainerFactory.createContainer(
             "__" + className + "_" + String(seq), "", targetEl, null);
         Overlay.instanceSequenceTable.set(className, seq + 1);
     }

@@ -1,9 +1,10 @@
 import ModuleManager from "./core/module/module_manager";
-import ContainerManager from "./core/container/container_manager";
+import ContainerFactory from "./core/container/container_factory";
 import OvarlayManager from "./core/overlay/overlay_manager";
 import Common from "./core/common/common";
 import Configurer from "./core/configurer";
 import RuntimeError from "./core/common/runtime_error";
+import Container from "./core/container/container";
 
 if (document["documentMode"]) {
     Common.isMsIE = true;
@@ -38,10 +39,12 @@ var __bootloader = function() {
             throw new RuntimeError("有効なルートコンテナが設定されていません。");
         }
 
-        ContainerManager.getInstance().setRootElement(appRootEl);
+        const rootContainer: Container = ContainerFactory.createContainer(ContainerFactory.ROOT_CONTAINER_ID, "", appRootEl, null);
+
+        //ContainerFactory.getInstance().setRootElement(appRootEl);
         OvarlayManager.getInstance().setViewPortElement(appRootEl);
 
-        ModuleManager.getInstance().initialize().then(() => {
+        ModuleManager.getInstance().initialize(rootContainer).then(() => {
             console.log("moduleManager is initialized.");
             __moduleManagerIsInitialized = true;
             __startApplications();
@@ -54,7 +57,7 @@ var __bootloader = function() {
 var __startApplications = function() {
     if (!__sharedCssScriptIsLoaded || !__moduleManagerIsInitialized) return;
 
-    ContainerManager.getInstance().initializeRootContainer();
+    ModuleManager.getInstance().run();
         
     let resizeEvent: Event;
     if(Common.isMsIE){

@@ -149,6 +149,14 @@ export default abstract class HtmlModule implements Module {
         return this.currentContainer;
     }
 
+    public getSubContainerByName(containerName: string): Container {
+        let target: Container;
+        this.subContainerInfos.forEach((c: ContainerInfo) => {
+            if (c.name === containerName) target = c.container;
+        });
+        return target; 
+    }
+
     public getSubContainerNames(): Array<string> {
         let ary = new Array<string>();
         this.subContainerInfos.forEach((c: ContainerInfo) => {

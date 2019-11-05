@@ -5,12 +5,11 @@ import Overlay, { ShowOptions } from "../overlay/overlay";
 import Container from "../container/container";
 import RuntimeError from "../common/runtime_error";
 import { Parcel, Result, ActionType } from "../common/dto";
-import ContainerManager from "../container/container_manager";
+import ContainerFactory from "../container/container_factory";
 import Module from "../module/module";
 
 export default class Navigation {
     private adapter: HtmlModuleAdapter;
-    private containerManager: ContainerManager = ContainerManager.getInstance();
     private overlayManager: OvarlayManager = OvarlayManager.getInstance();
 
     constructor(adapter: HtmlModuleAdapter) {
@@ -44,9 +43,13 @@ export default class Navigation {
             targetContainerId = this.adapter.getHtmlModule().getOwnerContainer().getId();
             moduleName = targetIdentifier;
         }
+        const parts: Array<string> = targetContainerId.split(".");
+        const targetModuleName: string = parts[0];
+        const targetContainerName: string = parts[1];
 
-        const target: Container = ContainerManager.getInstance().getContainer(targetContainerId);
+        //const target: Container = ContainerManager.getInstance().getContainer(targetContainerId);
         //const module: Module = ModuleManager.getInstance().getModule(moduleName);
+        const target = ModuleManager.getInstance().getModule(targetModuleName).getSubContainerByName(targetContainerName);
 
         return target.forward(moduleName, parcel);
     }
@@ -58,7 +61,13 @@ export default class Navigation {
         } else {
             containerId = this.adapter.getHtmlModule().getOwnerContainer().getId();
         }
-        this.containerManager.getContainer(containerId).back();
+        const parts: Array<string> = targetContainerId.split(".");
+        const targetModuleName: string = parts[0];
+        const targetContainerName: string = parts[1];
+
+        const target = ModuleManager.getInstance().getModule(targetModuleName).getSubContainerByName(targetContainerName);
+
+        target.back();
     }
 
     public async showWindow(overlayName: string, parcel?: Parcel, options?: ShowOptions): Promise<Result> {

@@ -4,6 +4,7 @@ import { ContextMenuOptions } from "./overlay/context_menu";
 import { DrawerOptions } from "./overlay/drawer";
 import SourceRepository from "./source_repository";
 import SharedCssScriptLoader from "./common/shared_css_script_loader";
+import ContainerFactory from "./container/container_factory";
 
 export default class Configurer {
     private static instance = new Configurer();
@@ -45,7 +46,7 @@ export default class Configurer {
     }
 
     public registerRootModule(moduleName: string, sourceUri: string) {
-        this.moduleManager.register(moduleName, sourceUri, ModuleManager.ROOT_CONTAINER_ID, true, null);
+        this.moduleManager.register(moduleName, sourceUri, ContainerFactory.ROOT_CONTAINER_ID, true, null);
     }
 
     public registerWindow(moduleName: string, sourceUri: string, windowOptions: WindowOptions, options?: RegisterOptions) {

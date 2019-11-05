@@ -1,8 +1,9 @@
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
         function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
         function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
@@ -578,7 +579,7 @@ define("core/container/page_container", ["require", "exports", "core/container/c
                             moduleList = this.mountedModules.get(moduleName);
                             if (moduleList) {
                                 for (i in moduleList) {
-                                    if (this.moduleChangeHistory.indexOf(moduleList[i]) !== -1) {
+                                    if (this.moduleChangeHistory.indexOf(moduleList[i]) === -1) {
                                         availableModule = moduleList[i];
                                         break;
                                     }
@@ -737,31 +738,15 @@ define("core/container/flat_container", ["require", "exports", "core/container/c
     }(container_2.default));
     exports.default = FlatContainer;
 });
-define("core/container/container_manager", ["require", "exports", "core/common/runtime_error", "core/container/page_container", "core/container/flat_container"], function (require, exports, runtime_error_3, page_container_1, flat_container_1) {
+define("core/container/container_factory", ["require", "exports", "core/container/page_container", "core/container/flat_container"], function (require, exports, page_container_1, flat_container_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
-    var ContainerManager = /** @class */ (function () {
-        function ContainerManager() {
-            this.containers = new Map();
-            this.windowResizeEventHandlerBindThis = this.windowResizeEventHandler.bind(this);
+    var ContainerFactory = /** @class */ (function () {
+        function ContainerFactory() {
         }
-        ContainerManager.getInstance = function () {
-            return ContainerManager.instance;
-        };
-        ContainerManager.prototype.setRootElement = function (element) {
-            this.rootContainer = this.createContainer("root", "", element, null);
-            window.addEventListener("resize", this.windowResizeEventHandlerBindThis);
-        };
-        ContainerManager.prototype.windowResizeEventHandler = function (event) {
-            this.rootContainer.onResize();
-        };
-        ContainerManager.prototype.createContainer = function (id, type, bindDomElement, owner) {
-            if (this.containers.has(id)) {
-                throw new runtime_error_3.default("コンテナID '" + id + "' は既に登録されています。");
-            }
+        ContainerFactory.createContainer = function (id, type, bindDomElement, owner) {
             var newContainer = null;
             if (!type || type === "separated") {
-                //newContainer = new PageContainer(id, bindDomElement);
                 newContainer = new page_container_1.default(id, bindDomElement, owner, {
                     enableCssTransition: true
                 });
@@ -769,22 +754,14 @@ define("core/container/container_manager", ["require", "exports", "core/common/r
             else if ("continuous") {
                 newContainer = new flat_container_1.default(id, bindDomElement, owner);
             }
-            this.containers.set(id, newContainer);
             return newContainer;
         };
-        ContainerManager.prototype.initializeRootContainer = function () {
-            console.log("ContainerManager.initializeRootContainer");
-            this.rootContainer.initialize();
-        };
-        ContainerManager.prototype.getContainer = function (id) {
-            return this.containers.get(id);
-        };
-        ContainerManager.instance = new ContainerManager();
-        return ContainerManager;
+        ContainerFactory.ROOT_CONTAINER_ID = "root.root";
+        return ContainerFactory;
     }());
-    exports.default = ContainerManager;
+    exports.default = ContainerFactory;
 });
-define("core/overlay/overlay", ["require", "exports", "core/overlay/overlay_manager", "core/common/types", "core/common/css_transition_driver", "core/container/container_manager"], function (require, exports, overlay_manager_1, types_1, css_transition_driver_1, container_manager_1) {
+define("core/overlay/overlay", ["require", "exports", "core/overlay/overlay_manager", "core/common/types", "core/common/css_transition_driver", "core/container/container_factory"], function (require, exports, overlay_manager_1, types_1, css_transition_driver_1, container_factory_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var Overlay = /** @class */ (function () {
@@ -861,11 +838,10 @@ define("core/overlay/overlay", ["require", "exports", "core/overlay/overlay_mana
         Overlay.prototype.__dispachMouseUpEvent = function (x, y) {
         };
         Overlay.prototype.registerAsContainer = function (className, targetEl) {
-            var containerManager = container_manager_1.default.getInstance();
             var seq = Overlay.instanceSequenceTable.get(className);
             if (seq === undefined)
                 seq = 0;
-            this.container = containerManager.createContainer("__" + className + "_" + String(seq), "", targetEl, null);
+            this.container = container_factory_1.default.createContainer("__" + className + "_" + String(seq), "", targetEl, null);
             Overlay.instanceSequenceTable.set(className, seq + 1);
         };
         Overlay.prototype.onSelectStart = function (event) {
@@ -1543,7 +1519,7 @@ define("core/overlay/drawer", ["require", "exports", "core/overlay/overlay", "co
     }(overlay_3.default));
     exports.default = Drawer;
 });
-define("core/overlay/overlay_manager", ["require", "exports", "core/overlay/dialog_window", "core/common/dto", "core/common/css_transition_driver", "core/overlay/context_menu", "core/overlay/drawer", "core/module/module_manager", "core/common/runtime_error"], function (require, exports, dialog_window_1, dto_3, css_transition_driver_2, context_menu_1, drawer_1, module_manager_2, runtime_error_4) {
+define("core/overlay/overlay_manager", ["require", "exports", "core/overlay/dialog_window", "core/common/dto", "core/common/css_transition_driver", "core/overlay/context_menu", "core/overlay/drawer", "core/module/module_manager", "core/common/runtime_error"], function (require, exports, dialog_window_1, dto_3, css_transition_driver_2, context_menu_1, drawer_1, module_manager_2, runtime_error_3) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var OvarlayManager = /** @class */ (function () {
@@ -1739,7 +1715,7 @@ define("core/overlay/overlay_manager", ["require", "exports", "core/overlay/dial
                         case 1:
                             _a.sent();
                             if (!this.overlayManagementTable.has(overlayName)) {
-                                throw new runtime_error_4.default("指定されたモジュールはコンテナに登録されていません。");
+                                throw new runtime_error_3.default("指定されたモジュールはコンテナに登録されていません。");
                             }
                             _a.label = 2;
                         case 2: return [2 /*return*/, true];
@@ -1837,12 +1813,11 @@ define("core/overlay/overlay_manager", ["require", "exports", "core/overlay/dial
         return OverlayManagementData;
     }());
 });
-define("core/adapter/navigation", ["require", "exports", "core/overlay/overlay_manager", "core/common/runtime_error", "core/container/container_manager"], function (require, exports, overlay_manager_6, runtime_error_5, container_manager_2) {
+define("core/adapter/navigation", ["require", "exports", "core/module/module_manager", "core/overlay/overlay_manager", "core/common/runtime_error"], function (require, exports, module_manager_3, overlay_manager_6, runtime_error_4) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var Navigation = /** @class */ (function () {
         function Navigation(adapter) {
-            this.containerManager = container_manager_2.default.getInstance();
             this.overlayManager = overlay_manager_6.default.getInstance();
             this.adapter = adapter;
         }
@@ -1853,7 +1828,7 @@ define("core/adapter/navigation", ["require", "exports", "core/overlay/overlay_m
             while (container.getOwner()) {
                 container = container.getOwner().getOwnerContainer();
                 if (i++ > 100) {
-                    throw new runtime_error_5.default("コンテナの親子関係に循環が発生しています。");
+                    throw new runtime_error_4.default("コンテナの親子関係に循環が発生しています。");
                 }
             }
             //最上位コンテナを保持しているオーバーレイを取得
@@ -1861,7 +1836,7 @@ define("core/adapter/navigation", ["require", "exports", "core/overlay/overlay_m
         };
         Navigation.prototype.forward = function (targetIdentifier, parcel) {
             return __awaiter(this, void 0, void 0, function () {
-                var targetContainerId, moduleName, tiParts, target;
+                var targetContainerId, moduleName, tiParts, parts, targetModuleName, targetContainerName, target;
                 return __generator(this, function (_a) {
                     tiParts = targetIdentifier.split("::");
                     if (tiParts.length > 1) {
@@ -1872,8 +1847,10 @@ define("core/adapter/navigation", ["require", "exports", "core/overlay/overlay_m
                         targetContainerId = this.adapter.getHtmlModule().getOwnerContainer().getId();
                         moduleName = targetIdentifier;
                     }
-                    target = container_manager_2.default.getInstance().getContainer(targetContainerId);
-                    //const module: Module = ModuleManager.getInstance().getModule(moduleName);
+                    parts = targetContainerId.split(".");
+                    targetModuleName = parts[0];
+                    targetContainerName = parts[1];
+                    target = module_manager_3.default.getInstance().getModule(targetModuleName).getSubContainerByName(targetContainerName);
                     return [2 /*return*/, target.forward(moduleName, parcel)];
                 });
             });
@@ -1886,7 +1863,11 @@ define("core/adapter/navigation", ["require", "exports", "core/overlay/overlay_m
             else {
                 containerId = this.adapter.getHtmlModule().getOwnerContainer().getId();
             }
-            this.containerManager.getContainer(containerId).back();
+            var parts = targetContainerId.split(".");
+            var targetModuleName = parts[0];
+            var targetContainerName = parts[1];
+            var target = module_manager_3.default.getInstance().getModule(targetModuleName).getSubContainerByName(targetContainerName);
+            target.back();
         };
         Navigation.prototype.showWindow = function (overlayName, parcel, options) {
             return __awaiter(this, void 0, void 0, function () {
@@ -1942,14 +1923,14 @@ define("core/adapter/navigation", ["require", "exports", "core/overlay/overlay_m
     }());
     exports.default = Navigation;
 });
-define("core/adapter/html_module_adapter", ["require", "exports", "core/overlay/overlay_manager", "core/common/dto", "core/module/module_manager", "core/adapter/navigation"], function (require, exports, overlay_manager_7, dto_4, module_manager_3, navigation_1) {
+define("core/adapter/html_module_adapter", ["require", "exports", "core/overlay/overlay_manager", "core/common/dto", "core/module/module_manager", "core/adapter/navigation"], function (require, exports, overlay_manager_7, dto_4, module_manager_4, navigation_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.htmlModuleAdapters = new Map();
     var HtmlModuleAdapter = /** @class */ (function () {
         function HtmlModuleAdapter() {
             this.isModified = false;
-            this.moduleManager = module_manager_3.default.getInstance();
+            this.moduleManager = module_manager_4.default.getInstance();
             this.overlayManager = overlay_manager_7.default.getInstance();
             this.exitCallbackReturnFunctionsObject = {
                 cancelExit: this.cancelExit.bind(this),
@@ -2167,6 +2148,14 @@ define("core/module/html_module", ["require", "exports", "core/source_repository
         HtmlModule.prototype.getOwnerContainer = function () {
             return this.currentContainer;
         };
+        HtmlModule.prototype.getSubContainerByName = function (containerName) {
+            var target;
+            this.subContainerInfos.forEach(function (c) {
+                if (c.name === containerName)
+                    target = c.container;
+            });
+            return target;
+        };
         HtmlModule.prototype.getSubContainerNames = function () {
             var ary = new Array();
             this.subContainerInfos.forEach(function (c) {
@@ -2187,7 +2176,7 @@ define("core/module/html_module", ["require", "exports", "core/source_repository
     }());
     exports.default = HtmlModule;
 });
-define("core/module/plain_html_module", ["require", "exports", "core/module/html_module", "core/container/container_manager", "core/adapter/html_module_adapter", "core/common/css_transition_driver", "core/source_repository"], function (require, exports, html_module_1, container_manager_3, html_module_adapter_1, css_transition_driver_3, source_repository_2) {
+define("core/module/plain_html_module", ["require", "exports", "core/module/html_module", "core/container/container_factory", "core/adapter/html_module_adapter", "core/common/css_transition_driver", "core/source_repository"], function (require, exports, html_module_1, container_factory_2, html_module_adapter_1, css_transition_driver_3, source_repository_2) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var PlainHtmlModule = /** @class */ (function (_super) {
@@ -2221,7 +2210,7 @@ define("core/module/plain_html_module", ["require", "exports", "core/module/html
         };
         PlainHtmlModule.prototype.mount = function (elementAttachHandler, cssTransitionOptions) {
             return __awaiter(this, void 0, void 0, function () {
-                var localPrefix, localizeRegExp, containerManager;
+                var localPrefix, localizeRegExp;
                 var _this = this;
                 return __generator(this, function (_a) {
                     switch (_a.label) {
@@ -2253,12 +2242,12 @@ define("core/module/plain_html_module", ["require", "exports", "core/module/html
                             return [4 /*yield*/, this.evalScripts()];
                         case 3:
                             _a.sent();
-                            containerManager = container_manager_3.default.getInstance();
+                            //サブコンテナをContainerManagerで生成・登録
                             this.subContainerInfos.forEach(function (containerInfo, domId) {
                                 var localElementId = domId.replace(localizeRegExp, localPrefix);
                                 var containerEl = document.getElementById(localElementId);
                                 var containerId = _this.name + "." + containerInfo.name;
-                                containerInfo.container = containerManager.createContainer(containerId, containerInfo.type, containerEl, _this);
+                                containerInfo.container = container_factory_2.default.createContainer(containerId, containerInfo.type, containerEl, _this);
                             });
                             this.isMounted = true;
                             this.htmlAdapter = html_module_adapter_1.htmlModuleAdapters.get(this.moduleIndex);
@@ -2351,7 +2340,7 @@ define("core/module/plain_html_module", ["require", "exports", "core/module/html
     }(html_module_1.default));
     exports.default = PlainHtmlModule;
 });
-define("core/module/module_manager", ["require", "exports", "core/module/plain_html_module", "core/common/runtime_error", "core/container/container_manager"], function (require, exports, plain_html_module_1, runtime_error_6, container_manager_4) {
+define("core/module/module_manager", ["require", "exports", "core/module/plain_html_module", "core/common/runtime_error"], function (require, exports, plain_html_module_1, runtime_error_5) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var DisplayMode;
@@ -2370,14 +2359,16 @@ define("core/module/module_manager", ["require", "exports", "core/module/plain_h
     })(ModuleType = exports.ModuleType || (exports.ModuleType = {}));
     var ModuleManager = /** @class */ (function () {
         function ModuleManager() {
-            this.dependencyInfoMap = new Map();
-            this.descriptions = new Map();
-            this.modules = new Map();
+            this.descriptions = {};
+            this.loadedModules = new Map();
             this.prefetchedModules = new Map();
             this.subModuleList = new Map();
         }
         ModuleManager.getInstance = function () {
             return ModuleManager.instance;
+        };
+        ModuleManager.prototype.setRootContainer = function (container) {
+            this.rootContainer = container;
         };
         ModuleManager.prototype.register = function (name, sourceUri, targetContainerId, isContainerDefault, options) {
             this.registerDescription(name, sourceUri, DisplayMode.Embedding, targetContainerId, isContainerDefault, options);
@@ -2406,97 +2397,136 @@ define("core/module/module_manager", ["require", "exports", "core/module/plain_h
                 lazyLoading: op.lazyLoading !== undefined ? op.lazyLoading : false,
                 forcePrefetch: op.forcePrefetch !== undefined ? op.forcePrefetch : true,
             };
-            this.descriptions.set(moduleName, ds);
+            this.descriptions[moduleName] = ds;
             return ds;
         };
         ModuleManager.prototype.getModule = function (name) {
-            if (!this.modules.has(name))
-                throw new runtime_error_6.default("指定されたモジュールが見つかりません。");
-            return this.modules.get(name);
+            if (!this.loadedModules.has(name))
+                throw new runtime_error_5.default("指定されたモジュールが見つかりません。");
+            return this.loadedModules.get(name)[0]; //TODO
         };
-        ModuleManager.prototype.initialize = function () {
+        ModuleManager.prototype.run = function () {
+            var _this = this;
+            window.addEventListener("resize", function () {
+                _this.rootContainer.onResize();
+            });
+            this.rootContainer.initialize();
+        };
+        ModuleManager.prototype.initialize = function (rootContainer) {
             return __awaiter(this, void 0, void 0, function () {
-                var _this = this;
-                return __generator(this, function (_a) {
-                    switch (_a.label) {
+                var _a, _b, _i, key, description, module, targetModule;
+                return __generator(this, function (_c) {
+                    switch (_c.label) {
                         case 0:
-                            this.descriptions.forEach(function (description) { return __awaiter(_this, void 0, void 0, function () {
-                                var module, targetModule;
-                                return __generator(this, function (_a) {
-                                    switch (_a.label) {
-                                        case 0:
-                                            if (!description.forcePrefetch) return [3 /*break*/, 2];
-                                            return [4 /*yield*/, this.fetchModule(description.moduleName)];
-                                        case 1:
-                                            module = _a.sent();
-                                            this.prefetchedModules.set(description.moduleName, module);
-                                            _a.label = 2;
-                                        case 2:
-                                            //サブモジュールリスト生成
-                                            console.log(description);
-                                            targetModule = description.targetContainerId.split(".")[0];
-                                            if (!this.subModuleList.has(targetModule)) {
-                                                this.subModuleList.set(targetModule, new Array());
-                                            }
-                                            this.subModuleList.get(targetModule).push(description.moduleName);
-                                            return [2 /*return*/];
-                                    }
-                                });
-                            }); });
-                            // for (let description of this.descriptions) {
-                            //     let newModule: Module = null;
-                            //     //モジュールインスタンス生成
-                            //     if (description.moduleType === ModuleType.Native || !description.moduleType) {
-                            //         newModule = new PlainHtmlModule(description.name, description.sourceUri, 
-                            //                                         ModuleManager.instanceSequence++);
-                            //     } else {
-                            //         throw new RuntimeError("不明な種類のコンポーネントが指定されました。");
-                            //     }
-                            //     //モジュールプールへの登録
-                            //     this.modules.set(description.name, newModule);
-                            //     //モジュールソースのロード　※コンテナへのマウントや初期化は行われない
-                            //     if (!description.lazyLoading) {
-                            //         await newModule.fetch();
-                            //     }
-                            //     //依存情報テーブルの準備
-                            //     this.dependencyInfoMap.set(
-                            //         description.name, 
-                            //         new ModuleDependencyInfo(
-                            //             description,
-                            //             newModule.getSubContainerNames())
-                            //     );
-                            // }
-                            // //ルートとなる依存情報テーブルの生成
-                            // const rootDependencyInfo = new ModuleDependencyInfo(null, [ModuleManager.ROOT_NAME]);
-                            // this.dependencyInfoMap.set(ModuleManager.ROOT_NAME, rootDependencyInfo);
-                            // //モジュール定義の情報を基に依存情報を互いにリンクする
-                            // this.dependencyInfoMap.forEach((dependencyInfo: ModuleDependencyInfo, moduleName: string) => {
-                            //     if (dependencyInfo === rootDependencyInfo) return;
-                            //     let targetModuleName: string = ModuleManager.ROOT_NAME;
-                            //     let targetContainerName: string = ModuleManager.ROOT_NAME;
-                            //     if (dependencyInfo.moduleDescription.displayMode === DisplayMode.Embedding) {
-                            //         //コンテナに埋め込んで使用するモジュールの場合
-                            //         if (dependencyInfo.moduleDescription.targetContainerId) {
-                            //             const parts: Array<string> = dependencyInfo.moduleDescription.targetContainerId.split(".");
-                            //             if (parts.length === 2) {
-                            //                 targetModuleName = parts[0];
-                            //                 targetContainerName = parts[1];
-                            //             }
-                            //         }
-                            //     } else {
-                            //         //それ以外（自身がwindowやcontextmenuのルートコンテナになる場合）
-                            //         //※依存情報テーブル上はルート上に含めるものとするため何もしない（root.root）
-                            //     }
-                            //     let targetDependencyInfo = this.dependencyInfoMap.get(targetModuleName);
-                            //     // if (targetDependencyInfo && targetDependencyInfo.subContainerNames.has(targetContainerName)) {
-                            //         targetDependencyInfo.addSubModule(moduleName, targetContainerName);
-                            //     // } else {
-                            //     //     throw new RuntimeError("未定義のコンテナが指定された");
-                            //     // }
-                            // });
-                            //ツリールートから順番にモジュールのロードを実行（遅延ロードモジュールを除く
-                            return [4 /*yield*/, this.loadModuleRecursively("root")];
+                            this.rootContainer = rootContainer;
+                            _a = [];
+                            for (_b in this.descriptions)
+                                _a.push(_b);
+                            _i = 0;
+                            _c.label = 1;
                         case 1:
+                            if (!(_i < _a.length)) return [3 /*break*/, 5];
+                            key = _a[_i];
+                            description = this.descriptions[key];
+                            if (!description.forcePrefetch) return [3 /*break*/, 3];
+                            return [4 /*yield*/, this.fetchModule(description.moduleName)];
+                        case 2:
+                            module = _c.sent();
+                            this.prefetchedModules.set(description.moduleName, module);
+                            _c.label = 3;
+                        case 3:
+                            targetModule = description.targetContainerId.split(".")[0];
+                            if (!this.subModuleList.has(targetModule)) {
+                                this.subModuleList.set(targetModule, new Array());
+                            }
+                            this.subModuleList.get(targetModule).push(description.moduleName);
+                            _c.label = 4;
+                        case 4:
+                            _i++;
+                            return [3 /*break*/, 1];
+                        case 5: 
+                        // this.descriptions.forEach(async (description) => {
+                        //     //プリフェッチ
+                        //     if (description.forcePrefetch) {
+                        //         const module: Module = await this.fetchModule(description.moduleName);
+                        //         this.prefetchedModules.set(description.moduleName, module);
+                        //     }
+                        //     //サブモジュールリスト生成
+                        //     const targetModule: string = description.targetContainerId.split(".")[0];
+                        //     if (!this.subModuleList.has(targetModule)) {
+                        //         this.subModuleList.set(targetModule, new Array<string>());
+                        //     }
+                        //     this.subModuleList.get(targetModule).push(description.moduleName);
+                        //     //TODO descriptionsに存在しないmoduleNameのsubModuleListのリストがあったなら警告を出すか止める
+                        // });
+                        // for (let description of this.descriptions) {
+                        //     let newModule: Module = null;
+                        //     //モジュールインスタンス生成
+                        //     if (description.moduleType === ModuleType.Native || !description.moduleType) {
+                        //         newModule = new PlainHtmlModule(description.name, description.sourceUri, 
+                        //                                         ModuleManager.instanceSequence++);
+                        //     } else {
+                        //         throw new RuntimeError("不明な種類のコンポーネントが指定されました。");
+                        //     }
+                        //     //モジュールプールへの登録
+                        //     this.modules.set(description.name, newModule);
+                        //     //モジュールソースのロード　※コンテナへのマウントや初期化は行われない
+                        //     if (!description.lazyLoading) {
+                        //         await newModule.fetch();
+                        //     }
+                        //     //依存情報テーブルの準備
+                        //     this.dependencyInfoMap.set(
+                        //         description.name, 
+                        //         new ModuleDependencyInfo(
+                        //             description,
+                        //             newModule.getSubContainerNames())
+                        //     );
+                        // }
+                        // //ルートとなる依存情報テーブルの生成
+                        // const rootDependencyInfo = new ModuleDependencyInfo(null, [ModuleManager.ROOT_NAME]);
+                        // this.dependencyInfoMap.set(ModuleManager.ROOT_NAME, rootDependencyInfo);
+                        // //モジュール定義の情報を基に依存情報を互いにリンクする
+                        // this.dependencyInfoMap.forEach((dependencyInfo: ModuleDependencyInfo, moduleName: string) => {
+                        //     if (dependencyInfo === rootDependencyInfo) return;
+                        //     let targetModuleName: string = ModuleManager.ROOT_NAME;
+                        //     let targetContainerName: string = ModuleManager.ROOT_NAME;
+                        //     if (dependencyInfo.moduleDescription.displayMode === DisplayMode.Embedding) {
+                        //         //コンテナに埋め込んで使用するモジュールの場合
+                        //         if (dependencyInfo.moduleDescription.targetContainerId) {
+                        //             const parts: Array<string> = dependencyInfo.moduleDescription.targetContainerId.split(".");
+                        //             if (parts.length === 2) {
+                        //                 targetModuleName = parts[0];
+                        //                 targetContainerName = parts[1];
+                        //             }
+                        //         }
+                        //     } else {
+                        //         //それ以外（自身がwindowやcontextmenuのルートコンテナになる場合）
+                        //         //※依存情報テーブル上はルート上に含めるものとするため何もしない（root.root）
+                        //     }
+                        //     let targetDependencyInfo = this.dependencyInfoMap.get(targetModuleName);
+                        //     // if (targetDependencyInfo && targetDependencyInfo.subContainerNames.has(targetContainerName)) {
+                        //         targetDependencyInfo.addSubModule(moduleName, targetContainerName);
+                        //     // } else {
+                        //     //     throw new RuntimeError("未定義のコンテナが指定された");
+                        //     // }
+                        // });
+                        //ツリールートから順番にモジュールのロードを実行（遅延ロードモジュールを除く
+                        return [4 /*yield*/, this.loadModuleRecursively("root")];
+                        case 6:
+                            // this.descriptions.forEach(async (description) => {
+                            //     //プリフェッチ
+                            //     if (description.forcePrefetch) {
+                            //         const module: Module = await this.fetchModule(description.moduleName);
+                            //         this.prefetchedModules.set(description.moduleName, module);
+                            //     }
+                            //     //サブモジュールリスト生成
+                            //     const targetModule: string = description.targetContainerId.split(".")[0];
+                            //     if (!this.subModuleList.has(targetModule)) {
+                            //         this.subModuleList.set(targetModule, new Array<string>());
+                            //     }
+                            //     this.subModuleList.get(targetModule).push(description.moduleName);
+                            //     //TODO descriptionsに存在しないmoduleNameのsubModuleListのリストがあったなら警告を出すか止める
+                            // });
                             // for (let description of this.descriptions) {
                             //     let newModule: Module = null;
                             //     //モジュールインスタンス生成
@@ -2549,7 +2579,7 @@ define("core/module/module_manager", ["require", "exports", "core/module/plain_h
                             //     // }
                             // });
                             //ツリールートから順番にモジュールのロードを実行（遅延ロードモジュールを除く
-                            _a.sent();
+                            _c.sent();
                             return [2 /*return*/, true];
                     }
                 });
@@ -2566,15 +2596,15 @@ define("core/module/module_manager", ["require", "exports", "core/module/plain_h
                             this.prefetchedModules.delete(moduleName);
                             return [3 /*break*/, 3];
                         case 1:
-                            description = this.descriptions.get(moduleName);
+                            description = this.descriptions[moduleName];
                             if (!description) {
-                                throw new runtime_error_6.default("指定されたモジュール " + moduleName + " は定義されていません。");
+                                throw new runtime_error_5.default("指定されたモジュール " + moduleName + " は定義されていません。");
                             }
                             if (description.moduleType === ModuleType.Native || !description.moduleType) {
                                 module = new plain_html_module_1.default(moduleName, description.sourceUri, ModuleManager.instanceSequence++);
                             }
                             else {
-                                throw new runtime_error_6.default("不明な種類のコンポーネントが指定されました。");
+                                throw new runtime_error_5.default("不明な種類のコンポーネントが指定されました。");
                             }
                             return [4 /*yield*/, module.fetch()];
                         case 2:
@@ -2587,17 +2617,25 @@ define("core/module/module_manager", ["require", "exports", "core/module/plain_h
         };
         ModuleManager.prototype.loadModuleRecursively = function (moduleName) {
             return __awaiter(this, void 0, void 0, function () {
-                var containerManager, module, moduleDescription, mountTargetContainer, subModules, _i, subModules_1, subModuleName, subModuleDescription;
+                var module, moduleDescription, parts, targetModuleName, targetContainerName, mountTargetContainer, subModules, _i, subModules_1, subModuleName, subModuleDescription;
                 return __generator(this, function (_a) {
                     switch (_a.label) {
                         case 0:
                             if (!(moduleName !== "root")) return [3 /*break*/, 4];
-                            containerManager = container_manager_4.default.getInstance();
                             return [4 /*yield*/, this.fetchModule(moduleName)];
                         case 1:
                             module = _a.sent();
-                            moduleDescription = this.descriptions.get(moduleName);
-                            mountTargetContainer = containerManager.getContainer(moduleDescription.targetContainerId);
+                            moduleDescription = this.descriptions[moduleName];
+                            parts = moduleDescription.targetContainerId.split(".");
+                            targetModuleName = parts[0];
+                            targetContainerName = parts[1];
+                            mountTargetContainer = void 0;
+                            if (targetModuleName === "root") {
+                                mountTargetContainer = this.rootContainer;
+                            }
+                            else {
+                                mountTargetContainer = this.loadedModules.get(targetModuleName)[0].getSubContainerByName(targetContainerName);
+                            }
                             if (!mountTargetContainer) return [3 /*break*/, 3];
                             return [4 /*yield*/, mountTargetContainer.addModule(module)];
                         case 2:
@@ -2605,18 +2643,21 @@ define("core/module/module_manager", ["require", "exports", "core/module/plain_h
                             if (moduleDescription.isContainerDefault) {
                                 mountTargetContainer.setDefaultModule(moduleName);
                             }
+                            if (!this.loadedModules.has(moduleName)) {
+                                this.loadedModules.set(moduleName, new Array());
+                            }
+                            this.loadedModules.get(moduleName).push(module);
                             return [3 /*break*/, 4];
-                        case 3: throw new runtime_error_6.default("ターゲットコンテナは存在しないか、ロードされていません。");
+                        case 3: throw new runtime_error_5.default("ターゲットコンテナは存在しないか、ロードされていません。");
                         case 4:
                             subModules = this.subModuleList.get(moduleName);
-                            if (!subModules)
-                                return [2 /*return*/];
+                            if (!subModules) return [3 /*break*/, 9];
                             _i = 0, subModules_1 = subModules;
                             _a.label = 5;
                         case 5:
                             if (!(_i < subModules_1.length)) return [3 /*break*/, 9];
                             subModuleName = subModules_1[_i];
-                            subModuleDescription = this.descriptions.get(subModuleName);
+                            subModuleDescription = this.descriptions[subModuleName];
                             if (!!subModuleDescription.lazyLoading) return [3 /*break*/, 7];
                             return [4 /*yield*/, this.loadModuleRecursively(subModuleName)];
                         case 6:
@@ -2628,7 +2669,7 @@ define("core/module/module_manager", ["require", "exports", "core/module/plain_h
                         case 8:
                             _i++;
                             return [3 /*break*/, 5];
-                        case 9: return [2 /*return*/];
+                        case 9: return [2 /*return*/, module];
                     }
                 });
             });
@@ -2683,36 +2724,14 @@ define("core/module/module_manager", ["require", "exports", "core/module/plain_h
         //     //}
         // }
         ModuleManager.prototype.dispatchMessage = function (destination, command, message) {
+            //TODO 仮
             return this.getModule(destination).passMessage(command, message);
         };
-        ModuleManager.ROOT_CONTAINER_ID = "root.root";
         ModuleManager.instance = new ModuleManager();
         ModuleManager.instanceSequence = 0;
         return ModuleManager;
     }());
     exports.default = ModuleManager;
-    var ModuleDependencyInfo = /** @class */ (function () {
-        function ModuleDependencyInfo(moduleDescription, subContainerNames) {
-            //subContainerNames: Set<string>;
-            this.subModuleNames = new Array();
-            this.isProcessed = false;
-            this.moduleDescription = moduleDescription;
-            //this.subContainerNames = new Set(subContainerNames); //IE11非対応
-            // this.subContainerNames = new Set();
-            // subContainerNames.forEach(name => {
-            //     this.subContainerNames.add(name);
-            // });
-            this.isRoot = moduleDescription === null;
-        }
-        ModuleDependencyInfo.prototype.addSubModule = function (subModuleName, targetContainerName) {
-            // if (this.subContainerNames.has(targetContainerName)) {
-            this.subModuleNames.push(subModuleName);
-            // } else {
-            //     throw new RuntimeError("モジュール [ " + this.moduleDescription.name + " ] 内に指定されたサブコンテナが存在しない。");
-            // }
-        };
-        return ModuleDependencyInfo;
-    }());
 });
 define("core/common/shared_css_script_loader", ["require", "exports"], function (require, exports) {
     "use strict";
@@ -2819,12 +2838,12 @@ define("core/common/shared_css_script_loader", ["require", "exports"], function 
     }());
     exports.default = SharedCssScriptLoader;
 });
-define("core/configurer", ["require", "exports", "core/module/module_manager", "core/source_repository", "core/common/shared_css_script_loader"], function (require, exports, module_manager_4, source_repository_3, shared_css_script_loader_1) {
+define("core/configurer", ["require", "exports", "core/module/module_manager", "core/source_repository", "core/common/shared_css_script_loader", "core/container/container_factory"], function (require, exports, module_manager_5, source_repository_3, shared_css_script_loader_1, container_factory_3) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var Configurer = /** @class */ (function () {
         function Configurer() {
-            this.moduleManager = module_manager_4.default.getInstance();
+            this.moduleManager = module_manager_5.default.getInstance();
             this.cssUris = new Array();
             this.scriptUris = new Array();
         }
@@ -2847,7 +2866,7 @@ define("core/configurer", ["require", "exports", "core/module/module_manager", "
             this.moduleManager.register(moduleName, sourceUri, targetContainerId, isContainerDefault, options);
         };
         Configurer.prototype.registerRootModule = function (moduleName, sourceUri) {
-            this.moduleManager.register(moduleName, sourceUri, module_manager_4.default.ROOT_CONTAINER_ID, true, null);
+            this.moduleManager.register(moduleName, sourceUri, container_factory_3.default.ROOT_CONTAINER_ID, true, null);
         };
         Configurer.prototype.registerWindow = function (moduleName, sourceUri, windowOptions, options) {
             this.moduleManager.registerWindow(moduleName, sourceUri, windowOptions, options);
@@ -2869,7 +2888,7 @@ define("core/configurer", ["require", "exports", "core/module/module_manager", "
     }());
     exports.default = Configurer;
 });
-define("intraframe", ["require", "exports", "core/module/module_manager", "core/container/container_manager", "core/overlay/overlay_manager", "core/common/common", "core/configurer", "core/common/runtime_error"], function (require, exports, module_manager_5, container_manager_5, overlay_manager_8, common_2, configurer_1, runtime_error_7) {
+define("intraframe", ["require", "exports", "core/module/module_manager", "core/container/container_factory", "core/overlay/overlay_manager", "core/common/common", "core/configurer", "core/common/runtime_error"], function (require, exports, module_manager_6, container_factory_4, overlay_manager_8, common_2, configurer_1, runtime_error_6) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     if (document["documentMode"]) {
@@ -2894,11 +2913,12 @@ define("intraframe", ["require", "exports", "core/module/module_manager", "core/
             });
             var appRootEl = document.querySelector("#" + configurer.getAppRootId());
             if (!appRootEl) {
-                throw new runtime_error_7.default("有効なルートコンテナが設定されていません。");
+                throw new runtime_error_6.default("有効なルートコンテナが設定されていません。");
             }
-            container_manager_5.default.getInstance().setRootElement(appRootEl);
+            var rootContainer = container_factory_4.default.createContainer(container_factory_4.default.ROOT_CONTAINER_ID, "", appRootEl, null);
+            //ContainerFactory.getInstance().setRootElement(appRootEl);
             overlay_manager_8.default.getInstance().setViewPortElement(appRootEl);
-            module_manager_5.default.getInstance().initialize().then(function () {
+            module_manager_6.default.getInstance().initialize(rootContainer).then(function () {
                 console.log("moduleManager is initialized.");
                 __moduleManagerIsInitialized = true;
                 __startApplications();
@@ -2911,7 +2931,7 @@ define("intraframe", ["require", "exports", "core/module/module_manager", "core/
     var __startApplications = function () {
         if (!__sharedCssScriptIsLoaded || !__moduleManagerIsInitialized)
             return;
-        container_manager_5.default.getInstance().initializeRootContainer();
+        module_manager_6.default.getInstance().run();
         var resizeEvent;
         if (common_2.default.isMsIE) {
             resizeEvent = document.createEvent("Event");

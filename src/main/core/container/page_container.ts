@@ -114,7 +114,7 @@ export default class PageContainer extends Container {
         const moduleList: Array<Module> = this.mountedModules.get(moduleName);
         if (moduleList) {
             for (let i in moduleList) {
-                if (this.moduleChangeHistory.indexOf(moduleList[i]) !== -1) {
+                if (this.moduleChangeHistory.indexOf(moduleList[i]) === -1) {
                     availableModule = moduleList[i];
                     break;
                 }

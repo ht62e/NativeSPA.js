@@ -1,7 +1,6 @@
 import Module from "./module";
 import PlainHtmlModule from "./plain_html_module";
 import RuntimeError from "../common/runtime_error";
-import ContainerManager from "../container/container_manager";
 import Container from "../container/container";
 import OvarlayManager from "../overlay/overlay_manager";
 import { WindowOptions } from "../overlay/dialog_window";
@@ -45,28 +44,31 @@ export enum ModuleType {
 }
 
 export default class ModuleManager {
-    public static ROOT_CONTAINER_ID: string = "root.root";
 
     private static instance = new ModuleManager();
     private static instanceSequence = 0;
 
-    private descriptions: Map<string, ModuleDescription>;
-    private modules: Map<string, Module>;
+    private rootContainer: Container;
+
+    private descriptions: Object;
+    private loadedModules: Map<string, Array<Module>>;
     private prefetchedModules: Map<string, Module>;
 
-    private subModuleList: Map<string, Array<string>>;
-
-    private dependencyInfoMap = new Map<String, ModuleDependencyInfo>();     
+    private subModuleList: Map<string, Array<string>>;   
 
     constructor() {
-        this.descriptions = new Map<string, ModuleDescription>();
-        this.modules = new Map<string, Module>();
+        this.descriptions = {};
+        this.loadedModules = new Map<string, Array<Module>>();
         this.prefetchedModules = new Map<string, Module>();
         this.subModuleList = new Map<string, Array<string>>();
     }
 
     public static getInstance(): ModuleManager {
         return ModuleManager.instance;
+    }
+
+    public setRootContainer(container: Container) {
+        this.rootContainer = container;
     }
 
     public register(name: string, sourceUri: string, targetContainerId: string, 
@@ -103,17 +105,28 @@ export default class ModuleManager {
             lazyLoading: op.lazyLoading !== undefined ? op.lazyLoading : false,
             forcePrefetch: op.forcePrefetch !== undefined ? op.forcePrefetch : true,
         };
-        this.descriptions.set(moduleName, ds);
+        this.descriptions[moduleName] = ds;
         return ds;
     }
 
-    public getModule(name: string) {
-        if (!this.modules.has(name)) throw new RuntimeError("指定されたモジュールが見つかりません。");
-        return this.modules.get(name);
+    public getModule(name: string): Module {
+        if (!this.loadedModules.has(name)) throw new RuntimeError("指定されたモジュールが見つかりません。");
+        return this.loadedModules.get(name)[0]; //TODO
     }
 
-    public async initialize(): Promise<boolean> {        
-        this.descriptions.forEach(async (description) => {
+    public run() {
+        window.addEventListener("resize", () => {
+            this.rootContainer.onResize();
+        });
+
+        this.rootContainer.initialize();
+    }
+
+    public async initialize(rootContainer: Container): Promise<boolean> {
+        this.rootContainer = rootContainer;
+
+        for (const key in this.descriptions) {
+            const description = this.descriptions[key];
             //プリフェッチ
             if (description.forcePrefetch) {
                 const module: Module = await this.fetchModule(description.moduleName);
@@ -121,7 +134,6 @@ export default class ModuleManager {
             }
 
             //サブモジュールリスト生成
-            console.log(description);
             const targetModule: string = description.targetContainerId.split(".")[0];
             if (!this.subModuleList.has(targetModule)) {
                 this.subModuleList.set(targetModule, new Array<string>());
@@ -129,7 +141,23 @@ export default class ModuleManager {
             this.subModuleList.get(targetModule).push(description.moduleName);
 
             //TODO descriptionsに存在しないmoduleNameのsubModuleListのリストがあったなら警告を出すか止める
-        });
+        }
+        // this.descriptions.forEach(async (description) => {
+        //     //プリフェッチ
+        //     if (description.forcePrefetch) {
+        //         const module: Module = await this.fetchModule(description.moduleName);
+        //         this.prefetchedModules.set(description.moduleName, module);
+        //     }
+
+        //     //サブモジュールリスト生成
+        //     const targetModule: string = description.targetContainerId.split(".")[0];
+        //     if (!this.subModuleList.has(targetModule)) {
+        //         this.subModuleList.set(targetModule, new Array<string>());
+        //     }
+        //     this.subModuleList.get(targetModule).push(description.moduleName);
+
+        //     //TODO descriptionsに存在しないmoduleNameのsubModuleListのリストがあったなら警告を出すか止める
+        // });
         // for (let description of this.descriptions) {
         //     let newModule: Module = null;
             
@@ -204,7 +232,7 @@ export default class ModuleManager {
             module = this.prefetchedModules.get(moduleName);
             this.prefetchedModules.delete(moduleName);
         } else {
-            const description: ModuleDescription = this.descriptions.get(moduleName);
+            const description: ModuleDescription = this.descriptions[moduleName];
             if (!description) {
                 throw new RuntimeError("指定されたモジュール " + moduleName + " は定義されていません。");
             }
@@ -221,34 +249,55 @@ export default class ModuleManager {
     }
 
     public async loadModuleRecursively(moduleName: string): Promise<Module> {
-        if (moduleName !== "root") {
-            const containerManager = ContainerManager.getInstance();
-            const module: Module = await this.fetchModule(moduleName);
-            const moduleDescription: ModuleDescription = this.descriptions.get(moduleName);
+        let module: Module;
 
-            const mountTargetContainer = containerManager.getContainer(moduleDescription.targetContainerId);
+        if (moduleName !== "root") {
+            module = await this.fetchModule(moduleName);
+            const moduleDescription: ModuleDescription = this.descriptions[moduleName];
+
+            const parts = moduleDescription.targetContainerId.split(".");
+            const targetModuleName: string = parts[0];
+            const targetContainerName: string = parts[1];
+         
+            //const mountTargetContainer = containerManager.getContainer(moduleDescription.targetContainerId);
+
+
+            //仮
+            let mountTargetContainer: Container;
+            if (targetModuleName === "root") {
+                mountTargetContainer = this.rootContainer;
+            } else {
+                mountTargetContainer = this.loadedModules.get(targetModuleName)[0].getSubContainerByName(targetContainerName);
+            }
+
+
             if (mountTargetContainer) {
                 await mountTargetContainer.addModule(module);
                 if (moduleDescription.isContainerDefault) {
                     mountTargetContainer.setDefaultModule(moduleName);
                 }
+                if (!this.loadedModules.has(moduleName)) {
+                    this.loadedModules.set(moduleName, new Array<Module>());
+                }
+                this.loadedModules.get(moduleName).push(module);
             } else {
                 throw new RuntimeError("ターゲットコンテナは存在しないか、ロードされていません。");
             }
         }
 
         const subModules: Array<string> = this.subModuleList.get(moduleName);
-        if (!subModules) return
-
-        for (const subModuleName of subModules) {
-            const subModuleDescription = this.descriptions.get(subModuleName)
-            if (!subModuleDescription.lazyLoading) {
-                await this.loadModuleRecursively(subModuleName);
-            } else {
-                console.log(subModuleName + " is lazy load mode.");
-            } 
+        if (subModules) {
+            for (const subModuleName of subModules) {
+                const subModuleDescription = this.descriptions[subModuleName];
+                if (!subModuleDescription.lazyLoading) {
+                    await this.loadModuleRecursively(subModuleName);
+                } else {
+                    console.log(subModuleName + " is lazy load mode.");
+                } 
+            }            
         }
-           
+        
+        return module;
     }
 
     // public async loadModuleRecursively(moduleName: string, forceLoading?: boolean) {
@@ -306,35 +355,7 @@ export default class ModuleManager {
     // }
 
     public dispatchMessage(destination: string, command: string, message?: any): Promise<any> {
+        //TODO 仮
         return this.getModule(destination).passMessage(command, message);
     }
-}
-
-class ModuleDependencyInfo {
-    moduleDescription: ModuleDescription;
-    //subContainerNames: Set<string>;
-    subModuleNames = new Array<string>();
-    isProcessed: boolean = false;
-    isRoot: boolean;
-
-    constructor(moduleDescription: ModuleDescription, subContainerNames: Array<string>) {
-        this.moduleDescription = moduleDescription;
-        //this.subContainerNames = new Set(subContainerNames); //IE11非対応
-
-        // this.subContainerNames = new Set();
-        // subContainerNames.forEach(name => {
-        //     this.subContainerNames.add(name);
-        // });
-
-        this.isRoot = moduleDescription === null;
-    }
-
-    public addSubModule(subModuleName: string, targetContainerName: string) {
-        // if (this.subContainerNames.has(targetContainerName)) {
-            this.subModuleNames.push(subModuleName);
-        // } else {
-        //     throw new RuntimeError("モジュール [ " + this.moduleDescription.name + " ] 内に指定されたサブコンテナが存在しない。");
-        // }
-    }
-
 }

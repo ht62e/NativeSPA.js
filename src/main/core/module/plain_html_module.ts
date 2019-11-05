@@ -1,6 +1,6 @@
 import Container, { ContainerInfo, CssTransitionOptions } from "../container/container";
 import HtmlModule from "./html_module";
-import ContainerManager from "../container/container_manager";
+import ContainerFactory from "../container/container_factory";
 import { htmlModuleAdapters } from "../adapter/html_module_adapter";
 import CssTransitionDriver from "../common/css_transition_driver";
 import SourceRepository from "../source_repository";
@@ -76,12 +76,11 @@ export default class PlainHtmlModule extends HtmlModule {
         await this.evalScripts();
 
         //サブコンテナをContainerManagerで生成・登録
-        const containerManager = ContainerManager.getInstance();
         this.subContainerInfos.forEach((containerInfo: ContainerInfo, domId: string) => {
             let localElementId = domId.replace(localizeRegExp, localPrefix);
             let containerEl: HTMLDivElement = document.getElementById(localElementId) as HTMLDivElement;
             let containerId: string = this.name + "." + containerInfo.name;
-            containerInfo.container = containerManager.createContainer(containerId, containerInfo.type, containerEl, this);
+            containerInfo.container = ContainerFactory.createContainer(containerId, containerInfo.type, containerEl, this);
         });
 
         this.isMounted = true;

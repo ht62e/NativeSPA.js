@@ -13,8 +13,8 @@ export default interface Module {
     
     show(nonTransition?: boolean): void;
     hide(): void;
-    changeModuleCssPosition(left: string, top: string);
-    changeModuleCssSize(width: string, height: string);
+    changeModuleCssPosition(left: string, top: string): void;
+    changeModuleCssSize(width: string, height: string): void;
 
     //apply(): Result;
     subContainerNavigationEventHandler(subContainerId: string, currentInfo: ContainerNavigationInfo, histories: Array<ContainerNavigationInfo>): boolean;
@@ -26,6 +26,7 @@ export default interface Module {
     getCaption(): string;
     getElement(): HTMLDivElement;
     getOwnerContainer(): Container;
+    getSubContainerByName(containerName: string): Container;
     getSubContainerNames(): Array<string>;
 
     setCaption(caption: string);
