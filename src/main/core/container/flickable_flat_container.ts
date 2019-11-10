@@ -1,9 +1,9 @@
 import Container from "./container";
 import FlatContainer from "./flat_container";
-import Module from "../module/module";
+import AppModule from "../module/app_module";
 
 export default class FlickableFlatContainer extends FlatContainer {
-    public async activateModule(module: Module): Promise<boolean> {
+    public async activateModule(module: AppModule): Promise<boolean> {
         throw new Error("Method not implemented.");
     }
     protected elementAttachHandler(element: HTMLDivElement): Container {

@@ -3,7 +3,8 @@ import { Size } from "../common/types";
 import { Parcel, Result } from "../common/dto";
 import Container from "../container/container";
 import Common from "../common/common";
-import OvarlayManager from "./overlay_manager";
+import OverlayManager from "./overlay_manager";
+import ModuleLoader from "../module/module_loader";
 
 export interface DrawerOptions {
     dockType?: DockType;
@@ -23,11 +24,15 @@ export default class Drawer extends Overlay {
 
     protected waitForOverlayCloseResolver: (value?: Result | PromiseLike<Result>) => void;
 
-    constructor(viewPortElement: HTMLElement, name: string, options: DrawerOptions) {
-        super(viewPortElement, name, null);
+    constructor(name: string, moduleLoader: ModuleLoader, options: DrawerOptions) {
+        super(name, null, moduleLoader);
 
         this.dockType = options.dockType !== undefined ? options.dockType: DockType.Left;
         this.dockSize = options.dockSize !== undefined ? options.dockSize: "33%";
+    }
+
+    public mount(overlayManager: OverlayManager): void {
+        super.mount(overlayManager);
 
         this.changeDockType(this.dockType);
 
@@ -45,7 +50,7 @@ export default class Drawer extends Overlay {
         
     }
 
-    public getContainer(): Container {
+    public getChildContainer(): Container {
         return this.container;
     }
 
@@ -126,8 +131,7 @@ export default class Drawer extends Overlay {
     }
 
     protected onContentMouseDown(event: MouseEvent) {
-        const overlayManager = OvarlayManager.getInstance();
-        overlayManager.cancelAutoClosingOnlyOnce();
+        this.overlayManager.cancelAutoClosingOnlyOnce();
 
     }
 }

@@ -1,18 +1,21 @@
 import HtmlModuleAdapter from "./html_module_adapter";
-import ModuleManager from "../module/module_manager";
-import OvarlayManager from "../overlay/overlay_manager";
+import ModuleLoader from "../module/module_loader";
+import OverlayManager from "../overlay/overlay_manager";
 import Overlay, { ShowOptions } from "../overlay/overlay";
 import Container from "../container/container";
 import RuntimeError from "../common/runtime_error";
-import { Parcel, Result, ActionType } from "../common/dto";
-import ContainerFactory from "../container/container_factory";
-import Module from "../module/module";
+import { Parcel, Result } from "../common/dto";
+import PageContainer from "../container/page_container";
+import AppModule from "../module/app_module";
 
 export default class Navigation {
     private adapter: HtmlModuleAdapter;
-    private overlayManager: OvarlayManager = OvarlayManager.getInstance();
+    private moduleLoader: ModuleLoader;
+    private overlayManager: OverlayManager;
 
-    constructor(adapter: HtmlModuleAdapter) {
+    constructor(moduleLoader: ModuleLoader, adapter: HtmlModuleAdapter) {
+        this.moduleLoader = moduleLoader;
+        this.overlayManager = moduleLoader.getViewPort().getOverlayManager();
         this.adapter = adapter;
     }
 
@@ -31,9 +34,9 @@ export default class Navigation {
         return this.overlayManager.findOverlayByContainer(container);
     }
 
-    public async forward(targetIdentifier: string, parcel?: Parcel): Promise<Result> {
-        let targetContainerId;
-        let moduleName;
+    public async switch(targetIdentifier: string, parcel?: Parcel): Promise<Result> {
+        let targetContainerId: string;
+        let moduleName: string;
         const tiParts: Array<string> = targetIdentifier.split("::");
 
         if (tiParts.length > 1) {
@@ -47,27 +50,63 @@ export default class Navigation {
         const targetModuleName: string = parts[0];
         const targetContainerName: string = parts[1];
 
-        //const target: Container = ContainerManager.getInstance().getContainer(targetContainerId);
-        //const module: Module = ModuleManager.getInstance().getModule(moduleName);
-        const target = ModuleManager.getInstance().getModule(targetModuleName).getSubContainerByName(targetContainerName);
+        const baseModuleInstance: AppModule = this.moduleLoader.getModule(targetModuleName);
+        const activeModuleInstance: AppModule = baseModuleInstance.getOwnerContainer().getActiveModuleInstance(targetModuleName);
+        const target: Container = activeModuleInstance.getChildContainer(targetContainerName);
 
-        return target.forward(moduleName, parcel);
+        return target.switch(moduleName, parcel);
     }
 
-    public back(targetContainerId: string): void {
-        let containerId;
-        if (targetContainerId) {
-            containerId = targetContainerId;
+    public async forward(targetIdentifier: string, parcel?: Parcel): Promise<Result> {
+        let targetContainerId: string;
+        let moduleName: string;
+        const tiParts: Array<string> = targetIdentifier.split("::");
+
+        if (tiParts.length > 1) {
+            targetContainerId = tiParts[0];
+            moduleName  = tiParts[1];
         } else {
-            containerId = this.adapter.getHtmlModule().getOwnerContainer().getId();
+            targetContainerId = this.adapter.getHtmlModule().getOwnerContainer().getId();
+            moduleName = targetIdentifier;
         }
         const parts: Array<string> = targetContainerId.split(".");
         const targetModuleName: string = parts[0];
         const targetContainerName: string = parts[1];
 
-        const target = ModuleManager.getInstance().getModule(targetModuleName).getSubContainerByName(targetContainerName);
+        const baseModuleInstance: AppModule = this.moduleLoader.getModule(targetModuleName);
+        const activeModuleInstance: AppModule = baseModuleInstance.getOwnerContainer().getActiveModuleInstance(targetModuleName);
+        const target: Container = activeModuleInstance.getChildContainer(targetContainerName);
 
-        target.back();
+        if (target instanceof PageContainer) {
+            return target.forward(moduleName, parcel);
+        } else {
+            throw new RuntimeError("Container [" + target.getId + "] is not PageContainer.");
+        }
+
+    }
+
+
+
+    public back(targetContainerId: string): void {
+        let containerId: string;
+        if (targetContainerId) {
+            containerId = targetContainerId;
+        } else {
+            containerId = this.adapter.getHtmlModule().getOwnerContainer().getId();
+        }
+        const parts: Array<string> = containerId.split(".");
+        const targetModuleName: string = parts[0];
+        const targetContainerName: string = parts[1];
+
+        const baseModuleInstance: AppModule = this.moduleLoader.getModule(targetModuleName);
+        const activeModuleInstance: AppModule = baseModuleInstance.getOwnerContainer().getActiveModuleInstance(targetModuleName);
+        const target: Container = activeModuleInstance.getChildContainer(targetContainerName);
+
+        if (target instanceof PageContainer) {
+            return target.back();
+        } else {
+            throw new RuntimeError("Container [" + target.getId + "] is not PageContainer.");
+        }
     }
 
     public async showWindow(overlayName: string, parcel?: Parcel, options?: ShowOptions): Promise<Result> {

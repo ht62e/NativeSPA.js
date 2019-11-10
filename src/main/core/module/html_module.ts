@@ -1,20 +1,16 @@
-import Container, { ContainerInfo, ContainerNavigationInfo } from "../container/container";
-import Module from "./module";
+import Container, { ContainerInfo, ContainerNavigationInfo, CssTransitionOptions } from "../container/container";
+import AppModule, { MountOption, ModuleDefinition } from "./app_module";
 import SourceRepository from "../source_repository";
 import HtmlModuleAdapter from "../adapter/html_module_adapter";
 import { Result, ActionType, Parcel } from "../common/dto";
 import CssTransitionDriver from "../common/css_transition_driver";
+import ModuleLoader from "./module_loader";
 
-export default abstract class HtmlModule implements Module {
-    protected isFetched: boolean = false;
-    protected isMounted: boolean = false;
-    protected isInitialized: boolean = false;
+export default abstract class HtmlModule extends AppModule {
     protected source: string;
     protected wrapperElement: HTMLDivElement;
-    protected currentContainer: Container;
     protected subContainerInfos = new Map<string, ContainerInfo>();
 
-    protected caption: string = "";
     protected cssTransitionDriver: CssTransitionDriver;
 
     protected htmlAdapter: HtmlModuleAdapter = null;
@@ -25,17 +21,23 @@ export default abstract class HtmlModule implements Module {
 
     protected abstract onCreate(): void;
     protected abstract loadSubContainerInfos(): void;
-    public abstract async mount(elementAttachHandler: (element: HTMLDivElement, ownerModuleName: string) => Container): Promise<boolean>;
+
     public abstract changeModuleCssPosition(left: string, top: string): void;
     public abstract changeModuleCssSize(width: string, height: string): void;
 
-    constructor(protected name: string, protected sourceUri: string, protected moduleIndex: number) {
+    constructor(moduleDefinition: ModuleDefinition, loader: ModuleLoader) {
+        super();
+        this.moduleLoader = loader;
+        
+        this.moduleDefinition = moduleDefinition;
+        this.moduleIndex = loader.getNextModuleInstanceSequence();
+        this.name = moduleDefinition.moduleName;
+        this.sourceUri = moduleDefinition.sourceUri;
+        
         this.onCreate();
     }
 
-    public setCaption(caption: string) {
-        this.caption = caption;
-    }
+
 
     public subContainerNavigationEventHandler(subContainerId: string, currentInfo: ContainerNavigationInfo, histories: Array<ContainerNavigationInfo>): boolean {
         return this.htmlAdapter.triggerOnSubContainerNavigated(subContainerId, currentInfo, histories);
@@ -49,14 +51,13 @@ export default abstract class HtmlModule implements Module {
         });
     }
 
-    public async fetch(): Promise<boolean> {
+    public async fetch(): Promise<void> {
         const repository = SourceRepository.getInstance();
         this.source = await repository.fetch(this.sourceUri);
         
         this.loadSubContainerInfos();
 
         this.isFetched = true;
-        return null;
     }
 
     public initialize(parcel: Parcel): void {
@@ -141,15 +142,7 @@ export default abstract class HtmlModule implements Module {
         }
     }
 
-    public getElement(): HTMLDivElement {
-        throw this.wrapperElement;
-    }
-
-    public getOwnerContainer(): Container {
-        return this.currentContainer;
-    }
-
-    public getSubContainerByName(containerName: string): Container {
+    public getChildContainer(containerName: string): Container {
         let target: Container;
         this.subContainerInfos.forEach((c: ContainerInfo) => {
             if (c.name === containerName) target = c.container;
@@ -157,26 +150,7 @@ export default abstract class HtmlModule implements Module {
         return target; 
     }
 
-    public getSubContainerNames(): Array<string> {
-        let ary = new Array<string>();
-        this.subContainerInfos.forEach((c: ContainerInfo) => {
-            ary.push(c.name);
-        });
-        return ary;
-    }
 
-    public getName(): string {
-        return this.name;
-    }
-
-    public getCaption(): string {
-        return this.caption;
-    }
-    
-    protected extractTemplateContent(source: string): string {
-        
-        return "";
-    }
 }
 
 

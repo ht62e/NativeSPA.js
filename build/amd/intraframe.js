@@ -240,8 +240,6 @@ define("core/container/container", ["require", "exports"], function (require, ex
     Object.defineProperty(exports, "__esModule", { value: true });
     var Container = /** @class */ (function () {
         function Container(id, bindDomElement, owner, cssTransitionOptions) {
-            //protected mountedModules = new Map<string, Module>();
-            this.mountedModules = new Map();
             this.moduleChangeHistory = new Array();
             this.inBackProcess = false;
             this.containerParcel = null;
@@ -255,23 +253,17 @@ define("core/container/container", ["require", "exports"], function (require, ex
         }
         Container.prototype.triggerSubContainerNavigationEvent = function () {
             if (this.owner) {
-                this.owner.getOwnerContainer().subContainerNavigationEventHandler(this, this.activeModule);
+                this.owner.getOwnerContainer().subContainerNavigationEventHandler(this, this.currentModule);
             }
         };
         Container.prototype.getId = function () {
             return this.id;
         };
-        Container.prototype.getElement = function () {
-            return this.bindDomElement;
-        };
-        // public getParent(): Container {
-        //     return this.parent;
-        // }
         Container.prototype.getOwner = function () {
             return this.owner;
         };
-        Container.prototype.getActiveModule = function () {
-            return this.activeModule;
+        Container.prototype.getCurrentModule = function () {
+            return this.currentModule;
         };
         Container.prototype.setDefaultModule = function (moduleName) {
             this.defaultModuleName = moduleName;
@@ -291,14 +283,14 @@ define("core/container/container", ["require", "exports"], function (require, ex
             // this.mountedModules.forEach((module: Module) => {
             //     module.dispatchResizeEvent();
             // });
-            this.mountedModules.forEach(function (moduleInstances) {
-                moduleInstances.forEach(function (module) {
-                    module.dispatchResizeEvent();
-                });
-            });
+            // this.mountedModules.forEach((moduleInstances: Array<Module>) => {
+            //     moduleInstances.forEach((module: Module) => {
+            //         module.dispatchResizeEvent();
+            //     })
+            // });
         };
         Container.prototype.subContainerNavigationEventHandler = function (container, module) {
-            if (!this.activeModule)
+            if (!this.currentModule)
                 return;
             var info = {
                 moduleName: module.getName(),
@@ -312,7 +304,7 @@ define("core/container/container", ["require", "exports"], function (require, ex
                     caption: m.getCaption()
                 });
             });
-            var allowBubbling = this.activeModule.subContainerNavigationEventHandler(container.getId(), info, histories);
+            var allowBubbling = this.currentModule.subContainerNavigationEventHandler(container.getId(), info, histories);
             if (allowBubbling !== false) {
                 this.triggerSubContainerNavigationEvent();
             }
@@ -321,9 +313,38 @@ define("core/container/container", ["require", "exports"], function (require, ex
     }());
     exports.default = Container;
 });
-define("core/module/module", ["require", "exports"], function (require, exports) {
+define("core/container/container_holder", ["require", "exports"], function (require, exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
+});
+define("core/module/app_module", ["require", "exports"], function (require, exports) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    var AppModule = /** @class */ (function () {
+        function AppModule() {
+            this.caption = "";
+            this.isFetched = false;
+            this.isMounted = false;
+            this.isInitialized = false;
+        }
+        AppModule.prototype.getModuleLoader = function () {
+            return this.moduleLoader;
+        };
+        AppModule.prototype.getName = function () {
+            return this.name;
+        };
+        AppModule.prototype.getCaption = function () {
+            return this.caption;
+        };
+        AppModule.prototype.getOwnerContainer = function () {
+            return this.currentContainer;
+        };
+        AppModule.prototype.setCaption = function (caption) {
+            this.caption = caption;
+        };
+        return AppModule;
+    }());
+    exports.default = AppModule;
 });
 define("core/source_repository", ["require", "exports"], function (require, exports) {
     "use strict";
@@ -446,13 +467,14 @@ define("core/common/runtime_error", ["require", "exports"], function (require, e
     }(Error));
     exports.default = RuntimeError;
 });
-define("core/container/page_container", ["require", "exports", "core/container/container", "core/common/runtime_error", "core/common/dto", "core/module/module_manager"], function (require, exports, container_1, runtime_error_1, dto_1, module_manager_1) {
+define("core/container/page_container", ["require", "exports", "core/container/container", "core/common/runtime_error", "core/common/dto"], function (require, exports, container_1, runtime_error_1, dto_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var PageContainer = /** @class */ (function (_super) {
         __extends(PageContainer, _super);
         function PageContainer(id, bindDomElement, owner, cssTransitionOptions) {
             var _this = _super.call(this, id, bindDomElement, owner, cssTransitionOptions) || this;
+            _this.mountedModules = new Map();
             bindDomElement.classList.add("itm_page_container");
             return _this;
         }
@@ -468,7 +490,7 @@ define("core/container/page_container", ["require", "exports", "core/container/c
                                 this.mountedModules.set(moduleName, new Array());
                             }
                             this.mountedModules.get(moduleName).push(module);
-                            return [4 /*yield*/, module.mount(function (element) {
+                            return [4 /*yield*/, module.mount(function (element, option) {
                                     _this.bindDomElement.appendChild(element);
                                     return _this;
                                 }, this.cssTransitionOptions)];
@@ -483,10 +505,10 @@ define("core/container/page_container", ["require", "exports", "core/container/c
             this.moduleChangeHistory = new Array();
             this.hideAllModules();
             if (this.defaultModuleName) {
-                this.jump(this.defaultModuleName, parcel, true);
+                this.switch(this.defaultModuleName, parcel, true);
             }
         };
-        PageContainer.prototype.jump = function (moduleName, parcel, withoutTransition) {
+        PageContainer.prototype.switch = function (moduleName, parcel, withoutTransition) {
             return __awaiter(this, void 0, void 0, function () {
                 return __generator(this, function (_a) {
                     switch (_a.label) {
@@ -534,21 +556,10 @@ define("core/container/page_container", ["require", "exports", "core/container/c
                 });
             });
         };
-        // private async navigate(module: string, parcel?: Parcel, withoutTransition?: boolean): Promise<Result> {
-        //     await this.initializeModule(module, parcel);
-        //     this.activateModule(module, withoutTransition);
-        //     const result = await module.waitForExit();
-        //     if (!this.inBackProcess) {
-        //         //backメソッドではなく、モジュールの自主的な終了の場合はページを前に戻す
-        //         this.showPreviousModule();
-        //     }
-        //     this.inBackProcess = false;
-        //     return result;
-        // }
         PageContainer.prototype.back = function () {
             var _this = this;
             this.inBackProcess = true;
-            this.activeModule.exit(dto_1.ActionType.BACK).then(function (exited) {
+            this.currentModule.exit(dto_1.ActionType.BACK).then(function (exited) {
                 if (exited) {
                     _this.showPreviousModule();
                 }
@@ -557,37 +568,25 @@ define("core/container/page_container", ["require", "exports", "core/container/c
                 }
             });
         };
-        // protected async initializeModule(module: Module, parcel?: Parcel): Promise<boolean> {
-        //     if (!this.mountedModules.has(module.getName())) {
-        //         const moduleManager = ModuleManager.getInstance();
-        //         await moduleManager.loadModuleRecursively(module.getName(), true);
-        //         if (!this.mountedModules.has(module.getName())) {
-        //             throw new RuntimeError("指定されたモジュールはコンテナに登録されていません。");
-        //         }
-        //         console.log(module.getName() + " is lazy loaded.");
-        //     }
-        //     module.initialize(parcel);
-        //     return true;
-        // }
         PageContainer.prototype.prepareModule = function (moduleName) {
             return __awaiter(this, void 0, void 0, function () {
-                var availableModule, moduleList, i, moduleManager;
+                var availableModule, moduleInstances, i, moduleLoader;
                 return __generator(this, function (_a) {
                     switch (_a.label) {
                         case 0:
                             availableModule = null;
-                            moduleList = this.mountedModules.get(moduleName);
-                            if (moduleList) {
-                                for (i in moduleList) {
-                                    if (this.moduleChangeHistory.indexOf(moduleList[i]) === -1) {
-                                        availableModule = moduleList[i];
+                            moduleInstances = this.mountedModules.get(moduleName);
+                            if (moduleInstances) {
+                                for (i in moduleInstances) {
+                                    if (this.moduleChangeHistory.indexOf(moduleInstances[i]) === -1) {
+                                        availableModule = moduleInstances[i];
                                         break;
                                     }
                                 }
                             }
                             if (!!availableModule) return [3 /*break*/, 2];
-                            moduleManager = module_manager_1.default.getInstance();
-                            return [4 /*yield*/, moduleManager.loadModuleRecursively(moduleName)];
+                            moduleLoader = this.owner.getModuleLoader();
+                            return [4 /*yield*/, moduleLoader.loadModuleRecursively(moduleName, this.owner)];
                         case 1:
                             availableModule = _a.sent();
                             if (availableModule.getOwnerContainer() !== this) {
@@ -595,20 +594,16 @@ define("core/container/page_container", ["require", "exports", "core/container/c
                             }
                             console.log(availableModule.getName() + " is lazy loaded.");
                             _a.label = 2;
-                        case 2: 
-                        //availableModule.initialize(parcel);
-                        return [2 /*return*/, availableModule];
+                        case 2: return [2 /*return*/, availableModule];
                     }
                 });
             });
         };
-        // protected getAvailableModule(moduleName: string): Module {
-        // }
         PageContainer.prototype.activateModule = function (module, withoutTransition) {
-            if (this.activeModule) {
-                this.activeModule.hide();
+            if (this.currentModule) {
+                this.currentModule.hide();
             }
-            this.activeModule = module;
+            this.currentModule = module;
             module.show(withoutTransition);
             this.triggerSubContainerNavigationEvent();
         };
@@ -621,20 +616,26 @@ define("core/container/page_container", ["require", "exports", "core/container/c
             }
             else {
                 //if (this.activeModule && this.activeModule !== this.defaultModule) {
-                if (this.activeModule) {
-                    this.activeModule.hide();
+                if (this.currentModule) {
+                    this.currentModule.hide();
                 }
             }
         };
         PageContainer.prototype.hideAllModules = function () {
-            // this.mountedModules.forEach((m: Module) => {
-            //     m.hide();
-            // });
             this.mountedModules.forEach(function (moduleInstances) {
                 moduleInstances.forEach(function (module) {
                     module.hide();
                 });
             });
+        };
+        PageContainer.prototype.getActiveModuleInstance = function (moduleName) {
+            var lastInstance = null;
+            this.moduleChangeHistory.forEach(function (module) {
+                if (module.getName() === moduleName) {
+                    lastInstance = module;
+                }
+            });
+            return lastInstance;
         };
         return PageContainer;
     }(container_1.default));
@@ -647,7 +648,10 @@ define("core/container/flat_container", ["require", "exports", "core/container/c
         __extends(FlatContainer, _super);
         function FlatContainer(id, bindDomElement, owner, cssTransitionOptions) {
             var _this = _super.call(this, id, bindDomElement, owner, cssTransitionOptions) || this;
+            _this.mountedModules = new Map();
             _this.moduleOrders = new Map();
+            _this.specifiedOrderModules = new Map();
+            _this.notSpecifiedOrderModules = new Array();
             _this.scrollBoxElement = document.createElement("div");
             _this.scrollBoxElement.style.position = "absolute";
             _this.scrollBoxElement.style.overflow = "hidden";
@@ -667,31 +671,36 @@ define("core/container/flat_container", ["require", "exports", "core/container/c
                 return __generator(this, function (_a) {
                     switch (_a.label) {
                         case 0:
-                            this.mountedModules.set(module.getName(), [module]);
-                            this.moduleOrders.set(module.getName(), this.mountedModules.size - 1);
-                            return [4 /*yield*/, module.mount(function (element) {
+                            this.mountedModules.set(module.getName(), module);
+                            return [4 /*yield*/, module.mount(function (element, option) {
                                     _this.scrollBoxElement.appendChild(element);
-                                    _this.scrollBoxElement.style.width = "calc(100% * " + _this.mountedModules.size + ")";
+                                    if (option && !isNaN(option.order)) {
+                                        _this.specifiedOrderModules.set(module.getName(), option.order);
+                                    }
+                                    else {
+                                        _this.notSpecifiedOrderModules.push(module.getName());
+                                    }
                                     return _this;
                                 })];
                         case 1:
                             _a.sent();
+                            this.updateAllModulePositionAndSize();
                             return [2 /*return*/];
                     }
                 });
             });
         };
         FlatContainer.prototype.initialize = function (parcel) {
-            this.updateAllModulePositionAndSize();
+            this.initialParcel = parcel;
             this.mountedModules.forEach(function (m) {
-                m[0].initialize(parcel);
-                m[0].show();
+                m.initialize(parcel);
+                m.show(true);
             });
             if (this.defaultModuleName) {
-                this.forward(this.defaultModuleName, parcel);
+                this.switch(this.defaultModuleName, parcel);
             }
         };
-        FlatContainer.prototype.activateModule = function (module, parcel) {
+        FlatContainer.prototype.activateModule = function (module) {
             return __awaiter(this, void 0, void 0, function () {
                 var leftIndex, transX;
                 return __generator(this, function (_a) {
@@ -701,38 +710,79 @@ define("core/container/flat_container", ["require", "exports", "core/container/c
                     leftIndex = this.moduleOrders.get(module.getName());
                     transX = Math.round(10000 / this.mountedModules.size * leftIndex) / 100;
                     this.scrollBoxElement.style.transform = "translate(-" + String(transX) + "%)";
-                    this.activeModule = module;
+                    this.currentModule = module;
                     this.triggerSubContainerNavigationEvent();
                     return [2 /*return*/, true];
                 });
             });
         };
-        FlatContainer.prototype.forward = function (moduleName, parcel) {
+        FlatContainer.prototype.switch = function (moduleName, parcel, withoutTransition) {
             return __awaiter(this, void 0, void 0, function () {
                 var module;
                 return __generator(this, function (_a) {
-                    module = this.mountedModules.get(moduleName)[0];
-                    this.activateModule(module, parcel);
-                    return [2 /*return*/, null];
+                    switch (_a.label) {
+                        case 0: return [4 /*yield*/, this.prepareModule(moduleName)];
+                        case 1:
+                            module = _a.sent();
+                            if (parcel) {
+                                module.initialize(parcel);
+                            }
+                            this.activateModule(module);
+                            return [2 /*return*/, null];
+                    }
                 });
             });
         };
-        FlatContainer.prototype.back = function () {
-            //無効な操作
+        FlatContainer.prototype.prepareModule = function (moduleName) {
+            return __awaiter(this, void 0, void 0, function () {
+                var availableModule, moduleLoader;
+                return __generator(this, function (_a) {
+                    switch (_a.label) {
+                        case 0:
+                            availableModule = this.mountedModules.get(moduleName);
+                            if (!!availableModule) return [3 /*break*/, 2];
+                            moduleLoader = this.owner.getModuleLoader();
+                            return [4 /*yield*/, moduleLoader.loadModuleRecursively(moduleName, this.owner)];
+                        case 1:
+                            availableModule = _a.sent();
+                            if (availableModule.getOwnerContainer() !== this) {
+                                throw new runtime_error_2.default("指定されたモジュールはコンテナに登録されていません。");
+                            }
+                            availableModule.initialize(this.initialParcel);
+                            availableModule.show(true);
+                            console.log(availableModule.getName() + " is lazy loaded.");
+                            _a.label = 2;
+                        case 2: return [2 /*return*/, availableModule];
+                    }
+                });
+            });
+        };
+        FlatContainer.prototype.getActiveModuleInstance = function (moduleName) {
+            return this.mountedModules.get(moduleName);
+        };
+        FlatContainer.prototype.calcModuleOrders = function () {
+            var _this = this;
+            var tempOrders = this.notSpecifiedOrderModules.slice();
+            this.specifiedOrderModules.forEach(function (order, moduleName) {
+                tempOrders.splice(order, 0, moduleName);
+            });
+            this.moduleOrders.clear();
+            tempOrders.forEach(function (moduleName, index) {
+                _this.moduleOrders.set(moduleName, index);
+            });
         };
         FlatContainer.prototype.updateAllModulePositionAndSize = function () {
             var _this = this;
-            var leftValueCommon = "calc(100% / " + this.mountedModules.size + " * "; //+ leftIndex + ")";
+            this.calcModuleOrders();
+            this.scrollBoxElement.style.width = "calc(100% * " + this.mountedModules.size + ")";
+            var leftValueCommon = "calc(100% / " + this.mountedModules.size + " * ";
             var widthValue = String(Math.round(1.0 / this.mountedModules.size * 10000) / 100) + "%";
             this.mountedModules.forEach(function (m) {
-                var order = _this.moduleOrders.get(m[0].getName());
+                var order = _this.moduleOrders.get(m.getName());
                 var leftValue = leftValueCommon + order + ")";
-                m[0].changeModuleCssPosition(leftValue, "0px");
-                m[0].changeModuleCssSize(widthValue, "100%");
+                m.changeModuleCssPosition(leftValue, "0px");
+                m.changeModuleCssSize(widthValue, "100%");
             });
-        };
-        FlatContainer.prototype.showPreviousModule = function () {
-            throw new Error("Method not implemented.");
         };
         return FlatContainer;
     }(container_2.default));
@@ -756,25 +806,30 @@ define("core/container/container_factory", ["require", "exports", "core/containe
             }
             return newContainer;
         };
-        ContainerFactory.ROOT_CONTAINER_ID = "root.root";
+        ContainerFactory.ROOT_CONTAINER_ID = "$root.viewport";
         return ContainerFactory;
     }());
     exports.default = ContainerFactory;
 });
-define("core/overlay/overlay", ["require", "exports", "core/overlay/overlay_manager", "core/common/types", "core/common/css_transition_driver", "core/container/container_factory"], function (require, exports, overlay_manager_1, types_1, css_transition_driver_1, container_factory_1) {
+define("core/overlay/overlay", ["require", "exports", "core/common/types", "core/common/css_transition_driver", "core/container/container_factory"], function (require, exports, types_1, css_transition_driver_1, container_factory_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var Overlay = /** @class */ (function () {
-        function Overlay(viewPortElement, name, size) {
+        function Overlay(name, size, moduleLoader) {
             this.lastFocusIsDetector = false;
+            this.isMounted = false;
             this.active = false;
             this.inactiveModalMode = false;
-            this.viewPortEl = viewPortElement;
+            this.moduleLoader = moduleLoader;
             this.name = name;
             var cssWidth = size ? size.cssWidth : Overlay.DEFAULT_OVERLAY_SIZE_WIDTH;
             var cssHeight = size ? size.cssHeight : Overlay.DEFAULT_OVERLAY_SIZE_HEIGHT;
             this.originalSize = new types_1.CssSize(cssWidth, cssHeight);
-            //リサイズ可能領域のためのフレームを作成
+            this.containerId = "overlay#" + this.name + "." + this.name;
+        }
+        Overlay.prototype.mount = function (overlayManager) {
+            this.overlayManager = overlayManager;
+            this.viewPortEl = overlayManager.getViewPortElement();
             this.frameEl = document.createElement("div");
             this.frameEl.style.position = "absolute";
             this.frameEl.style.backgroundColor = "transparent";
@@ -784,43 +839,44 @@ define("core/overlay/overlay", ["require", "exports", "core/overlay/overlay_mana
             this.frameEl.addEventListener("mousedown", this.onOuterMouseDown.bind(this));
             //キーボードタブキーナビゲーションによってダイアログの外にフォーカスが移ることを
             //防止（検知）するための非表示エレメントの作成（Shift+Tabキー対策）
-            this.tabFocusMoveHeadStopper = document.createElement("div");
-            this.tabFocusMoveHeadStopper.className = "itm_tabfocus_move_stopper";
-            this.tabFocusMoveHeadStopper.style.height = "0px";
-            this.tabFocusMoveHeadStopper.tabIndex = 0;
-            this.tabFocusMoveHeadStopper.addEventListener("focusin", this.onTabFocusMoveHeadStopperFocusIn.bind(this));
-            this.tabFocusMoveHeadDetector = document.createElement("div");
-            this.tabFocusMoveHeadDetector.className = "itm_tabfocus_move_detector";
-            this.tabFocusMoveHeadDetector.style.height = "0px";
-            this.tabFocusMoveHeadDetector.tabIndex = 0;
-            this.tabFocusMoveHeadDetector.addEventListener("focusin", this.onTabFocusMoveHeadDetectorFocusIn.bind(this));
+            var _s;
+            _s = this.tabFocusMoveHeadStopper = document.createElement("div");
+            _s.className = "itm_tabfocus_move_stopper";
+            _s.style.height = "0px";
+            _s.tabIndex = 0;
+            _s.addEventListener("focusin", this.onTabFocusMoveHeadStopperFocusIn.bind(this));
+            _s = this.tabFocusMoveHeadDetector = document.createElement("div");
+            _s.className = "itm_tabfocus_move_detector";
+            _s.style.height = "0px";
+            _s.tabIndex = 0;
+            _s.addEventListener("focusin", this.onTabFocusMoveHeadDetectorFocusIn.bind(this));
             //コンテンツ領域生成
-            this.contentEl = this.outerContentEl = document.createElement("div");
-            this.contentEl.style.position = "absolute";
-            this.contentEl.style.overflow = "hidden";
-            this.contentEl.style.width = "100%";
-            this.contentEl.style.height = "100%";
+            _s = this.contentEl = this.outerContentEl = document.createElement("div");
+            _s.style.position = "absolute";
+            _s.style.overflow = "hidden";
+            _s.style.width = "100%";
+            _s.style.height = "100%";
             //overlayのモーダル表示によって非アクティブ化したときに表示するレイヤー
-            this.modalInactiveLayer = document.createElement("div");
-            this.modalInactiveLayer.className = "itm_modal_background_layer";
-            this.modalInactiveLayer.style.position = "absolute";
-            this.modalInactiveLayer.style.overflow = "hidden";
-            this.modalInactiveLayer.style.display = "none";
-            this.modalInactiveLayer.style.width = "100%";
-            this.modalInactiveLayer.style.height = "100%";
+            _s = this.modalInactiveLayer = document.createElement("div");
+            _s.className = "itm_modal_background_layer";
+            _s.style.position = "absolute";
+            _s.style.overflow = "hidden";
+            _s.style.display = "none";
+            _s.style.width = "100%";
+            _s.style.height = "100%";
             this.modalInactiveLayerTransitionDriver = new css_transition_driver_1.default(this.modalInactiveLayer);
-            this.resize(cssWidth, cssHeight);
+            this.resize(this.originalSize.cssWidth, this.originalSize.cssHeight);
             //非表示エレメントの作成（Tabキー対策）
-            this.tabFocusMoveTailDetector = document.createElement("div");
-            this.tabFocusMoveTailDetector.className = "itm_tabfocus_move_detector";
-            this.tabFocusMoveTailDetector.style.height = "0px";
-            this.tabFocusMoveTailDetector.tabIndex = 0;
-            this.tabFocusMoveTailDetector.addEventListener("focusin", this.onTabFocusMoveTailDetectorFocusIn.bind(this));
-            this.tabFocusMoveTailStopper = document.createElement("div");
-            this.tabFocusMoveTailStopper.className = "itm_tabfocus_move_stopper";
-            this.tabFocusMoveTailStopper.style.height = "0px";
-            this.tabFocusMoveTailStopper.tabIndex = 0;
-            this.tabFocusMoveTailStopper.addEventListener("focusin", this.onTabFocusMoveTailStopperFocusIn.bind(this));
+            _s = this.tabFocusMoveTailDetector = document.createElement("div");
+            _s.className = "itm_tabfocus_move_detector";
+            _s.style.height = "0px";
+            _s.tabIndex = 0;
+            _s.addEventListener("focusin", this.onTabFocusMoveTailDetectorFocusIn.bind(this));
+            _s = this.tabFocusMoveTailStopper = document.createElement("div");
+            _s.className = "itm_tabfocus_move_stopper";
+            _s.style.height = "0px";
+            _s.tabIndex = 0;
+            _s.addEventListener("focusin", this.onTabFocusMoveTailStopperFocusIn.bind(this));
             this.contentEl.addEventListener("focusin", this.onFocusIn.bind(this));
             this.contentEl.addEventListener("focusout", this.onFocusOut.bind(this));
             this.frameEl.appendChild(this.tabFocusMoveHeadStopper);
@@ -829,10 +885,29 @@ define("core/overlay/overlay", ["require", "exports", "core/overlay/overlay_mana
             this.frameEl.appendChild(this.tabFocusMoveTailDetector);
             this.frameEl.appendChild(this.tabFocusMoveTailStopper);
             this.frameEl.appendChild(this.modalInactiveLayer);
-            viewPortElement.appendChild(this.frameEl);
-            this.cacheCurrentOffsetSize();
+            this.viewPortEl.appendChild(this.frameEl);
             this.outerFrameTransitionDriver = new css_transition_driver_1.default(this.frameEl);
-        }
+            this.cacheCurrentOffsetSize();
+            this.isMounted = true;
+        };
+        Overlay.prototype.loadModule = function () {
+            return __awaiter(this, void 0, void 0, function () {
+                return __generator(this, function (_a) {
+                    switch (_a.label) {
+                        case 0: return [4 /*yield*/, this.moduleLoader.loadModuleRecursively(this.name, this)];
+                        case 1:
+                            _a.sent();
+                            return [2 /*return*/];
+                    }
+                });
+            });
+        };
+        Overlay.prototype.getIsMounted = function () {
+            return this.isMounted;
+        };
+        Overlay.prototype.getContainerId = function () {
+            return this.containerId;
+        };
         Overlay.prototype.__dispachMouseMoveEvent = function (x, y, deltaX, deltaY) {
         };
         Overlay.prototype.__dispachMouseUpEvent = function (x, y) {
@@ -841,7 +916,7 @@ define("core/overlay/overlay", ["require", "exports", "core/overlay/overlay_mana
             var seq = Overlay.instanceSequenceTable.get(className);
             if (seq === undefined)
                 seq = 0;
-            this.container = container_factory_1.default.createContainer("__" + className + "_" + String(seq), "", targetEl, null);
+            this.container = container_factory_1.default.createContainer(this.containerId, "", targetEl, null);
             Overlay.instanceSequenceTable.set(className, seq + 1);
         };
         Overlay.prototype.onSelectStart = function (event) {
@@ -879,17 +954,16 @@ define("core/overlay/overlay", ["require", "exports", "core/overlay/overlay_mana
         Overlay.prototype.onOuterMouseDown = function (event) {
             if (this.inactiveModalMode)
                 return;
-            overlay_manager_1.default.getInstance().overlayMouseDownEventHandler(this.name);
+            this.overlayManager.overlayMouseDownEventHandler(this.name);
         };
         Overlay.prototype.onFocusIn = function (event) {
             this.lastFocusIsDetector = false;
-            overlay_manager_1.default.getInstance().overlayLastFocusedElement = null;
+            this.overlayManager.overlayLastFocusedElement = null;
         };
         Overlay.prototype.onFocusOut = function (event) {
             this.lastFocusIsDetector = false;
             this.lastFocusedEl = event.target;
-            overlay_manager_1.default.getInstance().overlayLastFocusedElement =
-                event.target;
+            this.overlayManager.overlayLastFocusedElement = event.target;
         };
         Overlay.prototype.cacheCurrentOffsetSize = function () {
             var w = this.frameEl.offsetWidth;
@@ -940,6 +1014,9 @@ define("core/overlay/overlay", ["require", "exports", "core/overlay/overlay_mana
         Overlay.prototype.isActive = function () {
             return this.active;
         };
+        Overlay.prototype.getFrameElement = function () {
+            return this.frameEl;
+        };
         Overlay.DEFAULT_OVERLAY_SIZE_WIDTH = "50%";
         Overlay.DEFAULT_OVERLAY_SIZE_HEIGHT = "50%";
         Overlay.instanceSequenceTable = new Map();
@@ -947,583 +1024,11 @@ define("core/overlay/overlay", ["require", "exports", "core/overlay/overlay_mana
     }());
     exports.default = Overlay;
 });
-define("core/overlay/resizable_overlay", ["require", "exports", "core/overlay/overlay_manager", "core/common/types", "core/overlay/overlay"], function (require, exports, overlay_manager_2, types_2, overlay_1) {
+define("core/overlay/overlay_manager", ["require", "exports", "core/common/dto", "core/common/css_transition_driver", "core/common/runtime_error"], function (require, exports, dto_2, css_transition_driver_2, runtime_error_3) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
-    var ResizableOverlay = /** @class */ (function (_super) {
-        __extends(ResizableOverlay, _super);
-        function ResizableOverlay(viewPortElement, name, size) {
-            var _this = _super.call(this, viewPortElement, name, size) || this;
-            _this.resizable = true;
-            _this.isResizing = false;
-            _this.resizeHandleEl = new Array();
-            var maxPctWithoutFrame = "calc(100% - " + (ResizableOverlay.resizeHandleThicknessPx * 2) + "px)";
-            _this.contentEl.style.left = String(ResizableOverlay.resizeHandleThicknessPx) + "px";
-            _this.contentEl.style.top = String(ResizableOverlay.resizeHandleThicknessPx) + "px";
-            _this.contentEl.style.width = maxPctWithoutFrame;
-            _this.contentEl.style.height = maxPctWithoutFrame;
-            _this.modalInactiveLayer.style.left = String(ResizableOverlay.resizeHandleThicknessPx) + "px";
-            _this.modalInactiveLayer.style.top = String(ResizableOverlay.resizeHandleThicknessPx) + "px";
-            _this.modalInactiveLayer.style.width = maxPctWithoutFrame;
-            _this.modalInactiveLayer.style.height = maxPctWithoutFrame;
-            //outerFrameElの周囲にリサイズイベント検知用のエレメントを生成・配置
-            _this.createResizeHandleElements();
-            _this.resize(_this.size.cssWidth, _this.size.cssHeight);
-            return _this;
-        }
-        ResizableOverlay.prototype.createResizeHandleElements = function () {
-            var _this = this;
-            var size = ResizableOverlay.resizeHandleThicknessPx * 2;
-            //0:左上 1:上中 2:右上 3:左中...8:右下  計8箇所 ※中中は不要
-            for (var i = 0; i < 8; i++) {
-                var el = document.createElement("div");
-                el.dataset["positionIndex"] = String(i);
-                el.style.position = "absolute";
-                el.style.width = size + "px";
-                el.style.height = size + "px";
-                el.style.zIndex = "-1";
-                el.addEventListener("mousedown", this.onResizeHandleMouseDown.bind(this));
-                this.resizeHandleEl.push(el);
-            }
-            //左上
-            this.resizeHandleEl[0].style.cursor = "nwse-resize";
-            //上
-            this.resizeHandleEl[1].style.left = String(size) + "px";
-            this.resizeHandleEl[1].style.width = "calc(100% - " + String(size * 2) + "px)";
-            this.resizeHandleEl[1].style.cursor = "ns-resize";
-            //右上
-            this.resizeHandleEl[2].style.right = "0px";
-            this.resizeHandleEl[2].style.cursor = "nesw-resize";
-            //左中
-            this.resizeHandleEl[3].style.top = String(size) + "px";
-            this.resizeHandleEl[3].style.height = "calc(100% - " + String(size * 2) + "px)";
-            this.resizeHandleEl[3].style.cursor = "ew-resize";
-            //右中
-            this.resizeHandleEl[4].style.right = "0px";
-            this.resizeHandleEl[4].style.top = String(size) + "px";
-            this.resizeHandleEl[4].style.height = "calc(100% - " + String(size * 2) + "px)";
-            this.resizeHandleEl[4].style.cursor = "ew-resize";
-            //左下
-            this.resizeHandleEl[5].style.bottom = "0px";
-            this.resizeHandleEl[5].style.cursor = "nesw-resize";
-            //下
-            this.resizeHandleEl[6].style.left = String(size) + "px";
-            this.resizeHandleEl[6].style.bottom = "0px";
-            this.resizeHandleEl[6].style.width = "calc(100% - " + String(size * 2) + "px)";
-            this.resizeHandleEl[6].style.cursor = "ns-resize";
-            //右下
-            this.resizeHandleEl[7].style.right = "0px";
-            this.resizeHandleEl[7].style.bottom = "0px";
-            this.resizeHandleEl[7].style.cursor = "nwse-resize";
-            this.resizeHandleEl.forEach(function (element) {
-                _this.frameEl.appendChild(element);
-            });
-        };
-        ResizableOverlay.prototype.__dispachMouseMoveEvent = function (x, y, deltaX, deltaY) {
-            _super.prototype.__dispachMouseMoveEvent.call(this, x, y, deltaX, deltaY);
-            var frameWidth, frameHeight;
-            if (this.isResizing && this.resizable) {
-                //※リサイズした場合は単位はピクセルに強制的に変更するものとする
-                switch (this.resizePositionIndex) {
-                    case 0: //左上
-                        this.changePosition(this.resizeStartPos.x + (x - this.resizeStartMousePos.x), this.resizeStartPos.y + (y - this.resizeStartMousePos.y));
-                        frameWidth = this.resizeStartSizePx.width - (x - this.resizeStartMousePos.x);
-                        frameHeight = this.resizeStartSizePx.height - (y - this.resizeStartMousePos.y);
-                        break;
-                    case 1: //上
-                        this.changePosition(this.position.x, this.resizeStartPos.y + (y - this.resizeStartMousePos.y));
-                        frameWidth = this.resizeStartSizePx.width;
-                        frameHeight = this.resizeStartSizePx.height - (y - this.resizeStartMousePos.y);
-                        break;
-                    case 2: //右上
-                        this.changePosition(this.position.x, this.resizeStartPos.y + (y - this.resizeStartMousePos.y));
-                        frameWidth = this.resizeStartSizePx.width + (x - this.resizeStartMousePos.x);
-                        frameHeight = this.resizeStartSizePx.height - (y - this.resizeStartMousePos.y);
-                        break;
-                    case 3: //左
-                        this.changePosition(this.resizeStartPos.x + (x - this.resizeStartMousePos.x), this.position.y);
-                        frameWidth = this.resizeStartSizePx.width - (x - this.resizeStartMousePos.x);
-                        frameHeight = this.resizeStartSizePx.height;
-                        break;
-                    case 4: //右
-                        this.changePosition(this.position.x, this.position.y);
-                        frameWidth = this.resizeStartSizePx.width + (x - this.resizeStartMousePos.x);
-                        frameHeight = this.resizeStartSizePx.height;
-                        break;
-                    case 5: //左下
-                        this.changePosition(this.resizeStartPos.x + (x - this.resizeStartMousePos.x), this.position.y);
-                        frameWidth = this.resizeStartSizePx.width - (x - this.resizeStartMousePos.x);
-                        frameHeight = this.resizeStartSizePx.height + (y - this.resizeStartMousePos.y);
-                        break;
-                    case 6: //下
-                        this.changePosition(this.position.x, this.position.y);
-                        frameWidth = this.resizeStartSizePx.width;
-                        frameHeight = this.resizeStartSizePx.height + (y - this.resizeStartMousePos.y);
-                        break;
-                    case 7: //右下
-                        this.changePosition(this.position.x, this.position.y);
-                        frameWidth = this.resizeStartSizePx.width + (x - this.resizeStartMousePos.x);
-                        frameHeight = this.resizeStartSizePx.height + (y - this.resizeStartMousePos.y);
-                        break;
-                }
-                frameWidth -= (ResizableOverlay.resizeHandleThicknessPx * 2);
-                frameHeight -= (ResizableOverlay.resizeHandleThicknessPx * 2);
-                this.resize(frameWidth + "px", frameHeight + "px");
-            }
-        };
-        ResizableOverlay.prototype.__dispachMouseUpEvent = function (x, y) {
-            _super.prototype.__dispachMouseUpEvent.call(this, x, y);
-            this.isResizing = false;
-            this.cacheCurrentOffsetSize();
-        };
-        ResizableOverlay.prototype.onResizeHandleMouseDown = function (event) {
-            this.isResizing = true;
-            this.resizePositionIndex = parseInt(event.target.dataset["positionIndex"]);
-            this.resizeStartMousePos = new types_2.Point(event.screenX, event.screenY);
-            this.resizeStartPos = new types_2.Point(this.position.x, this.position.y);
-            this.resizeStartSizePx = new types_2.Size(this.frameEl.offsetWidth, this.frameEl.offsetHeight);
-            overlay_manager_2.default.getInstance().changeContentsSelectable(false);
-        };
-        ResizableOverlay.prototype.resize = function (width, height) {
-            this.size = new types_2.CssSize(width, height);
-            this.frameEl.style.width = "calc(" + width + " + " + (ResizableOverlay.resizeHandleThicknessPx * 2) + "px)";
-            this.frameEl.style.height = "calc(" + height + " + " + (ResizableOverlay.resizeHandleThicknessPx * 2) + "px)";
-        };
-        ResizableOverlay.prototype.setResizable = function (resizable) {
-            this.resizable = resizable;
-            this.refreshResizeHandleElementActivate();
-        };
-        ResizableOverlay.prototype.refreshResizeHandleElementActivate = function () {
-            var canResize = this.resizable && !this.inactiveModalMode;
-            this.resizeHandleEl.forEach(function (element) {
-                if (canResize) {
-                    element.style.display = "";
-                }
-                else {
-                    element.style.display = "none";
-                }
-            });
-        };
-        ResizableOverlay.resizeHandleThicknessPx = 8;
-        return ResizableOverlay;
-    }(overlay_1.default));
-    exports.default = ResizableOverlay;
-});
-define("core/overlay/dialog_window", ["require", "exports", "core/overlay/overlay_manager", "core/common/dto", "core/overlay/resizable_overlay"], function (require, exports, overlay_manager_3, dto_2, resizable_overlay_1) {
-    "use strict";
-    Object.defineProperty(exports, "__esModule", { value: true });
-    var DialogWindow = /** @class */ (function (_super) {
-        __extends(DialogWindow, _super);
-        function DialogWindow(viewPortElement, name, options) {
-            var _this = _super.call(this, viewPortElement, name, options ? options.size : null) || this;
-            _this.isDragging = false;
-            if (options && options.resizable === false) {
-                _this.setResizable(false);
-            }
-            _this.wrapperEl = document.createElement("div");
-            _this.wrapperEl.style.position = "absolute";
-            _this.wrapperEl.style.display = "flex";
-            _this.wrapperEl.style.flexDirection = "column";
-            _this.wrapperEl.style.width = "100%";
-            _this.wrapperEl.style.height = "100%";
-            _this.headerEl = document.createElement("div");
-            _this.headerEl.className = "itm_dialog_window_header";
-            _this.headerEl.style.position = "relative";
-            _this.headerEl.style.display = "flex";
-            _this.headerEl.style.width = "100%";
-            if (options && options.hideHeader) {
-                _this.headerEl.style.display = "none";
-            }
-            _this.headerTitleEl = document.createElement("div");
-            _this.headerTitleEl.className = "caption";
-            _this.headerTitleEl.textContent = options && options.defaultCaption ? options.defaultCaption : "";
-            _this.headerCloseButtonEl = document.createElement("div");
-            _this.headerCloseButtonEl.className = "close_button";
-            _this.headerCloseButtonEl.textContent = "×";
-            _this.headerCloseButtonEl.addEventListener("click", _this.onHeaderCloseButtonClick.bind(_this));
-            _this.headerEl.appendChild(_this.headerTitleEl);
-            _this.headerEl.appendChild(_this.headerCloseButtonEl);
-            _this.headerEl.addEventListener("mousedown", _this.onHeaderMouseDown.bind(_this));
-            _this.headerEl.addEventListener("dragstart", _this.onHeaderDragStart.bind(_this));
-            _this.containerEl = document.createElement("div");
-            _this.containerEl.className = "itm_dialog_window_body";
-            _this.containerEl.style.position = "relative";
-            _this.containerEl.style.flexGrow = "1";
-            _this.containerEl.style.flexShrink = "1";
-            _this.containerEl.style.width = "100%";
-            _this.registerAsContainer("window", _this.containerEl);
-            _this.footerEl = document.createElement("div");
-            _this.footerEl.className = "itm_dialog_window_footer";
-            _this.footerEl.style.position = "relative";
-            _this.footerEl.style.width = "100%";
-            if (options && options.hideFooter) {
-                _this.footerEl.style.display = "none";
-            }
-            _this.okButtonEl = document.createElement("input");
-            _this.okButtonEl.type = "button";
-            _this.okButtonEl.classList.add("itm_dialog_window_footer_button", "ok");
-            _this.okButtonEl.value = "OK";
-            _this.okButtonEl.addEventListener("click", _this.onOkButtonClick.bind(_this));
-            _this.cancelButtonEl = document.createElement("input");
-            _this.cancelButtonEl.type = "button";
-            _this.cancelButtonEl.classList.add("itm_dialog_window_footer_button", "cancel");
-            _this.cancelButtonEl.value = "キャンセル";
-            _this.cancelButtonEl.addEventListener("click", _this.onCancelButtonClick.bind(_this));
-            _this.applyButtonEl = document.createElement("input");
-            _this.applyButtonEl.type = "button";
-            _this.applyButtonEl.classList.add("itm_dialog_window_footer_button", "apply");
-            _this.applyButtonEl.value = "適用";
-            _this.footerEl.appendChild(_this.okButtonEl);
-            _this.footerEl.appendChild(_this.cancelButtonEl);
-            _this.wrapperEl.appendChild(_this.headerEl);
-            _this.wrapperEl.appendChild(_this.containerEl);
-            _this.wrapperEl.appendChild(_this.footerEl);
-            _this.contentEl.className = "itm_dialog_window_container";
-            _this.contentEl.appendChild(_this.wrapperEl);
-            _this.outerFrameTransitionDriver.setCustomTransitionClasses({
-                standyStateClass: "itm_dialog_window_standy_state",
-                enterTransitionClass: "itm_dialog_window_enter_transition",
-                leaveTransitionClass: "itm_dialog_window_leave_transition",
-                endStateClass: "itm_dialog_window_end_state"
-            });
-            return _this;
-        }
-        DialogWindow.prototype.onHeaderMouseDown = function (event) {
-            this.isDragging = true;
-            overlay_manager_3.default.getInstance().changeContentsSelectable(false);
-        };
-        DialogWindow.prototype.onHeaderDragStart = function (event) {
-            event.preventDefault();
-        };
-        DialogWindow.prototype.onHeaderCloseButtonClick = function (event) {
-            var _this = this;
-            this.container.getActiveModule().exit(dto_2.ActionType.CANCEL).then(function (exited) {
-                if (exited)
-                    _this.close();
-            });
-        };
-        DialogWindow.prototype.onOkButtonClick = function (event) {
-            var _this = this;
-            this.container.getActiveModule().exit(dto_2.ActionType.OK).then(function (exited) {
-                if (exited)
-                    _this.close(_this.container.getContainerResult());
-            });
-        };
-        DialogWindow.prototype.onCancelButtonClick = function (event) {
-            var _this = this;
-            this.container.getActiveModule().exit(dto_2.ActionType.CANCEL).then(function (exited) {
-                if (exited)
-                    _this.close();
-            });
-        };
-        DialogWindow.prototype.onApplyButtonClick = function (event) {
-        };
-        DialogWindow.prototype.waitForOverlayClose = function () {
-            var _this = this;
-            return new Promise(function (resolve) {
-                _this.waitForOverlayCloseResolver = resolve;
-            });
-        };
-        //override
-        DialogWindow.prototype.__dispachMouseMoveEvent = function (x, y, deltaX, deltaY) {
-            _super.prototype.__dispachMouseMoveEvent.call(this, x, y, deltaX, deltaY);
-            if (!this.isDragging)
-                return;
-            this.changePosition(this.position.x + deltaX, this.position.y + deltaY);
-        };
-        //override
-        DialogWindow.prototype.__dispachMouseUpEvent = function (x, y) {
-            _super.prototype.__dispachMouseUpEvent.call(this, x, y);
-            this.isDragging = false;
-        };
-        DialogWindow.prototype.getContainer = function () {
-            return this.container;
-        };
-        DialogWindow.prototype.setWindowTitle = function (title) {
-            this.headerTitleEl.textContent = title;
-        };
-        DialogWindow.prototype.show = function (parcel, options) {
-            return __awaiter(this, void 0, void 0, function () {
-                return __generator(this, function (_a) {
-                    if (options && options.position) {
-                        this.changePosition(options.position.x, options.position.y);
-                    }
-                    else {
-                        //デフォルト表示位置は表示領域（ビューポート）の中央
-                        this.moveToViewPortCenter();
-                    }
-                    this.container.initialize(parcel);
-                    this.outerFrameTransitionDriver.show();
-                    return [2 /*return*/, this.waitForOverlayClose()];
-                });
-            });
-        };
-        DialogWindow.prototype.showAsModal = function (parcel, options) {
-            return __awaiter(this, void 0, void 0, function () {
-                return __generator(this, function (_a) {
-                    return [2 /*return*/, this.show(parcel, options)];
-                });
-            });
-        };
-        //override
-        DialogWindow.prototype.close = function (result) {
-            this.outerFrameTransitionDriver.hide();
-            //自身のdisplay:noneが反映した後にコールバックさせるためsetTimeoutを介して呼び出す
-            window.setTimeout(this.waitForOverlayCloseResolver.bind(this), 0, result);
-        };
-        //override
-        DialogWindow.prototype.activate = function () {
-            _super.prototype.activate.call(this);
-            this.headerEl.classList.remove("inactive");
-        };
-        //override
-        DialogWindow.prototype.inactivate = function (withModal) {
-            _super.prototype.inactivate.call(this, withModal);
-            this.headerEl.classList.add("inactive");
-        };
-        return DialogWindow;
-    }(resizable_overlay_1.default));
-    exports.default = DialogWindow;
-});
-define("core/common/common", ["require", "exports"], function (require, exports) {
-    "use strict";
-    Object.defineProperty(exports, "__esModule", { value: true });
-    var Common = /** @class */ (function () {
-        function Common() {
-        }
-        Common.isMsIE = false;
-        Common.currentMouseClientX = 0;
-        Common.currentMouseClientY = 0;
-        return Common;
-    }());
-    exports.default = Common;
-});
-define("core/overlay/context_menu", ["require", "exports", "core/overlay/overlay", "core/common/common", "core/overlay/overlay_manager"], function (require, exports, overlay_2, common_1, overlay_manager_4) {
-    "use strict";
-    Object.defineProperty(exports, "__esModule", { value: true });
-    var ContextMenu = /** @class */ (function (_super) {
-        __extends(ContextMenu, _super);
-        function ContextMenu(viewPortElement, name, options) {
-            var _this = _super.call(this, viewPortElement, name, options ? options.size : null) || this;
-            _this.containerEl = document.createElement("div");
-            _this.containerEl.className = "";
-            _this.containerEl.style.position = "relative";
-            _this.containerEl.style.width = "100%";
-            _this.containerEl.style.height = "100%";
-            _this.registerAsContainer("contextmenu", _this.containerEl);
-            _this.contentEl.className = "itm_context_menu_container";
-            _this.contentEl.appendChild(_this.containerEl);
-            _this.contentEl.addEventListener("mousedown", _this.onContentMouseDown.bind(_this));
-            _this.outerFrameTransitionDriver.setCustomTransitionClasses({
-                standyStateClass: "itm_context_menu_standy_state",
-                enterTransitionClass: "itm_context_menu_enter_transition",
-                leaveTransitionClass: "itm_context_menu_leave_transition",
-                endStateClass: "itm_context_menu_end_state"
-            });
-            return _this;
-        }
-        ContextMenu.prototype.getContainer = function () {
-            return this.container;
-        };
-        ContextMenu.prototype.show = function (parcel, options) {
-            var x, y;
-            x = common_1.default.currentMouseClientX;
-            y = common_1.default.currentMouseClientY;
-            var widthPx = this.offsetSizeCache.width;
-            var heightPx = this.offsetSizeCache.height;
-            var overlayRightSideX = x + widthPx;
-            var overlayBottomSideY = y + heightPx;
-            var visibleAreaWidth = window.document.documentElement.clientWidth;
-            var visibleAreaHeight = window.document.documentElement.clientHeight;
-            var xVisibleAreaIsLargerThanOverlay = widthPx < visibleAreaWidth;
-            var yVisibleAreaIsLargerThanOverlay = heightPx < visibleAreaHeight;
-            var xCanDisplayOnNormalPosition = overlayRightSideX <= visibleAreaWidth;
-            var yCanDisplayOnNormalPosition = overlayBottomSideY <= visibleAreaHeight;
-            var xCanDisplayOnReversePosition = x >= widthPx;
-            var yCanDisplayOnReversePosition = y >= heightPx;
-            this.restoreOriginalSize();
-            //x方向
-            if (xVisibleAreaIsLargerThanOverlay) {
-                if (xCanDisplayOnNormalPosition) {
-                    //指定された位置をそのまま左上座標にする
-                }
-                else if (xCanDisplayOnReversePosition) {
-                    x -= widthPx;
-                }
-                else {
-                    //右端に寄せる
-                    x = visibleAreaWidth - widthPx;
-                }
-            }
-            else {
-                x = 0; //入りきらない場合でも横方向は縮小せずに左端に寄せるだけにする
-            }
-            //y方向
-            if (yVisibleAreaIsLargerThanOverlay) {
-                if (yCanDisplayOnNormalPosition) {
-                    //指定された位置をそのまま左上座標にする
-                }
-                else if (yCanDisplayOnReversePosition) {
-                    y -= heightPx;
-                }
-                else {
-                    //下端に寄せる
-                    y = visibleAreaHeight - heightPx;
-                }
-            }
-            else {
-                //入りきらない場合は上端に寄せたのち、入りきらない分を一時的に縮小する
-                y = 0;
-                this.resize(widthPx + "px", visibleAreaHeight + "px");
-            }
-            this.changePosition(x, y);
-            this.container.initialize(parcel);
-            this.outerFrameTransitionDriver.show();
-            return this.waitForOverlayClose();
-        };
-        ContextMenu.prototype.showAsModal = function (parcel, options) {
-            return this.show(parcel, options);
-        };
-        ContextMenu.prototype.close = function (result) {
-            this.outerFrameTransitionDriver.hide();
-            //自身のdisplay:noneが反映した後にコールバックさせるためsetTimeoutを介して呼び出す
-            window.setTimeout(this.waitForOverlayCloseResolver.bind(this), 0, result);
-        };
-        ContextMenu.prototype.waitForOverlayClose = function () {
-            var _this = this;
-            return new Promise(function (resolve) {
-                _this.waitForOverlayCloseResolver = resolve;
-            });
-        };
-        ContextMenu.prototype.onContentMouseDown = function (event) {
-            var overlayManager = overlay_manager_4.default.getInstance();
-            overlayManager.cancelAutoClosingOnlyOnce();
-        };
-        return ContextMenu;
-    }(overlay_2.default));
-    exports.default = ContextMenu;
-});
-define("core/overlay/drawer", ["require", "exports", "core/overlay/overlay", "core/overlay/overlay_manager"], function (require, exports, overlay_3, overlay_manager_5) {
-    "use strict";
-    Object.defineProperty(exports, "__esModule", { value: true });
-    var DockType;
-    (function (DockType) {
-        DockType[DockType["Top"] = 0] = "Top";
-        DockType[DockType["Right"] = 1] = "Right";
-        DockType[DockType["Bottom"] = 2] = "Bottom";
-        DockType[DockType["Left"] = 3] = "Left";
-    })(DockType = exports.DockType || (exports.DockType = {}));
-    var Drawer = /** @class */ (function (_super) {
-        __extends(Drawer, _super);
-        function Drawer(viewPortElement, name, options) {
-            var _this = _super.call(this, viewPortElement, name, null) || this;
-            _this.dockType = options.dockType !== undefined ? options.dockType : DockType.Left;
-            _this.dockSize = options.dockSize !== undefined ? options.dockSize : "33%";
-            _this.changeDockType(_this.dockType);
-            _this.containerEl = document.createElement("div");
-            _this.containerEl.className = "";
-            _this.containerEl.style.position = "relative";
-            _this.containerEl.style.width = "100%";
-            _this.containerEl.style.height = "100%";
-            _this.registerAsContainer("drawer", _this.containerEl);
-            _this.contentEl.className = "itm_drawer_container";
-            _this.contentEl.appendChild(_this.containerEl);
-            _this.contentEl.addEventListener("mousedown", _this.onContentMouseDown.bind(_this));
-            return _this;
-        }
-        Drawer.prototype.getContainer = function () {
-            return this.container;
-        };
-        Drawer.prototype.changeDockType = function (dockType) {
-            //サイズ変更
-            if (dockType === DockType.Left || dockType === DockType.Right) {
-                this.frameEl.style.width = this.dockSize;
-                this.frameEl.style.height = "100%";
-            }
-            else if (dockType === DockType.Top || dockType === DockType.Bottom) {
-                this.frameEl.style.width = "100%";
-                this.frameEl.style.height = this.dockSize;
-            }
-            //位置変更
-            this.frameEl.style.left = "";
-            this.frameEl.style.right = "";
-            this.frameEl.style.top = "";
-            this.frameEl.style.bottom = "";
-            if (dockType === DockType.Left || dockType === DockType.Top || dockType === DockType.Bottom) {
-                //left=0パターン
-                this.frameEl.style.left = "0px";
-            }
-            else {
-                //right=0パターン(DockType.Right)
-                this.frameEl.style.right = "0px";
-            }
-            if (dockType === DockType.Left || dockType === DockType.Right || dockType === DockType.Top) {
-                //top=0パターン
-                this.frameEl.style.top = "0px";
-            }
-            else {
-                //bottom=0パターン(DockType.Bottom)
-                this.frameEl.style.bottom = "0px";
-            }
-            //TransitionDriverクラス変更
-            var dockTypeName;
-            switch (dockType) {
-                case DockType.Left:
-                    dockTypeName = "left";
-                    break;
-                case DockType.Right:
-                    dockTypeName = "right";
-                    break;
-                case DockType.Top:
-                    dockTypeName = "top";
-                    break;
-                case DockType.Bottom:
-                    dockTypeName = "bottom";
-                    break;
-            }
-            this.outerFrameTransitionDriver.setCustomTransitionClasses({
-                standyStateClass: "itm_drawer_" + dockTypeName + "_dock_standy_state",
-                enterTransitionClass: "itm_drawer_enter_transition",
-                leaveTransitionClass: "itm_drawer_leave_transition",
-                endStateClass: "itm_drawer_" + dockTypeName + "_dock_end_state"
-            });
-        };
-        //Override
-        Drawer.prototype.changePosition = function (x, y) {
-            //何もしない
-        };
-        Drawer.prototype.show = function (parcel, options) {
-            this.container.initialize(parcel);
-            this.outerFrameTransitionDriver.show();
-            return this.waitForOverlayClose();
-        };
-        Drawer.prototype.showAsModal = function (parcel, options) {
-            return this.show(parcel, options);
-        };
-        Drawer.prototype.close = function (result) {
-            this.outerFrameTransitionDriver.hide();
-            //自身のdisplay:noneが反映した後にコールバックさせるためsetTimeoutを介して呼び出す
-            window.setTimeout(this.waitForOverlayCloseResolver.bind(this), 0, result);
-        };
-        Drawer.prototype.waitForOverlayClose = function () {
-            var _this = this;
-            return new Promise(function (resolve) {
-                _this.waitForOverlayCloseResolver = resolve;
-            });
-        };
-        Drawer.prototype.onContentMouseDown = function (event) {
-            var overlayManager = overlay_manager_5.default.getInstance();
-            overlayManager.cancelAutoClosingOnlyOnce();
-        };
-        return Drawer;
-    }(overlay_3.default));
-    exports.default = Drawer;
-});
-define("core/overlay/overlay_manager", ["require", "exports", "core/overlay/dialog_window", "core/common/dto", "core/common/css_transition_driver", "core/overlay/context_menu", "core/overlay/drawer", "core/module/module_manager", "core/common/runtime_error"], function (require, exports, dialog_window_1, dto_3, css_transition_driver_2, context_menu_1, drawer_1, module_manager_2, runtime_error_3) {
-    "use strict";
-    Object.defineProperty(exports, "__esModule", { value: true });
-    var OvarlayManager = /** @class */ (function () {
-        function OvarlayManager() {
+    var OverlayManager = /** @class */ (function () {
+        function OverlayManager(viewPortElement) {
             this.viewPortEl = null;
             this.overlayLastFocusedElement = null;
             this.previousMouseX = 0;
@@ -1534,15 +1039,16 @@ define("core/overlay/overlay_manager", ["require", "exports", "core/overlay/dial
             this.MODAL_START_Z_INDEX = 1000;
             this.FOREGROUND_START_Z_INDEX = 2000;
             this.overlays = new Map();
-            this.overlayManagementTable = new Map();
-            this.modalBackgroundLayer = document.createElement("div");
-            this.modalBackgroundLayer.className = "itm_modal_background_layer";
-            this.modalBackgroundLayer.style.position = "absolute";
-            this.modalBackgroundLayer.style.overflow = "hidden";
-            this.modalBackgroundLayer.style.width = "100%";
-            this.modalBackgroundLayer.style.height = "100%";
-            this.modalBackgroundLayer.style.display = "none";
-            this.modalBackgroundLayer.style.zIndex = String(this.MODAL_START_Z_INDEX);
+            this.statusTable = new Map();
+            this.configTable = new Map();
+            var _s = this.modalBackgroundLayer = document.createElement("div");
+            _s.className = "itm_modal_background_layer";
+            _s.style.position = "absolute";
+            _s.style.overflow = "hidden";
+            _s.style.width = "100%";
+            _s.style.height = "100%";
+            _s.style.display = "none";
+            _s.style.zIndex = String(this.MODAL_START_Z_INDEX);
             this.modalBackgroundLayerTransitionDriver = new css_transition_driver_2.default(this.modalBackgroundLayer);
             this.onFocusInBindedThis = this.onFocusIn.bind(this);
             this.onMouseDownBindedThis = this.onMouseDown.bind(this);
@@ -1550,37 +1056,35 @@ define("core/overlay/overlay_manager", ["require", "exports", "core/overlay/dial
             this.onMouseUpBindedThis = this.onMouseUp.bind(this);
             this.onSelectStartBindedThis = this.onSelectStart.bind(this);
             this.windowResizeEventHandlerBindThis = this.windowResizeEventHandler.bind(this);
+            this.setViewPortElement(viewPortElement);
         }
-        OvarlayManager.getInstance = function () {
-            return OvarlayManager.instance;
-        };
-        OvarlayManager.prototype.findOverlayByContainer = function (searchContainer) {
+        OverlayManager.prototype.findOverlayByContainer = function (searchContainer) {
             //TODO: IE11ではforEachしかつかえない。他ブラウザ用に見つかったらbreakするようなコードに変更したい。
             var res = null;
             this.overlays.forEach(function (overlay) {
-                if (overlay.getContainer() === searchContainer) {
+                if (overlay.getChildContainer() === searchContainer) {
                     res = overlay;
                 }
             });
             return res;
         };
-        OvarlayManager.prototype.onMouseDown = function (event) {
+        OverlayManager.prototype.onMouseDown = function (event) {
             var _this = this;
             if (!this.requestedAutoCloseCancelOnlyOnce) {
-                this.overlayManagementTable.forEach(function (omd, key) {
+                this.statusTable.forEach(function (omd, key) {
                     if (omd.isVisible && omd.isAutoCloseableWhenOutfocus) {
-                        var overlay_4 = _this.overlays.get(key);
-                        var module = overlay_4.getContainer().getActiveModule();
-                        module.exit(dto_3.ActionType.CANCEL).then(function (exited) {
+                        var overlay_1 = _this.overlays.get(key);
+                        var module = overlay_1.getChildContainer().getCurrentModule();
+                        module.exit(dto_2.ActionType.CANCEL).then(function (exited) {
                             if (exited)
-                                overlay_4.close();
+                                overlay_1.close();
                         });
                     }
                 });
             }
             this.requestedAutoCloseCancelOnlyOnce = false;
         };
-        OvarlayManager.prototype.onMouseMove = function (event) {
+        OverlayManager.prototype.onMouseMove = function (event) {
             var deltaX = event.screenX - this.previousMouseX;
             var deltaY = event.screenY - this.previousMouseY;
             this.previousMouseX = event.screenX;
@@ -1589,23 +1093,26 @@ define("core/overlay/overlay_manager", ["require", "exports", "core/overlay/dial
                 overlay.__dispachMouseMoveEvent(event.screenX, event.screenY, deltaX, deltaY);
             });
         };
-        OvarlayManager.prototype.onMouseUp = function (event) {
+        OverlayManager.prototype.onMouseUp = function (event) {
             this.overlays.forEach(function (overlay) {
                 overlay.__dispachMouseUpEvent(event.screenX, event.screenY);
             });
             this.changeContentsSelectable(true);
         };
-        OvarlayManager.prototype.windowResizeEventHandler = function (event) {
+        OverlayManager.prototype.windowResizeEventHandler = function (event) {
         };
-        OvarlayManager.prototype.onSelectStart = function (event) {
+        OverlayManager.prototype.onSelectStart = function (event) {
             if (!this.contentsSelectable) {
                 event.preventDefault();
             }
         };
-        OvarlayManager.prototype.onFocusIn = function (event) {
+        OverlayManager.prototype.onFocusIn = function (event) {
             this.overlayLastFocusedElement = null;
         };
-        OvarlayManager.prototype.setViewPortElement = function (element) {
+        OverlayManager.prototype.getViewPortElement = function () {
+            return this.viewPortEl;
+        };
+        OverlayManager.prototype.setViewPortElement = function (element) {
             if (this.viewPortEl !== null) {
                 this.viewPortEl.removeEventListener("focusin", this.onFocusInBindedThis);
                 this.viewPortEl.removeEventListener("mousedown", this.onMouseDownBindedThis);
@@ -1621,37 +1128,54 @@ define("core/overlay/overlay_manager", ["require", "exports", "core/overlay/dial
             this.viewPortEl.addEventListener("selectstart", this.onSelectStartBindedThis);
             this.viewPortEl.appendChild(this.modalBackgroundLayer);
         };
-        OvarlayManager.prototype.createWindow = function (overlayName, options) {
-            var overlay = new dialog_window_1.default(this.viewPortEl, overlayName, options);
-            this.overlays.set(overlayName, overlay);
-            this.overlayManagementTable.set(overlayName, new OverlayManagementData());
-            return overlay;
+        OverlayManager.prototype.register = function (overlay, overlayConfig) {
+            this.overlays.set(overlay.getName(), overlay);
+            this.statusTable.set(overlay.getName(), new OverlayStatus());
+            this.configTable.set(overlay.getName(), overlayConfig);
         };
-        OvarlayManager.prototype.createContextMenu = function (overlayName, options) {
-            var overlay = new context_menu_1.default(this.viewPortEl, overlayName, options);
-            this.overlays.set(overlayName, overlay);
-            var omd = new OverlayManagementData();
-            omd.isAutoCloseableWhenOutfocus = true;
-            this.overlayManagementTable.set(overlayName, omd);
-            return overlay;
+        OverlayManager.prototype.initialize = function () {
+            return __awaiter(this, void 0, void 0, function () {
+                var names, _a, _b, _i, i, overlayName, overlay;
+                return __generator(this, function (_c) {
+                    switch (_c.label) {
+                        case 0:
+                            names = new Array();
+                            this.overlays.forEach(function (value, key) {
+                                names.push(key);
+                            });
+                            _a = [];
+                            for (_b in names)
+                                _a.push(_b);
+                            _i = 0;
+                            _c.label = 1;
+                        case 1:
+                            if (!(_i < _a.length)) return [3 /*break*/, 4];
+                            i = _a[_i];
+                            overlayName = names[i];
+                            if (!!this.configTable.get(overlayName).lazyLoading) return [3 /*break*/, 3];
+                            overlay = this.overlays.get(overlayName);
+                            overlay.mount(this);
+                            return [4 /*yield*/, overlay.loadModule()];
+                        case 2:
+                            _c.sent();
+                            _c.label = 3;
+                        case 3:
+                            _i++;
+                            return [3 /*break*/, 1];
+                        case 4: return [2 /*return*/];
+                    }
+                });
+            });
         };
-        OvarlayManager.prototype.createDrawer = function (overlayName, options) {
-            var overlay = new drawer_1.default(this.viewPortEl, overlayName, options);
-            this.overlays.set(overlayName, overlay);
-            var omd = new OverlayManagementData();
-            omd.isAutoCloseableWhenOutfocus = true;
-            this.overlayManagementTable.set(overlayName, omd);
-            return overlay;
-        };
-        OvarlayManager.prototype.changeContentsSelectable = function (selectable) {
+        OverlayManager.prototype.changeContentsSelectable = function (selectable) {
             this.contentsSelectable = selectable;
         };
-        OvarlayManager.prototype.beginModalMode = function () {
+        OverlayManager.prototype.beginModalMode = function () {
             this.modalBackgroundLayerTransitionDriver.show();
         };
-        OvarlayManager.prototype.endModalMode = function () {
+        OverlayManager.prototype.endModalMode = function () {
             var existModalOverlay = false;
-            this.overlayManagementTable.forEach(function (value, key) {
+            this.statusTable.forEach(function (value, key) {
                 if (value.isVisible && value.isModal)
                     existModalOverlay = true;
             });
@@ -1659,7 +1183,7 @@ define("core/overlay/overlay_manager", ["require", "exports", "core/overlay/dial
                 this.modalBackgroundLayerTransitionDriver.hide();
             }
         };
-        OvarlayManager.prototype.show = function (overlayName, parcel, options) {
+        OverlayManager.prototype.show = function (overlayName, parcel, options) {
             return __awaiter(this, void 0, void 0, function () {
                 var overlay, omd, result;
                 return __generator(this, function (_a) {
@@ -1668,7 +1192,7 @@ define("core/overlay/overlay_manager", ["require", "exports", "core/overlay/dial
                         case 1:
                             _a.sent();
                             overlay = this.overlays.get(overlayName);
-                            omd = this.overlayManagementTable.get(overlayName);
+                            omd = this.statusTable.get(overlayName);
                             omd.parentOverlay = options ? options.parent : null;
                             omd.isVisible = true;
                             this.activateSpecificOverlay(overlayName);
@@ -1682,7 +1206,7 @@ define("core/overlay/overlay_manager", ["require", "exports", "core/overlay/dial
                 });
             });
         };
-        OvarlayManager.prototype.showAsModal = function (overlayName, parcel, options) {
+        OverlayManager.prototype.showAsModal = function (overlayName, parcel, options) {
             return __awaiter(this, void 0, void 0, function () {
                 var omd, result;
                 return __generator(this, function (_a) {
@@ -1690,7 +1214,7 @@ define("core/overlay/overlay_manager", ["require", "exports", "core/overlay/dial
                         case 0: return [4 /*yield*/, this.checkAndLoadLazyModule(overlayName)];
                         case 1:
                             _a.sent();
-                            omd = this.overlayManagementTable.get(overlayName);
+                            omd = this.statusTable.get(overlayName);
                             omd.isModal = true;
                             this.beginModalMode();
                             return [4 /*yield*/, this.show(overlayName, parcel, options)];
@@ -1703,31 +1227,32 @@ define("core/overlay/overlay_manager", ["require", "exports", "core/overlay/dial
                 });
             });
         };
-        OvarlayManager.prototype.checkAndLoadLazyModule = function (overlayName) {
+        OverlayManager.prototype.checkAndLoadLazyModule = function (overlayName) {
             return __awaiter(this, void 0, void 0, function () {
-                var moduleManager;
+                var overlay;
                 return __generator(this, function (_a) {
                     switch (_a.label) {
                         case 0:
-                            if (!!this.overlayManagementTable.has(overlayName)) return [3 /*break*/, 2];
-                            moduleManager = module_manager_2.default.getInstance();
-                            return [4 /*yield*/, moduleManager.loadModuleRecursively(overlayName)];
+                            if (!this.overlays.has(overlayName)) return [3 /*break*/, 3];
+                            overlay = this.overlays.get(overlayName);
+                            if (!!overlay.getIsMounted()) return [3 /*break*/, 2];
+                            overlay.mount(this);
+                            return [4 /*yield*/, overlay.loadModule()];
                         case 1:
                             _a.sent();
-                            if (!this.overlayManagementTable.has(overlayName)) {
-                                throw new runtime_error_3.default("指定されたモジュールはコンテナに登録されていません。");
-                            }
                             _a.label = 2;
-                        case 2: return [2 /*return*/, true];
+                        case 2: return [3 /*break*/, 4];
+                        case 3: throw new runtime_error_3.default("指定されたモジュールは登録されていません。");
+                        case 4: return [2 /*return*/, true];
                     }
                 });
             });
         };
-        OvarlayManager.prototype.overlayMouseDownEventHandler = function (overlayName) {
+        OverlayManager.prototype.overlayMouseDownEventHandler = function (overlayName) {
             //TODO 要モーダル状態チェック
             this.activateSpecificOverlay(overlayName);
         };
-        OvarlayManager.prototype.activateSpecificOverlay = function (overlayName) {
+        OverlayManager.prototype.activateSpecificOverlay = function (overlayName) {
             var _this = this;
             var overlayList = new Array();
             var targetOverlay = this.overlays.get(overlayName);
@@ -1740,7 +1265,7 @@ define("core/overlay/overlay_manager", ["require", "exports", "core/overlay/dial
             });
             overlayList.unshift(targetOverlay);
             var visibleCount = 0;
-            this.overlayManagementTable.forEach(function (value, key) {
+            this.statusTable.forEach(function (value, key) {
                 if (value.isVisible)
                     ++visibleCount;
             });
@@ -1748,7 +1273,7 @@ define("core/overlay/overlay_manager", ["require", "exports", "core/overlay/dial
             var previousOmd = null;
             var previousOverlay = null;
             overlayList.forEach(function (overlay) {
-                var omd = _this.overlayManagementTable.get(overlay.getName());
+                var omd = _this.statusTable.get(overlay.getName());
                 if (omd.isVisible) {
                     if (omd.isAutoCloseableWhenOutfocus) {
                         overlay.changeZIndex(_this.FOREGROUND_START_Z_INDEX + visibleCount--);
@@ -1772,13 +1297,13 @@ define("core/overlay/overlay_manager", ["require", "exports", "core/overlay/dial
                 }
             });
         };
-        OvarlayManager.prototype.activateTopOverlay = function () {
+        OverlayManager.prototype.activateTopOverlay = function () {
             var _this = this;
             //zindexが一番大きいoverlayを有効化する
             var maxZIndex = -1;
             var targetOverlayName;
             this.overlays.forEach(function (overlay, name) {
-                if (_this.overlayManagementTable.get(name).isVisible) {
+                if (_this.statusTable.get(name).isVisible) {
                     if (overlay.getZIndex() > maxZIndex) {
                         maxZIndex = overlay.getZIndex();
                         targetOverlayName = name;
@@ -1789,36 +1314,39 @@ define("core/overlay/overlay_manager", ["require", "exports", "core/overlay/dial
                 this.activateSpecificOverlay(targetOverlayName);
             }
         };
-        OvarlayManager.prototype.cancelAutoClosingOnlyOnce = function () {
+        OverlayManager.prototype.cancelAutoClosingOnlyOnce = function () {
             this.requestedAutoCloseCancelOnlyOnce = true;
         };
-        OvarlayManager.instance = new OvarlayManager();
-        return OvarlayManager;
+        OverlayManager.prototype.getOverlay = function (overlayName) {
+            return this.overlays.get(overlayName);
+        };
+        return OverlayManager;
     }());
-    exports.default = OvarlayManager;
-    var OverlayManagementData = /** @class */ (function () {
-        function OverlayManagementData() {
+    exports.default = OverlayManager;
+    var OverlayStatus = /** @class */ (function () {
+        function OverlayStatus() {
             this.isVisible = false;
             this.isModal = false;
             this.isAutoCloseableWhenOutfocus = false;
             this.parentOverlay = null;
         }
-        OverlayManagementData.prototype.reset = function () {
+        OverlayStatus.prototype.reset = function () {
             this.isVisible = false;
             this.isModal = false;
             this.isAutoCloseableWhenOutfocus = false;
             this.parentOverlay = null;
             return this;
         };
-        return OverlayManagementData;
+        return OverlayStatus;
     }());
 });
-define("core/adapter/navigation", ["require", "exports", "core/module/module_manager", "core/overlay/overlay_manager", "core/common/runtime_error"], function (require, exports, module_manager_3, overlay_manager_6, runtime_error_4) {
+define("core/adapter/navigation", ["require", "exports", "core/common/runtime_error", "core/container/page_container"], function (require, exports, runtime_error_4, page_container_2) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var Navigation = /** @class */ (function () {
-        function Navigation(adapter) {
-            this.overlayManager = overlay_manager_6.default.getInstance();
+        function Navigation(moduleLoader, adapter) {
+            this.moduleLoader = moduleLoader;
+            this.overlayManager = moduleLoader.getViewPort().getOverlayManager();
             this.adapter = adapter;
         }
         Navigation.prototype.getCurrentOverlay = function () {
@@ -1834,9 +1362,9 @@ define("core/adapter/navigation", ["require", "exports", "core/module/module_man
             //最上位コンテナを保持しているオーバーレイを取得
             return this.overlayManager.findOverlayByContainer(container);
         };
-        Navigation.prototype.forward = function (targetIdentifier, parcel) {
+        Navigation.prototype.switch = function (targetIdentifier, parcel) {
             return __awaiter(this, void 0, void 0, function () {
-                var targetContainerId, moduleName, tiParts, parts, targetModuleName, targetContainerName, target;
+                var targetContainerId, moduleName, tiParts, parts, targetModuleName, targetContainerName, baseModuleInstance, activeModuleInstance, target;
                 return __generator(this, function (_a) {
                     tiParts = targetIdentifier.split("::");
                     if (tiParts.length > 1) {
@@ -1850,8 +1378,39 @@ define("core/adapter/navigation", ["require", "exports", "core/module/module_man
                     parts = targetContainerId.split(".");
                     targetModuleName = parts[0];
                     targetContainerName = parts[1];
-                    target = module_manager_3.default.getInstance().getModule(targetModuleName).getSubContainerByName(targetContainerName);
-                    return [2 /*return*/, target.forward(moduleName, parcel)];
+                    baseModuleInstance = this.moduleLoader.getModule(targetModuleName);
+                    activeModuleInstance = baseModuleInstance.getOwnerContainer().getActiveModuleInstance(targetModuleName);
+                    target = activeModuleInstance.getChildContainer(targetContainerName);
+                    return [2 /*return*/, target.switch(moduleName, parcel)];
+                });
+            });
+        };
+        Navigation.prototype.forward = function (targetIdentifier, parcel) {
+            return __awaiter(this, void 0, void 0, function () {
+                var targetContainerId, moduleName, tiParts, parts, targetModuleName, targetContainerName, baseModuleInstance, activeModuleInstance, target;
+                return __generator(this, function (_a) {
+                    tiParts = targetIdentifier.split("::");
+                    if (tiParts.length > 1) {
+                        targetContainerId = tiParts[0];
+                        moduleName = tiParts[1];
+                    }
+                    else {
+                        targetContainerId = this.adapter.getHtmlModule().getOwnerContainer().getId();
+                        moduleName = targetIdentifier;
+                    }
+                    parts = targetContainerId.split(".");
+                    targetModuleName = parts[0];
+                    targetContainerName = parts[1];
+                    baseModuleInstance = this.moduleLoader.getModule(targetModuleName);
+                    activeModuleInstance = baseModuleInstance.getOwnerContainer().getActiveModuleInstance(targetModuleName);
+                    target = activeModuleInstance.getChildContainer(targetContainerName);
+                    if (target instanceof page_container_2.default) {
+                        return [2 /*return*/, target.forward(moduleName, parcel)];
+                    }
+                    else {
+                        throw new runtime_error_4.default("Container [" + target.getId + "] is not PageContainer.");
+                    }
+                    return [2 /*return*/];
                 });
             });
         };
@@ -1863,11 +1422,18 @@ define("core/adapter/navigation", ["require", "exports", "core/module/module_man
             else {
                 containerId = this.adapter.getHtmlModule().getOwnerContainer().getId();
             }
-            var parts = targetContainerId.split(".");
+            var parts = containerId.split(".");
             var targetModuleName = parts[0];
             var targetContainerName = parts[1];
-            var target = module_manager_3.default.getInstance().getModule(targetModuleName).getSubContainerByName(targetContainerName);
-            target.back();
+            var baseModuleInstance = this.moduleLoader.getModule(targetModuleName);
+            var activeModuleInstance = baseModuleInstance.getOwnerContainer().getActiveModuleInstance(targetModuleName);
+            var target = activeModuleInstance.getChildContainer(targetContainerName);
+            if (target instanceof page_container_2.default) {
+                return target.back();
+            }
+            else {
+                throw new runtime_error_4.default("Container [" + target.getId + "] is not PageContainer.");
+            }
         };
         Navigation.prototype.showWindow = function (overlayName, parcel, options) {
             return __awaiter(this, void 0, void 0, function () {
@@ -1923,23 +1489,21 @@ define("core/adapter/navigation", ["require", "exports", "core/module/module_man
     }());
     exports.default = Navigation;
 });
-define("core/adapter/html_module_adapter", ["require", "exports", "core/overlay/overlay_manager", "core/common/dto", "core/module/module_manager", "core/adapter/navigation"], function (require, exports, overlay_manager_7, dto_4, module_manager_4, navigation_1) {
+define("core/adapter/html_module_adapter", ["require", "exports", "core/common/dto", "core/adapter/navigation"], function (require, exports, dto_3, navigation_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.htmlModuleAdapters = new Map();
     var HtmlModuleAdapter = /** @class */ (function () {
         function HtmlModuleAdapter() {
             this.isModified = false;
-            this.moduleManager = module_manager_4.default.getInstance();
-            this.overlayManager = overlay_manager_7.default.getInstance();
             this.exitCallbackReturnFunctionsObject = {
                 cancelExit: this.cancelExit.bind(this),
                 continueExit: this.continueExit.bind(this)
             };
-            this.navigation = new navigation_1.default(this);
         }
         HtmlModuleAdapter.prototype.setHtmlComponent = function (htmlModule) {
             this.htmlModule = htmlModule;
+            this.navigation = new navigation_1.default(this.htmlModule.getModuleLoader(), this);
         };
         HtmlModuleAdapter.prototype.getHtmlModule = function () {
             return this.htmlModule;
@@ -1953,7 +1517,7 @@ define("core/adapter/html_module_adapter", ["require", "exports", "core/overlay/
         HtmlModuleAdapter.prototype.sendMessage = function (destination, command, message) {
             return __awaiter(this, void 0, void 0, function () {
                 return __generator(this, function (_a) {
-                    return [2 /*return*/, this.moduleManager.dispatchMessage(destination, command, message)];
+                    return [2 /*return*/, this.htmlModule.getModuleLoader().dispatchMessage(destination, command, message)];
                 });
             });
         };
@@ -1978,7 +1542,7 @@ define("core/adapter/html_module_adapter", ["require", "exports", "core/overlay/
                 this.onExit(actionType, this.exitCallbackReturnFunctionsObject);
             }
             else {
-                this.continueExit(new dto_4.Result(actionType, true));
+                this.continueExit(new dto_3.Result(actionType, true));
             }
         };
         HtmlModuleAdapter.prototype.triggerOnReceiveMessage = function (command, message) {
@@ -2010,29 +1574,27 @@ define("core/adapter/html_module_adapter", ["require", "exports", "core/overlay/
     exports.default = HtmlModuleAdapter;
     var __global = window;
     __global.__HtmlModuleAdapter = HtmlModuleAdapter;
-    __global.__registerHTMLComponentAdapter = function (moduleIndex, componentClass) {
+    __global.__registerHtmlModuleAdapter = function (moduleIndex, componentClass) {
         exports.htmlModuleAdapters.set(moduleIndex, componentClass);
     };
 });
-define("core/module/html_module", ["require", "exports", "core/source_repository"], function (require, exports, source_repository_1) {
+define("core/module/html_module", ["require", "exports", "core/module/app_module", "core/source_repository"], function (require, exports, app_module_1, source_repository_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
-    var HtmlModule = /** @class */ (function () {
-        function HtmlModule(name, sourceUri, moduleIndex) {
-            this.name = name;
-            this.sourceUri = sourceUri;
-            this.moduleIndex = moduleIndex;
-            this.isFetched = false;
-            this.isMounted = false;
-            this.isInitialized = false;
-            this.subContainerInfos = new Map();
-            this.caption = "";
-            this.htmlAdapter = null;
-            this.onCreate();
+    var HtmlModule = /** @class */ (function (_super) {
+        __extends(HtmlModule, _super);
+        function HtmlModule(moduleDefinition, loader) {
+            var _this = _super.call(this) || this;
+            _this.subContainerInfos = new Map();
+            _this.htmlAdapter = null;
+            _this.moduleLoader = loader;
+            _this.moduleDefinition = moduleDefinition;
+            _this.moduleIndex = loader.getNextModuleInstanceSequence();
+            _this.name = moduleDefinition.moduleName;
+            _this.sourceUri = moduleDefinition.sourceUri;
+            _this.onCreate();
+            return _this;
         }
-        HtmlModule.prototype.setCaption = function (caption) {
-            this.caption = caption;
-        };
         HtmlModule.prototype.subContainerNavigationEventHandler = function (subContainerId, currentInfo, histories) {
             return this.htmlAdapter.triggerOnSubContainerNavigated(subContainerId, currentInfo, histories);
         };
@@ -2056,7 +1618,7 @@ define("core/module/html_module", ["require", "exports", "core/source_repository
                             _a.source = _b.sent();
                             this.loadSubContainerInfos();
                             this.isFetched = true;
-                            return [2 /*return*/, null];
+                            return [2 /*return*/];
                     }
                 });
             });
@@ -2142,13 +1704,7 @@ define("core/module/html_module", ["require", "exports", "core/source_repository
                 this.passMessageResolver = null;
             }
         };
-        HtmlModule.prototype.getElement = function () {
-            throw this.wrapperElement;
-        };
-        HtmlModule.prototype.getOwnerContainer = function () {
-            return this.currentContainer;
-        };
-        HtmlModule.prototype.getSubContainerByName = function (containerName) {
+        HtmlModule.prototype.getChildContainer = function (containerName) {
             var target;
             this.subContainerInfos.forEach(function (c) {
                 if (c.name === containerName)
@@ -2156,24 +1712,8 @@ define("core/module/html_module", ["require", "exports", "core/source_repository
             });
             return target;
         };
-        HtmlModule.prototype.getSubContainerNames = function () {
-            var ary = new Array();
-            this.subContainerInfos.forEach(function (c) {
-                ary.push(c.name);
-            });
-            return ary;
-        };
-        HtmlModule.prototype.getName = function () {
-            return this.name;
-        };
-        HtmlModule.prototype.getCaption = function () {
-            return this.caption;
-        };
-        HtmlModule.prototype.extractTemplateContent = function (source) {
-            return "";
-        };
         return HtmlModule;
-    }());
+    }(app_module_1.default));
     exports.default = HtmlModule;
 });
 define("core/module/plain_html_module", ["require", "exports", "core/module/html_module", "core/container/container_factory", "core/adapter/html_module_adapter", "core/common/css_transition_driver", "core/source_repository"], function (require, exports, html_module_1, container_factory_2, html_module_adapter_1, css_transition_driver_3, source_repository_2) {
@@ -2188,7 +1728,7 @@ define("core/module/plain_html_module", ["require", "exports", "core/module/html
             this.prototypeTemplateBegin =
                 "(function() {\n            var Com = function(moduleIndex) {\n                this.super = __HtmlModuleAdapter.prototype;\n                __HtmlModuleAdapter.call(this, moduleIndex);\n        ";
             this.prototypeTemplateEnd =
-                "   }\n            Object.setPrototypeOf(Com.prototype, __HtmlModuleAdapter.prototype);\n            __registerHTMLComponentAdapter(" + this.moduleIndex + ", new Com(" + this.moduleIndex + "));\n         })();\n        ";
+                "   }\n            Object.setPrototypeOf(Com.prototype, __HtmlModuleAdapter.prototype);\n            __registerHtmlModuleAdapter(" + this.moduleIndex + ", new Com(" + this.moduleIndex + "));\n         })();\n        ";
         };
         PlainHtmlModule.prototype.loadSubContainerInfos = function () {
             var match;
@@ -2210,7 +1750,7 @@ define("core/module/plain_html_module", ["require", "exports", "core/module/html
         };
         PlainHtmlModule.prototype.mount = function (elementAttachHandler, cssTransitionOptions) {
             return __awaiter(this, void 0, void 0, function () {
-                var localPrefix, localizeRegExp;
+                var localPrefix, localizeRegExp, mountOption;
                 var _this = this;
                 return __generator(this, function (_a) {
                     switch (_a.label) {
@@ -2238,11 +1778,14 @@ define("core/module/plain_html_module", ["require", "exports", "core/module/html
                                 this.cssTransitionDriver = new css_transition_driver_3.default(this.wrapperElement);
                                 this.cssTransitionDriver.setCustomTransitionClasses(cssTransitionOptions.cssTransitionDriverClasses);
                             }
-                            this.currentContainer = elementAttachHandler(this.wrapperElement, this.name);
+                            mountOption = {
+                                order: this.moduleDefinition.orderOnFlatContainer
+                            };
+                            this.currentContainer = elementAttachHandler(this.wrapperElement, mountOption);
                             return [4 /*yield*/, this.evalScripts()];
                         case 3:
                             _a.sent();
-                            //サブコンテナをContainerManagerで生成・登録
+                            //サブコンテナの生成・登録
                             this.subContainerInfos.forEach(function (containerInfo, domId) {
                                 var localElementId = domId.replace(localizeRegExp, localPrefix);
                                 var containerEl = document.getElementById(localElementId);
@@ -2253,7 +1796,7 @@ define("core/module/plain_html_module", ["require", "exports", "core/module/html
                             this.htmlAdapter = html_module_adapter_1.htmlModuleAdapters.get(this.moduleIndex);
                             this.htmlAdapter.setHtmlComponent(this);
                             this.htmlAdapter.triggerOnLoad("name is " + this.name);
-                            return [2 /*return*/, true];
+                            return [2 /*return*/];
                     }
                 });
             });
@@ -2340,16 +1883,31 @@ define("core/module/plain_html_module", ["require", "exports", "core/module/html
     }(html_module_1.default));
     exports.default = PlainHtmlModule;
 });
-define("core/module/module_manager", ["require", "exports", "core/module/plain_html_module", "core/common/runtime_error"], function (require, exports, plain_html_module_1, runtime_error_5) {
+define("core/common/viewport", ["require", "exports", "core/container/container_factory"], function (require, exports, container_factory_3) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
-    var DisplayMode;
-    (function (DisplayMode) {
-        DisplayMode[DisplayMode["Embedding"] = 0] = "Embedding";
-        DisplayMode[DisplayMode["Window"] = 1] = "Window";
-        DisplayMode[DisplayMode["ContextMenu"] = 2] = "ContextMenu";
-        DisplayMode[DisplayMode["Drawer"] = 3] = "Drawer";
-    })(DisplayMode = exports.DisplayMode || (exports.DisplayMode = {}));
+    var ViewPort = /** @class */ (function () {
+        function ViewPort(element, overlayManager) {
+            this.element = element;
+            this.overlayManager = overlayManager;
+            this.container = container_factory_3.default.createContainer(container_factory_3.default.ROOT_CONTAINER_ID, "", element, null);
+        }
+        ViewPort.prototype.getChildContainer = function (containerName) {
+            return this.container;
+        };
+        ViewPort.prototype.getViewPortContainer = function () {
+            return this.container;
+        };
+        ViewPort.prototype.getOverlayManager = function () {
+            return this.overlayManager;
+        };
+        return ViewPort;
+    }());
+    exports.default = ViewPort;
+});
+define("core/module/module_loader", ["require", "exports", "core/module/plain_html_module", "core/common/runtime_error"], function (require, exports, plain_html_module_1, runtime_error_5) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
     var ModuleType;
     (function (ModuleType) {
         ModuleType[ModuleType["Native"] = 0] = "Native";
@@ -2357,237 +1915,115 @@ define("core/module/module_manager", ["require", "exports", "core/module/plain_h
         ModuleType[ModuleType["React"] = 2] = "React";
         ModuleType[ModuleType["SSRP"] = 3] = "SSRP";
     })(ModuleType = exports.ModuleType || (exports.ModuleType = {}));
-    var ModuleManager = /** @class */ (function () {
-        function ModuleManager() {
-            this.descriptions = {};
+    var ModuleLoader = /** @class */ (function () {
+        function ModuleLoader() {
+            this.instanceSequence = 0;
+            this.descriptions = new Map();
             this.loadedModules = new Map();
             this.prefetchedModules = new Map();
             this.subModuleList = new Map();
         }
-        ModuleManager.getInstance = function () {
-            return ModuleManager.instance;
+        ModuleLoader.prototype.setViewPort = function (viewPort) {
+            this.viewPort = viewPort;
         };
-        ModuleManager.prototype.setRootContainer = function (container) {
-            this.rootContainer = container;
+        ModuleLoader.prototype.getViewPort = function () {
+            return this.viewPort;
         };
-        ModuleManager.prototype.register = function (name, sourceUri, targetContainerId, isContainerDefault, options) {
-            this.registerDescription(name, sourceUri, DisplayMode.Embedding, targetContainerId, isContainerDefault, options);
+        ModuleLoader.prototype.register = function (name, sourceUri, targetContainerId, isContainerDefault, options) {
+            this.registerDescription(name, sourceUri, targetContainerId, isContainerDefault, options);
         };
-        ModuleManager.prototype.registerWindow = function (name, sourceUri, windowOptions, options) {
-            var md = this.registerDescription(name, sourceUri, DisplayMode.Window, null, null, options);
-            md.windowOptions = windowOptions;
-        };
-        ModuleManager.prototype.registerContextMenu = function (name, sourceUri, contextMenuOptions, options) {
-            var md = this.registerDescription(name, sourceUri, DisplayMode.ContextMenu, null, null, options);
-            md.contextMenuOptions = contextMenuOptions;
-        };
-        ModuleManager.prototype.registerDrawer = function (name, sourceUri, drawerOptions, options) {
-            var md = this.registerDescription(name, sourceUri, DisplayMode.Drawer, null, null, options);
-            md.drawerOptions = drawerOptions;
-        };
-        ModuleManager.prototype.registerDescription = function (moduleName, sourceUri, displayMode, targetContainerId, isContainerDefault, options) {
+        ModuleLoader.prototype.registerDescription = function (moduleName, sourceUri, targetContainerId, isContainerDefault, options) {
             var op = options || {};
             var ds = {
                 moduleName: moduleName,
                 sourceUri: sourceUri,
                 targetContainerId: targetContainerId,
-                displayMode: displayMode,
                 moduleType: op.moduleType !== undefined ? op.moduleType : ModuleType.Native,
                 isContainerDefault: isContainerDefault,
                 lazyLoading: op.lazyLoading !== undefined ? op.lazyLoading : false,
                 forcePrefetch: op.forcePrefetch !== undefined ? op.forcePrefetch : true,
+                orderOnFlatContainer: op.orderOnFlatContainer
             };
-            this.descriptions[moduleName] = ds;
+            this.descriptions.set(moduleName, ds);
             return ds;
         };
-        ModuleManager.prototype.getModule = function (name) {
+        ModuleLoader.prototype.getModule = function (name) {
             if (!this.loadedModules.has(name))
                 throw new runtime_error_5.default("指定されたモジュールが見つかりません。");
-            return this.loadedModules.get(name)[0]; //TODO
+            return this.loadedModules.get(name);
         };
-        ModuleManager.prototype.run = function () {
+        ModuleLoader.prototype.getNextModuleInstanceSequence = function () {
+            return this.instanceSequence++;
+        };
+        ModuleLoader.prototype.run = function () {
             var _this = this;
             window.addEventListener("resize", function () {
-                _this.rootContainer.onResize();
+                _this.viewPort.getViewPortContainer().onResize();
             });
-            this.rootContainer.initialize();
+            this.viewPort.getViewPortContainer().initialize();
         };
-        ModuleManager.prototype.initialize = function (rootContainer) {
+        ModuleLoader.prototype.initialize = function () {
             return __awaiter(this, void 0, void 0, function () {
-                var _a, _b, _i, key, description, module, targetModule;
-                return __generator(this, function (_c) {
-                    switch (_c.label) {
+                var descriptionModuleNames, _a, _b, _i, i, description, module, targetModuleName, subModules, _c, subModules_1, subModuleName, subModuleDescription;
+                return __generator(this, function (_d) {
+                    switch (_d.label) {
                         case 0:
-                            this.rootContainer = rootContainer;
+                            descriptionModuleNames = new Array();
+                            this.descriptions.forEach(function (value, key) {
+                                descriptionModuleNames.push(key);
+                            });
                             _a = [];
-                            for (_b in this.descriptions)
+                            for (_b in descriptionModuleNames)
                                 _a.push(_b);
                             _i = 0;
-                            _c.label = 1;
+                            _d.label = 1;
                         case 1:
                             if (!(_i < _a.length)) return [3 /*break*/, 5];
-                            key = _a[_i];
-                            description = this.descriptions[key];
+                            i = _a[_i];
+                            description = this.descriptions.get(descriptionModuleNames[i]);
                             if (!description.forcePrefetch) return [3 /*break*/, 3];
                             return [4 /*yield*/, this.fetchModule(description.moduleName)];
                         case 2:
-                            module = _c.sent();
+                            module = _d.sent();
                             this.prefetchedModules.set(description.moduleName, module);
-                            _c.label = 3;
+                            _d.label = 3;
                         case 3:
-                            targetModule = description.targetContainerId.split(".")[0];
-                            if (!this.subModuleList.has(targetModule)) {
-                                this.subModuleList.set(targetModule, new Array());
+                            targetModuleName = description.targetContainerId.split(".")[0];
+                            if (!this.subModuleList.has(targetModuleName)) {
+                                this.subModuleList.set(targetModuleName, new Array());
                             }
-                            this.subModuleList.get(targetModule).push(description.moduleName);
-                            _c.label = 4;
+                            this.subModuleList.get(targetModuleName).push(description.moduleName);
+                            _d.label = 4;
                         case 4:
                             _i++;
                             return [3 /*break*/, 1];
-                        case 5: 
-                        // this.descriptions.forEach(async (description) => {
-                        //     //プリフェッチ
-                        //     if (description.forcePrefetch) {
-                        //         const module: Module = await this.fetchModule(description.moduleName);
-                        //         this.prefetchedModules.set(description.moduleName, module);
-                        //     }
-                        //     //サブモジュールリスト生成
-                        //     const targetModule: string = description.targetContainerId.split(".")[0];
-                        //     if (!this.subModuleList.has(targetModule)) {
-                        //         this.subModuleList.set(targetModule, new Array<string>());
-                        //     }
-                        //     this.subModuleList.get(targetModule).push(description.moduleName);
-                        //     //TODO descriptionsに存在しないmoduleNameのsubModuleListのリストがあったなら警告を出すか止める
-                        // });
-                        // for (let description of this.descriptions) {
-                        //     let newModule: Module = null;
-                        //     //モジュールインスタンス生成
-                        //     if (description.moduleType === ModuleType.Native || !description.moduleType) {
-                        //         newModule = new PlainHtmlModule(description.name, description.sourceUri, 
-                        //                                         ModuleManager.instanceSequence++);
-                        //     } else {
-                        //         throw new RuntimeError("不明な種類のコンポーネントが指定されました。");
-                        //     }
-                        //     //モジュールプールへの登録
-                        //     this.modules.set(description.name, newModule);
-                        //     //モジュールソースのロード　※コンテナへのマウントや初期化は行われない
-                        //     if (!description.lazyLoading) {
-                        //         await newModule.fetch();
-                        //     }
-                        //     //依存情報テーブルの準備
-                        //     this.dependencyInfoMap.set(
-                        //         description.name, 
-                        //         new ModuleDependencyInfo(
-                        //             description,
-                        //             newModule.getSubContainerNames())
-                        //     );
-                        // }
-                        // //ルートとなる依存情報テーブルの生成
-                        // const rootDependencyInfo = new ModuleDependencyInfo(null, [ModuleManager.ROOT_NAME]);
-                        // this.dependencyInfoMap.set(ModuleManager.ROOT_NAME, rootDependencyInfo);
-                        // //モジュール定義の情報を基に依存情報を互いにリンクする
-                        // this.dependencyInfoMap.forEach((dependencyInfo: ModuleDependencyInfo, moduleName: string) => {
-                        //     if (dependencyInfo === rootDependencyInfo) return;
-                        //     let targetModuleName: string = ModuleManager.ROOT_NAME;
-                        //     let targetContainerName: string = ModuleManager.ROOT_NAME;
-                        //     if (dependencyInfo.moduleDescription.displayMode === DisplayMode.Embedding) {
-                        //         //コンテナに埋め込んで使用するモジュールの場合
-                        //         if (dependencyInfo.moduleDescription.targetContainerId) {
-                        //             const parts: Array<string> = dependencyInfo.moduleDescription.targetContainerId.split(".");
-                        //             if (parts.length === 2) {
-                        //                 targetModuleName = parts[0];
-                        //                 targetContainerName = parts[1];
-                        //             }
-                        //         }
-                        //     } else {
-                        //         //それ以外（自身がwindowやcontextmenuのルートコンテナになる場合）
-                        //         //※依存情報テーブル上はルート上に含めるものとするため何もしない（root.root）
-                        //     }
-                        //     let targetDependencyInfo = this.dependencyInfoMap.get(targetModuleName);
-                        //     // if (targetDependencyInfo && targetDependencyInfo.subContainerNames.has(targetContainerName)) {
-                        //         targetDependencyInfo.addSubModule(moduleName, targetContainerName);
-                        //     // } else {
-                        //     //     throw new RuntimeError("未定義のコンテナが指定された");
-                        //     // }
-                        // });
-                        //ツリールートから順番にモジュールのロードを実行（遅延ロードモジュールを除く
-                        return [4 /*yield*/, this.loadModuleRecursively("root")];
+                        case 5:
+                            subModules = this.subModuleList.get("$root");
+                            _c = 0, subModules_1 = subModules;
+                            _d.label = 6;
                         case 6:
-                            // this.descriptions.forEach(async (description) => {
-                            //     //プリフェッチ
-                            //     if (description.forcePrefetch) {
-                            //         const module: Module = await this.fetchModule(description.moduleName);
-                            //         this.prefetchedModules.set(description.moduleName, module);
-                            //     }
-                            //     //サブモジュールリスト生成
-                            //     const targetModule: string = description.targetContainerId.split(".")[0];
-                            //     if (!this.subModuleList.has(targetModule)) {
-                            //         this.subModuleList.set(targetModule, new Array<string>());
-                            //     }
-                            //     this.subModuleList.get(targetModule).push(description.moduleName);
-                            //     //TODO descriptionsに存在しないmoduleNameのsubModuleListのリストがあったなら警告を出すか止める
-                            // });
-                            // for (let description of this.descriptions) {
-                            //     let newModule: Module = null;
-                            //     //モジュールインスタンス生成
-                            //     if (description.moduleType === ModuleType.Native || !description.moduleType) {
-                            //         newModule = new PlainHtmlModule(description.name, description.sourceUri, 
-                            //                                         ModuleManager.instanceSequence++);
-                            //     } else {
-                            //         throw new RuntimeError("不明な種類のコンポーネントが指定されました。");
-                            //     }
-                            //     //モジュールプールへの登録
-                            //     this.modules.set(description.name, newModule);
-                            //     //モジュールソースのロード　※コンテナへのマウントや初期化は行われない
-                            //     if (!description.lazyLoading) {
-                            //         await newModule.fetch();
-                            //     }
-                            //     //依存情報テーブルの準備
-                            //     this.dependencyInfoMap.set(
-                            //         description.name, 
-                            //         new ModuleDependencyInfo(
-                            //             description,
-                            //             newModule.getSubContainerNames())
-                            //     );
-                            // }
-                            // //ルートとなる依存情報テーブルの生成
-                            // const rootDependencyInfo = new ModuleDependencyInfo(null, [ModuleManager.ROOT_NAME]);
-                            // this.dependencyInfoMap.set(ModuleManager.ROOT_NAME, rootDependencyInfo);
-                            // //モジュール定義の情報を基に依存情報を互いにリンクする
-                            // this.dependencyInfoMap.forEach((dependencyInfo: ModuleDependencyInfo, moduleName: string) => {
-                            //     if (dependencyInfo === rootDependencyInfo) return;
-                            //     let targetModuleName: string = ModuleManager.ROOT_NAME;
-                            //     let targetContainerName: string = ModuleManager.ROOT_NAME;
-                            //     if (dependencyInfo.moduleDescription.displayMode === DisplayMode.Embedding) {
-                            //         //コンテナに埋め込んで使用するモジュールの場合
-                            //         if (dependencyInfo.moduleDescription.targetContainerId) {
-                            //             const parts: Array<string> = dependencyInfo.moduleDescription.targetContainerId.split(".");
-                            //             if (parts.length === 2) {
-                            //                 targetModuleName = parts[0];
-                            //                 targetContainerName = parts[1];
-                            //             }
-                            //         }
-                            //     } else {
-                            //         //それ以外（自身がwindowやcontextmenuのルートコンテナになる場合）
-                            //         //※依存情報テーブル上はルート上に含めるものとするため何もしない（root.root）
-                            //     }
-                            //     let targetDependencyInfo = this.dependencyInfoMap.get(targetModuleName);
-                            //     // if (targetDependencyInfo && targetDependencyInfo.subContainerNames.has(targetContainerName)) {
-                            //         targetDependencyInfo.addSubModule(moduleName, targetContainerName);
-                            //     // } else {
-                            //     //     throw new RuntimeError("未定義のコンテナが指定された");
-                            //     // }
-                            // });
-                            //ツリールートから順番にモジュールのロードを実行（遅延ロードモジュールを除く
-                            _c.sent();
-                            return [2 /*return*/, true];
+                            if (!(_c < subModules_1.length)) return [3 /*break*/, 10];
+                            subModuleName = subModules_1[_c];
+                            subModuleDescription = this.descriptions.get(subModuleName);
+                            if (!!subModuleDescription.lazyLoading) return [3 /*break*/, 8];
+                            return [4 /*yield*/, this.loadModuleRecursively(subModuleName, this.viewPort)];
+                        case 7:
+                            _d.sent();
+                            return [3 /*break*/, 9];
+                        case 8:
+                            console.log(subModuleName + " is lazy load mode.");
+                            _d.label = 9;
+                        case 9:
+                            _c++;
+                            return [3 /*break*/, 6];
+                        case 10: return [2 /*return*/];
                     }
                 });
             });
         };
-        ModuleManager.prototype.fetchModule = function (moduleName) {
+        ModuleLoader.prototype.fetchModule = function (moduleName) {
             return __awaiter(this, void 0, void 0, function () {
-                var module, description;
+                var module, definition;
                 return __generator(this, function (_a) {
                     switch (_a.label) {
                         case 0:
@@ -2596,12 +2032,12 @@ define("core/module/module_manager", ["require", "exports", "core/module/plain_h
                             this.prefetchedModules.delete(moduleName);
                             return [3 /*break*/, 3];
                         case 1:
-                            description = this.descriptions[moduleName];
-                            if (!description) {
+                            definition = this.descriptions.get(moduleName);
+                            if (!definition) {
                                 throw new runtime_error_5.default("指定されたモジュール " + moduleName + " は定義されていません。");
                             }
-                            if (description.moduleType === ModuleType.Native || !description.moduleType) {
-                                module = new plain_html_module_1.default(moduleName, description.sourceUri, ModuleManager.instanceSequence++);
+                            if (definition.moduleType === ModuleType.Native || !definition.moduleType) {
+                                module = new plain_html_module_1.default(definition, this);
                             }
                             else {
                                 throw new runtime_error_5.default("不明な種類のコンポーネントが指定されました。");
@@ -2615,123 +2051,72 @@ define("core/module/module_manager", ["require", "exports", "core/module/plain_h
                 });
             });
         };
-        ModuleManager.prototype.loadModuleRecursively = function (moduleName) {
+        ModuleLoader.prototype.loadModuleRecursively = function (moduleName, owner) {
             return __awaiter(this, void 0, void 0, function () {
-                var module, moduleDescription, parts, targetModuleName, targetContainerName, mountTargetContainer, subModules, _i, subModules_1, subModuleName, subModuleDescription;
+                var module, moduleDefinition, parts, targetContainerName, mountTargetContainer, subModules, _i, subModules_2, subModuleName, subModuleDescription;
                 return __generator(this, function (_a) {
                     switch (_a.label) {
-                        case 0:
-                            if (!(moduleName !== "root")) return [3 /*break*/, 4];
-                            return [4 /*yield*/, this.fetchModule(moduleName)];
+                        case 0: return [4 /*yield*/, this.fetchModule(moduleName)];
                         case 1:
                             module = _a.sent();
-                            moduleDescription = this.descriptions[moduleName];
-                            parts = moduleDescription.targetContainerId.split(".");
-                            targetModuleName = parts[0];
+                            moduleDefinition = this.descriptions.get(moduleName);
+                            parts = moduleDefinition.targetContainerId.split(".");
                             targetContainerName = parts[1];
-                            mountTargetContainer = void 0;
-                            if (targetModuleName === "root") {
-                                mountTargetContainer = this.rootContainer;
-                            }
-                            else {
-                                mountTargetContainer = this.loadedModules.get(targetModuleName)[0].getSubContainerByName(targetContainerName);
-                            }
-                            if (!mountTargetContainer) return [3 /*break*/, 3];
+                            mountTargetContainer = owner.getChildContainer(targetContainerName);
+                            if (!mountTargetContainer)
+                                throw new runtime_error_5.default("ターゲットコンテナは存在しないか、ロードされていません。");
                             return [4 /*yield*/, mountTargetContainer.addModule(module)];
                         case 2:
                             _a.sent();
-                            if (moduleDescription.isContainerDefault) {
+                            if (moduleDefinition.isContainerDefault) {
                                 mountTargetContainer.setDefaultModule(moduleName);
                             }
                             if (!this.loadedModules.has(moduleName)) {
-                                this.loadedModules.set(moduleName, new Array());
+                                this.loadedModules.set(moduleName, module);
                             }
-                            this.loadedModules.get(moduleName).push(module);
-                            return [3 /*break*/, 4];
-                        case 3: throw new runtime_error_5.default("ターゲットコンテナは存在しないか、ロードされていません。");
+                            subModules = this.subModuleList.get(moduleName) || [];
+                            _i = 0, subModules_2 = subModules;
+                            _a.label = 3;
+                        case 3:
+                            if (!(_i < subModules_2.length)) return [3 /*break*/, 7];
+                            subModuleName = subModules_2[_i];
+                            subModuleDescription = this.descriptions.get(subModuleName);
+                            if (!!subModuleDescription.lazyLoading) return [3 /*break*/, 5];
+                            return [4 /*yield*/, this.loadModuleRecursively(subModuleName, module)];
                         case 4:
-                            subModules = this.subModuleList.get(moduleName);
-                            if (!subModules) return [3 /*break*/, 9];
-                            _i = 0, subModules_1 = subModules;
-                            _a.label = 5;
-                        case 5:
-                            if (!(_i < subModules_1.length)) return [3 /*break*/, 9];
-                            subModuleName = subModules_1[_i];
-                            subModuleDescription = this.descriptions[subModuleName];
-                            if (!!subModuleDescription.lazyLoading) return [3 /*break*/, 7];
-                            return [4 /*yield*/, this.loadModuleRecursively(subModuleName)];
-                        case 6:
                             _a.sent();
-                            return [3 /*break*/, 8];
-                        case 7:
+                            return [3 /*break*/, 6];
+                        case 5:
                             console.log(subModuleName + " is lazy load mode.");
-                            _a.label = 8;
-                        case 8:
+                            _a.label = 6;
+                        case 6:
                             _i++;
-                            return [3 /*break*/, 5];
-                        case 9: return [2 /*return*/, module];
+                            return [3 /*break*/, 3];
+                        case 7: return [2 /*return*/, module];
                     }
                 });
             });
         };
-        // public async loadModuleRecursively(moduleName: string, forceLoading?: boolean) {
-        //     const dependencyInfo: ModuleDependencyInfo = this.dependencyInfoMap.get(moduleName);
-        //     const containerManager = ContainerManager.getInstance();
-        //     const overlayManager = OvarlayManager.getInstance();
-        //     const moduleDescription: ModuleDescription = dependencyInfo.moduleDescription;
-        //     if (dependencyInfo.isProcessed) throw new RuntimeError("コンテナの循環参照を検出しました。");
-        //     dependencyInfo.isProcessed = true;
-        //     if (!dependencyInfo.isRoot && (!moduleDescription.lazyLoading || forceLoading)) {
-        //         const displayMode = moduleDescription.displayMode;
-        //         const module: Module = this.modules.get(moduleDescription.moduleName);
-        //         if (displayMode === DisplayMode.Embedding) {
-        //             //組み込み
-        //             let targetContainer: Container = containerManager.getContainer(moduleDescription.targetContainerId);
-        //             if (targetContainer) {
-        //                 await targetContainer.addModule(module);
-        //                 if (moduleDescription.isContainerDefault) {
-        //                     targetContainer.setDefaultModule(module);
-        //                 }
-        //             } else {
-        //                 throw new RuntimeError("ターゲットコンテナは存在しないか、ロードされていません。");
-        //             }
-        //         } else {
-        //             //オーバーレイ
-        //             let overlay: Overlay;
-        //             switch (displayMode) {
-        //                 case DisplayMode.Window:
-        //                     overlay = overlayManager.createWindow(module.getName(), moduleDescription.windowOptions);
-        //                     break;
-        //                 case DisplayMode.ContextMenu:
-        //                     overlay = overlayManager.createContextMenu(module.getName(), moduleDescription.contextMenuOptions);
-        //                     break;
-        //                 case DisplayMode.Drawer:
-        //                     overlay = overlayManager.createDrawer(module.getName(), moduleDescription.drawerOptions);
-        //                     break;
-        //             }
-        //             await overlay.getContainer().addModule(module);
-        //             overlay.getContainer().setDefaultModule(module);
-        //         }
-        //     }
-        //     //if (dependencyInfo.isRoot || !moduleDescription.lazyLoading) {
-        //     for (let subModuleName of dependencyInfo.subModuleNames) {
-        //         if (!this.dependencyInfoMap.get(subModuleName).moduleDescription.lazyLoading) {
-        //             await this.loadModuleRecursively(subModuleName);
-        //         } else {
-        //             console.log(subModuleName + " is lazy load mode.");
-        //         }
-        //     }
-        //     //}
-        // }
-        ModuleManager.prototype.dispatchMessage = function (destination, command, message) {
+        ModuleLoader.prototype.dispatchMessage = function (destination, command, message) {
             //TODO 仮
             return this.getModule(destination).passMessage(command, message);
         };
-        ModuleManager.instance = new ModuleManager();
-        ModuleManager.instanceSequence = 0;
-        return ModuleManager;
+        return ModuleLoader;
     }());
-    exports.default = ModuleManager;
+    exports.default = ModuleLoader;
+});
+define("core/common/common", ["require", "exports"], function (require, exports) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    var Common = /** @class */ (function () {
+        function Common() {
+        }
+        Common.isMsIE = false;
+        Common.currentMouseClientX = 0;
+        Common.currentMouseClientY = 0;
+        return Common;
+    }());
+    exports.default = Common;
 });
 define("core/common/shared_css_script_loader", ["require", "exports"], function (require, exports) {
     "use strict";
@@ -2838,59 +2223,646 @@ define("core/common/shared_css_script_loader", ["require", "exports"], function 
     }());
     exports.default = SharedCssScriptLoader;
 });
-define("core/configurer", ["require", "exports", "core/module/module_manager", "core/source_repository", "core/common/shared_css_script_loader", "core/container/container_factory"], function (require, exports, module_manager_5, source_repository_3, shared_css_script_loader_1, container_factory_3) {
+define("core/overlay/resizable_overlay", ["require", "exports", "core/common/types", "core/overlay/overlay"], function (require, exports, types_2, overlay_2) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
-    var Configurer = /** @class */ (function () {
-        function Configurer() {
-            this.moduleManager = module_manager_5.default.getInstance();
-            this.cssUris = new Array();
-            this.scriptUris = new Array();
+    var ResizableOverlay = /** @class */ (function (_super) {
+        __extends(ResizableOverlay, _super);
+        function ResizableOverlay(name, size, moduleLoader) {
+            var _this = _super.call(this, name, size, moduleLoader) || this;
+            _this.resizable = true;
+            _this.isResizing = false;
+            _this.resizeHandleEl = new Array();
+            return _this;
         }
-        Configurer.getInstance = function () {
-            return Configurer.instance;
+        ResizableOverlay.prototype.mount = function (overlayManager) {
+            _super.prototype.mount.call(this, overlayManager);
+            var maxPctWithoutFrame = "calc(100% - " + (ResizableOverlay.resizeHandleThicknessPx * 2) + "px)";
+            var _cs = this.contentEl.style;
+            _cs.left = String(ResizableOverlay.resizeHandleThicknessPx) + "px";
+            _cs.top = String(ResizableOverlay.resizeHandleThicknessPx) + "px";
+            _cs.width = maxPctWithoutFrame;
+            _cs.height = maxPctWithoutFrame;
+            var _ls = this.modalInactiveLayer.style;
+            _ls.left = String(ResizableOverlay.resizeHandleThicknessPx) + "px";
+            _ls.top = String(ResizableOverlay.resizeHandleThicknessPx) + "px";
+            _ls.width = maxPctWithoutFrame;
+            _ls.height = maxPctWithoutFrame;
+            //outerFrameElの周囲にリサイズイベント検知用のエレメントを生成・配置
+            this.createResizeHandleElements();
+            this.resize(this.size.cssWidth, this.size.cssHeight);
         };
-        Configurer.prototype.setAppRootId = function (appRootId) {
-            this.appRootId = appRootId;
+        ResizableOverlay.prototype.createResizeHandleElements = function () {
+            var _this = this;
+            var _rh = this.resizeHandleEl;
+            var size = ResizableOverlay.resizeHandleThicknessPx * 2;
+            //0:左上 1:上中 2:右上 3:左中...8:右下  計8箇所 ※中中は不要
+            for (var i = 0; i < 8; i++) {
+                var el = document.createElement("div");
+                el.dataset["positionIndex"] = String(i);
+                el.style.position = "absolute";
+                el.style.width = size + "px";
+                el.style.height = size + "px";
+                el.style.zIndex = "-1";
+                el.addEventListener("mousedown", this.onResizeHandleMouseDown.bind(this));
+                _rh.push(el);
+            }
+            //左上
+            _rh[0].style.cursor = "nwse-resize";
+            //上
+            _rh[1].style.left = String(size) + "px";
+            _rh[1].style.width = "calc(100% - " + String(size * 2) + "px)";
+            _rh[1].style.cursor = "ns-resize";
+            //右上
+            _rh[2].style.right = "0px";
+            _rh[2].style.cursor = "nesw-resize";
+            //左中
+            _rh[3].style.top = String(size) + "px";
+            _rh[3].style.height = "calc(100% - " + String(size * 2) + "px)";
+            _rh[3].style.cursor = "ew-resize";
+            //右中
+            _rh[4].style.right = "0px";
+            _rh[4].style.top = String(size) + "px";
+            _rh[4].style.height = "calc(100% - " + String(size * 2) + "px)";
+            _rh[4].style.cursor = "ew-resize";
+            //左下
+            _rh[5].style.bottom = "0px";
+            _rh[5].style.cursor = "nesw-resize";
+            //下
+            _rh[6].style.left = String(size) + "px";
+            _rh[6].style.bottom = "0px";
+            _rh[6].style.width = "calc(100% - " + String(size * 2) + "px)";
+            _rh[6].style.cursor = "ns-resize";
+            //右下
+            _rh[7].style.right = "0px";
+            _rh[7].style.bottom = "0px";
+            _rh[7].style.cursor = "nwse-resize";
+            _rh.forEach(function (element) {
+                _this.frameEl.appendChild(element);
+            });
         };
-        Configurer.prototype.setSourceVersion = function (version) {
+        ResizableOverlay.prototype.__dispachMouseMoveEvent = function (x, y, deltaX, deltaY) {
+            _super.prototype.__dispachMouseMoveEvent.call(this, x, y, deltaX, deltaY);
+            var frameWidth, frameHeight;
+            if (this.isResizing && this.resizable) {
+                var _ssw = this.resizeStartSizePx.width;
+                var _ssh = this.resizeStartSizePx.height;
+                var _smx = this.resizeStartMousePos.x;
+                var _smy = this.resizeStartMousePos.y;
+                //※リサイズした場合は単位はピクセルに強制的に変更するものとする
+                switch (this.resizePositionIndex) {
+                    case 0: //左上
+                        this.changePosition(this.resizeStartPos.x + (x - _smx), this.resizeStartPos.y + (y - _smy));
+                        frameWidth = _ssw - (x - _smx);
+                        frameHeight = _ssh - (y - _smy);
+                        break;
+                    case 1: //上
+                        this.changePosition(this.position.x, this.resizeStartPos.y + (y - _smy));
+                        frameWidth = _ssw;
+                        frameHeight = _ssh - (y - _smy);
+                        break;
+                    case 2: //右上
+                        this.changePosition(this.position.x, this.resizeStartPos.y + (y - _smy));
+                        frameWidth = _ssw + (x - _smx);
+                        frameHeight = _ssh - (y - _smy);
+                        break;
+                    case 3: //左
+                        this.changePosition(this.resizeStartPos.x + (x - _smx), this.position.y);
+                        frameWidth = _ssw - (x - _smx);
+                        frameHeight = _ssh;
+                        break;
+                    case 4: //右
+                        this.changePosition(this.position.x, this.position.y);
+                        frameWidth = _ssw + (x - _smx);
+                        frameHeight = _ssh;
+                        break;
+                    case 5: //左下
+                        this.changePosition(this.resizeStartPos.x + (x - _smx), this.position.y);
+                        frameWidth = _ssw - (x - _smx);
+                        frameHeight = _ssh + (y - _smy);
+                        break;
+                    case 6: //下
+                        this.changePosition(this.position.x, this.position.y);
+                        frameWidth = _ssw;
+                        frameHeight = _ssh + (y - _smy);
+                        break;
+                    case 7: //右下
+                        this.changePosition(this.position.x, this.position.y);
+                        frameWidth = _ssw + (x - _smx);
+                        frameHeight = _ssh + (y - _smy);
+                        break;
+                }
+                frameWidth -= (ResizableOverlay.resizeHandleThicknessPx * 2);
+                frameHeight -= (ResizableOverlay.resizeHandleThicknessPx * 2);
+                this.resize(frameWidth + "px", frameHeight + "px");
+            }
+        };
+        ResizableOverlay.prototype.__dispachMouseUpEvent = function (x, y) {
+            if (!this.isMounted)
+                return;
+            _super.prototype.__dispachMouseUpEvent.call(this, x, y);
+            this.isResizing = false;
+            this.cacheCurrentOffsetSize();
+        };
+        ResizableOverlay.prototype.onResizeHandleMouseDown = function (event) {
+            this.isResizing = true;
+            this.resizePositionIndex = parseInt(event.target.dataset["positionIndex"]);
+            this.resizeStartMousePos = new types_2.Point(event.screenX, event.screenY);
+            this.resizeStartPos = new types_2.Point(this.position.x, this.position.y);
+            this.resizeStartSizePx = new types_2.Size(this.frameEl.offsetWidth, this.frameEl.offsetHeight);
+            this.overlayManager.changeContentsSelectable(false);
+        };
+        ResizableOverlay.prototype.resize = function (width, height) {
+            this.size = new types_2.CssSize(width, height);
+            this.frameEl.style.width = "calc(" + width + " + " + (ResizableOverlay.resizeHandleThicknessPx * 2) + "px)";
+            this.frameEl.style.height = "calc(" + height + " + " + (ResizableOverlay.resizeHandleThicknessPx * 2) + "px)";
+        };
+        ResizableOverlay.prototype.setResizable = function (resizable) {
+            this.resizable = resizable;
+            this.refreshResizeHandleElementActivate();
+        };
+        ResizableOverlay.prototype.refreshResizeHandleElementActivate = function () {
+            var canResize = this.resizable && !this.inactiveModalMode;
+            this.resizeHandleEl.forEach(function (element) {
+                if (canResize) {
+                    element.style.display = "";
+                }
+                else {
+                    element.style.display = "none";
+                }
+            });
+        };
+        ResizableOverlay.resizeHandleThicknessPx = 8;
+        return ResizableOverlay;
+    }(overlay_2.default));
+    exports.default = ResizableOverlay;
+});
+define("core/overlay/dialog_window", ["require", "exports", "core/common/dto", "core/overlay/resizable_overlay"], function (require, exports, dto_4, resizable_overlay_1) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    var DialogWindow = /** @class */ (function (_super) {
+        __extends(DialogWindow, _super);
+        function DialogWindow(name, moduleLoader, options) {
+            var _this = _super.call(this, name, options ? options.size : null, moduleLoader) || this;
+            _this.isDragging = false;
+            _this.windowOptions = options;
+            if (options && options.resizable === false) {
+                _this.setResizable(false);
+            }
+            return _this;
+        }
+        DialogWindow.prototype.mount = function (overlayManager) {
+            _super.prototype.mount.call(this, overlayManager);
+            var _wop = this.windowOptions;
+            this.wrapperEl = document.createElement("div");
+            this.wrapperEl.style.position = "absolute";
+            this.wrapperEl.style.display = "flex";
+            this.wrapperEl.style.flexDirection = "column";
+            this.wrapperEl.style.width = "100%";
+            this.wrapperEl.style.height = "100%";
+            this.headerEl = document.createElement("div");
+            this.headerEl.className = "itm_dialog_window_header";
+            this.headerEl.style.position = "relative";
+            this.headerEl.style.display = "flex";
+            this.headerEl.style.width = "100%";
+            if (_wop && _wop.hideHeader) {
+                this.headerEl.style.display = "none";
+            }
+            this.headerTitleEl = document.createElement("div");
+            this.headerTitleEl.className = "caption";
+            this.headerTitleEl.textContent = _wop && _wop.defaultCaption ? _wop.defaultCaption : "";
+            this.headerCloseButtonEl = document.createElement("div");
+            this.headerCloseButtonEl.className = "close_button";
+            this.headerCloseButtonEl.textContent = "×";
+            this.headerCloseButtonEl.addEventListener("click", this.onHeaderCloseButtonClick.bind(this));
+            this.headerEl.appendChild(this.headerTitleEl);
+            this.headerEl.appendChild(this.headerCloseButtonEl);
+            this.headerEl.addEventListener("mousedown", this.onHeaderMouseDown.bind(this));
+            this.headerEl.addEventListener("dragstart", this.onHeaderDragStart.bind(this));
+            this.containerEl = document.createElement("div");
+            this.containerEl.className = "itm_dialog_window_body";
+            this.containerEl.style.position = "relative";
+            this.containerEl.style.flexGrow = "1";
+            this.containerEl.style.flexShrink = "1";
+            this.containerEl.style.width = "100%";
+            this.registerAsContainer("window", this.containerEl);
+            this.footerEl = document.createElement("div");
+            this.footerEl.className = "itm_dialog_window_footer";
+            this.footerEl.style.position = "relative";
+            this.footerEl.style.width = "100%";
+            if (_wop && _wop.hideFooter) {
+                this.footerEl.style.display = "none";
+            }
+            this.okButtonEl = document.createElement("input");
+            this.okButtonEl.type = "button";
+            this.okButtonEl.classList.add("itm_dialog_window_footer_button", "ok");
+            this.okButtonEl.value = "OK";
+            this.okButtonEl.addEventListener("click", this.onOkButtonClick.bind(this));
+            this.cancelButtonEl = document.createElement("input");
+            this.cancelButtonEl.type = "button";
+            this.cancelButtonEl.classList.add("itm_dialog_window_footer_button", "cancel");
+            this.cancelButtonEl.value = "キャンセル";
+            this.cancelButtonEl.addEventListener("click", this.onCancelButtonClick.bind(this));
+            this.applyButtonEl = document.createElement("input");
+            this.applyButtonEl.type = "button";
+            this.applyButtonEl.classList.add("itm_dialog_window_footer_button", "apply");
+            this.applyButtonEl.value = "適用";
+            this.footerEl.appendChild(this.okButtonEl);
+            this.footerEl.appendChild(this.cancelButtonEl);
+            this.wrapperEl.appendChild(this.headerEl);
+            this.wrapperEl.appendChild(this.containerEl);
+            this.wrapperEl.appendChild(this.footerEl);
+            this.contentEl.className = "itm_dialog_window_container";
+            this.contentEl.appendChild(this.wrapperEl);
+            this.outerFrameTransitionDriver.setCustomTransitionClasses({
+                standyStateClass: "itm_dialog_window_standy_state",
+                enterTransitionClass: "itm_dialog_window_enter_transition",
+                leaveTransitionClass: "itm_dialog_window_leave_transition",
+                endStateClass: "itm_dialog_window_end_state"
+            });
+        };
+        DialogWindow.prototype.onHeaderMouseDown = function (event) {
+            this.isDragging = true;
+            this.overlayManager.changeContentsSelectable(false);
+        };
+        DialogWindow.prototype.onHeaderDragStart = function (event) {
+            event.preventDefault();
+        };
+        DialogWindow.prototype.onHeaderCloseButtonClick = function (event) {
+            var _this = this;
+            this.container.getCurrentModule().exit(dto_4.ActionType.CANCEL).then(function (exited) {
+                if (exited)
+                    _this.close();
+            });
+        };
+        DialogWindow.prototype.onOkButtonClick = function (event) {
+            var _this = this;
+            this.container.getCurrentModule().exit(dto_4.ActionType.OK).then(function (exited) {
+                if (exited)
+                    _this.close(_this.container.getContainerResult());
+            });
+        };
+        DialogWindow.prototype.onCancelButtonClick = function (event) {
+            var _this = this;
+            this.container.getCurrentModule().exit(dto_4.ActionType.CANCEL).then(function (exited) {
+                if (exited)
+                    _this.close();
+            });
+        };
+        DialogWindow.prototype.onApplyButtonClick = function (event) {
+        };
+        DialogWindow.prototype.waitForOverlayClose = function () {
+            var _this = this;
+            return new Promise(function (resolve) {
+                _this.waitForOverlayCloseResolver = resolve;
+            });
+        };
+        //override
+        DialogWindow.prototype.__dispachMouseMoveEvent = function (x, y, deltaX, deltaY) {
+            _super.prototype.__dispachMouseMoveEvent.call(this, x, y, deltaX, deltaY);
+            if (!this.isDragging)
+                return;
+            this.changePosition(this.position.x + deltaX, this.position.y + deltaY);
+        };
+        //override
+        DialogWindow.prototype.__dispachMouseUpEvent = function (x, y) {
+            _super.prototype.__dispachMouseUpEvent.call(this, x, y);
+            this.isDragging = false;
+        };
+        DialogWindow.prototype.getChildContainer = function () {
+            return this.container;
+        };
+        DialogWindow.prototype.setWindowTitle = function (title) {
+            this.headerTitleEl.textContent = title;
+        };
+        DialogWindow.prototype.show = function (parcel, options) {
+            return __awaiter(this, void 0, void 0, function () {
+                return __generator(this, function (_a) {
+                    if (options && options.position) {
+                        this.changePosition(options.position.x, options.position.y);
+                    }
+                    else {
+                        //デフォルト表示位置は表示領域（ビューポート）の中央
+                        this.moveToViewPortCenter();
+                    }
+                    this.container.initialize(parcel);
+                    this.outerFrameTransitionDriver.show();
+                    return [2 /*return*/, this.waitForOverlayClose()];
+                });
+            });
+        };
+        DialogWindow.prototype.showAsModal = function (parcel, options) {
+            return __awaiter(this, void 0, void 0, function () {
+                return __generator(this, function (_a) {
+                    return [2 /*return*/, this.show(parcel, options)];
+                });
+            });
+        };
+        //override
+        DialogWindow.prototype.close = function (result) {
+            this.outerFrameTransitionDriver.hide();
+            //自身のdisplay:noneが反映した後にコールバックさせるためsetTimeoutを介して呼び出す
+            window.setTimeout(this.waitForOverlayCloseResolver.bind(this), 0, result);
+        };
+        //override
+        DialogWindow.prototype.activate = function () {
+            _super.prototype.activate.call(this);
+            this.headerEl.classList.remove("inactive");
+        };
+        //override
+        DialogWindow.prototype.inactivate = function (withModal) {
+            _super.prototype.inactivate.call(this, withModal);
+            this.headerEl.classList.add("inactive");
+        };
+        return DialogWindow;
+    }(resizable_overlay_1.default));
+    exports.default = DialogWindow;
+});
+define("core/overlay/context_menu", ["require", "exports", "core/overlay/overlay", "core/common/common"], function (require, exports, overlay_3, common_1) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    var ContextMenu = /** @class */ (function (_super) {
+        __extends(ContextMenu, _super);
+        function ContextMenu(name, moduleLoader, options) {
+            return _super.call(this, name, options ? options.size : null, moduleLoader) || this;
+        }
+        ContextMenu.prototype.mount = function (overlayManager) {
+            _super.prototype.mount.call(this, overlayManager);
+            this.containerEl = document.createElement("div");
+            this.containerEl.className = "";
+            this.containerEl.style.position = "relative";
+            this.containerEl.style.width = "100%";
+            this.containerEl.style.height = "100%";
+            this.registerAsContainer("contextmenu", this.containerEl);
+            this.contentEl.className = "itm_context_menu_container";
+            this.contentEl.appendChild(this.containerEl);
+            this.contentEl.addEventListener("mousedown", this.onContentMouseDown.bind(this));
+            this.outerFrameTransitionDriver.setCustomTransitionClasses({
+                standyStateClass: "itm_context_menu_standy_state",
+                enterTransitionClass: "itm_context_menu_enter_transition",
+                leaveTransitionClass: "itm_context_menu_leave_transition",
+                endStateClass: "itm_context_menu_end_state"
+            });
+        };
+        ContextMenu.prototype.getChildContainer = function () {
+            return this.container;
+        };
+        ContextMenu.prototype.show = function (parcel, options) {
+            var x, y;
+            x = common_1.default.currentMouseClientX;
+            y = common_1.default.currentMouseClientY;
+            var widthPx = this.offsetSizeCache.width;
+            var heightPx = this.offsetSizeCache.height;
+            var overlayRightSideX = x + widthPx;
+            var overlayBottomSideY = y + heightPx;
+            var visibleAreaWidth = window.document.documentElement.clientWidth;
+            var visibleAreaHeight = window.document.documentElement.clientHeight;
+            var xVisibleAreaIsLargerThanOverlay = widthPx < visibleAreaWidth;
+            var yVisibleAreaIsLargerThanOverlay = heightPx < visibleAreaHeight;
+            var xCanDisplayOnNormalPosition = overlayRightSideX <= visibleAreaWidth;
+            var yCanDisplayOnNormalPosition = overlayBottomSideY <= visibleAreaHeight;
+            var xCanDisplayOnReversePosition = x >= widthPx;
+            var yCanDisplayOnReversePosition = y >= heightPx;
+            this.restoreOriginalSize();
+            //x方向
+            if (xVisibleAreaIsLargerThanOverlay) {
+                if (xCanDisplayOnNormalPosition) {
+                    //指定された位置をそのまま左上座標にする
+                }
+                else if (xCanDisplayOnReversePosition) {
+                    x -= widthPx;
+                }
+                else {
+                    //右端に寄せる
+                    x = visibleAreaWidth - widthPx;
+                }
+            }
+            else {
+                x = 0; //入りきらない場合でも横方向は縮小せずに左端に寄せるだけにする
+            }
+            //y方向
+            if (yVisibleAreaIsLargerThanOverlay) {
+                if (yCanDisplayOnNormalPosition) {
+                    //指定された位置をそのまま左上座標にする
+                }
+                else if (yCanDisplayOnReversePosition) {
+                    y -= heightPx;
+                }
+                else {
+                    //下端に寄せる
+                    y = visibleAreaHeight - heightPx;
+                }
+            }
+            else {
+                //入りきらない場合は上端に寄せたのち、入りきらない分を一時的に縮小する
+                y = 0;
+                this.resize(widthPx + "px", visibleAreaHeight + "px");
+            }
+            this.changePosition(x, y);
+            this.container.initialize(parcel);
+            this.outerFrameTransitionDriver.show();
+            return this.waitForOverlayClose();
+        };
+        ContextMenu.prototype.showAsModal = function (parcel, options) {
+            return this.show(parcel, options);
+        };
+        ContextMenu.prototype.close = function (result) {
+            this.outerFrameTransitionDriver.hide();
+            //自身のdisplay:noneが反映した後にコールバックさせるためsetTimeoutを介して呼び出す
+            window.setTimeout(this.waitForOverlayCloseResolver.bind(this), 0, result);
+        };
+        ContextMenu.prototype.waitForOverlayClose = function () {
+            var _this = this;
+            return new Promise(function (resolve) {
+                _this.waitForOverlayCloseResolver = resolve;
+            });
+        };
+        ContextMenu.prototype.onContentMouseDown = function (event) {
+            this.overlayManager.cancelAutoClosingOnlyOnce();
+        };
+        return ContextMenu;
+    }(overlay_3.default));
+    exports.default = ContextMenu;
+});
+define("core/overlay/drawer", ["require", "exports", "core/overlay/overlay"], function (require, exports, overlay_4) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    var DockType;
+    (function (DockType) {
+        DockType[DockType["Top"] = 0] = "Top";
+        DockType[DockType["Right"] = 1] = "Right";
+        DockType[DockType["Bottom"] = 2] = "Bottom";
+        DockType[DockType["Left"] = 3] = "Left";
+    })(DockType = exports.DockType || (exports.DockType = {}));
+    var Drawer = /** @class */ (function (_super) {
+        __extends(Drawer, _super);
+        function Drawer(name, moduleLoader, options) {
+            var _this = _super.call(this, name, null, moduleLoader) || this;
+            _this.dockType = options.dockType !== undefined ? options.dockType : DockType.Left;
+            _this.dockSize = options.dockSize !== undefined ? options.dockSize : "33%";
+            return _this;
+        }
+        Drawer.prototype.mount = function (overlayManager) {
+            _super.prototype.mount.call(this, overlayManager);
+            this.changeDockType(this.dockType);
+            this.containerEl = document.createElement("div");
+            this.containerEl.className = "";
+            this.containerEl.style.position = "relative";
+            this.containerEl.style.width = "100%";
+            this.containerEl.style.height = "100%";
+            this.registerAsContainer("drawer", this.containerEl);
+            this.contentEl.className = "itm_drawer_container";
+            this.contentEl.appendChild(this.containerEl);
+            this.contentEl.addEventListener("mousedown", this.onContentMouseDown.bind(this));
+        };
+        Drawer.prototype.getChildContainer = function () {
+            return this.container;
+        };
+        Drawer.prototype.changeDockType = function (dockType) {
+            //サイズ変更
+            if (dockType === DockType.Left || dockType === DockType.Right) {
+                this.frameEl.style.width = this.dockSize;
+                this.frameEl.style.height = "100%";
+            }
+            else if (dockType === DockType.Top || dockType === DockType.Bottom) {
+                this.frameEl.style.width = "100%";
+                this.frameEl.style.height = this.dockSize;
+            }
+            //位置変更
+            this.frameEl.style.left = "";
+            this.frameEl.style.right = "";
+            this.frameEl.style.top = "";
+            this.frameEl.style.bottom = "";
+            if (dockType === DockType.Left || dockType === DockType.Top || dockType === DockType.Bottom) {
+                //left=0パターン
+                this.frameEl.style.left = "0px";
+            }
+            else {
+                //right=0パターン(DockType.Right)
+                this.frameEl.style.right = "0px";
+            }
+            if (dockType === DockType.Left || dockType === DockType.Right || dockType === DockType.Top) {
+                //top=0パターン
+                this.frameEl.style.top = "0px";
+            }
+            else {
+                //bottom=0パターン(DockType.Bottom)
+                this.frameEl.style.bottom = "0px";
+            }
+            //TransitionDriverクラス変更
+            var dockTypeName;
+            switch (dockType) {
+                case DockType.Left:
+                    dockTypeName = "left";
+                    break;
+                case DockType.Right:
+                    dockTypeName = "right";
+                    break;
+                case DockType.Top:
+                    dockTypeName = "top";
+                    break;
+                case DockType.Bottom:
+                    dockTypeName = "bottom";
+                    break;
+            }
+            this.outerFrameTransitionDriver.setCustomTransitionClasses({
+                standyStateClass: "itm_drawer_" + dockTypeName + "_dock_standy_state",
+                enterTransitionClass: "itm_drawer_enter_transition",
+                leaveTransitionClass: "itm_drawer_leave_transition",
+                endStateClass: "itm_drawer_" + dockTypeName + "_dock_end_state"
+            });
+        };
+        //Override
+        Drawer.prototype.changePosition = function (x, y) {
+            //何もしない
+        };
+        Drawer.prototype.show = function (parcel, options) {
+            this.container.initialize(parcel);
+            this.outerFrameTransitionDriver.show();
+            return this.waitForOverlayClose();
+        };
+        Drawer.prototype.showAsModal = function (parcel, options) {
+            return this.show(parcel, options);
+        };
+        Drawer.prototype.close = function (result) {
+            this.outerFrameTransitionDriver.hide();
+            //自身のdisplay:noneが反映した後にコールバックさせるためsetTimeoutを介して呼び出す
+            window.setTimeout(this.waitForOverlayCloseResolver.bind(this), 0, result);
+        };
+        Drawer.prototype.waitForOverlayClose = function () {
+            var _this = this;
+            return new Promise(function (resolve) {
+                _this.waitForOverlayCloseResolver = resolve;
+            });
+        };
+        Drawer.prototype.onContentMouseDown = function (event) {
+            this.overlayManager.cancelAutoClosingOnlyOnce();
+        };
+        return Drawer;
+    }(overlay_4.default));
+    exports.default = Drawer;
+});
+define("intraframe", ["require", "exports", "core/module/module_loader", "core/common/common", "core/overlay/overlay_manager", "core/common/shared_css_script_loader", "core/container/container_factory", "core/overlay/dialog_window", "core/overlay/context_menu", "core/overlay/drawer", "core/source_repository", "core/common/runtime_error", "core/common/viewport"], function (require, exports, module_loader_1, common_2, overlay_manager_1, shared_css_script_loader_1, container_factory_4, dialog_window_1, context_menu_1, drawer_1, source_repository_3, runtime_error_6, viewport_1) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    var IntraFrame = /** @class */ (function () {
+        function IntraFrame() {
+            IntraFrame.instances.push(this);
+            this.moduleLoader = new module_loader_1.default();
+        }
+        IntraFrame.prototype.getModuleLoader = function () {
+            return this.moduleLoader;
+        };
+        IntraFrame.prototype.getOverlayManager = function () {
+            return this.overlayManager;
+        };
+        IntraFrame.prototype.setAppElementId = function (viewPortId) {
+            this.appElement = document.querySelector("#" + viewPortId);
+            if (!this.appElement) {
+                throw new runtime_error_6.default("有効なルートコンテナが設定されていません。");
+            }
+            this.overlayManager = new overlay_manager_1.default(this.appElement);
+            this.moduleLoader.setViewPort(new viewport_1.default(this.appElement, this.overlayManager));
+        };
+        IntraFrame.prototype.setSourceVersion = function (version) {
             source_repository_3.default.getInstance().setSourceVersion(version);
         };
-        Configurer.prototype.getAppRootId = function () {
-            return this.appRootId;
+        IntraFrame.prototype.addModule = function (moduleName, sourceUri, targetContainerId, isContainerDefault, options) {
+            this.moduleLoader.register(moduleName, sourceUri, targetContainerId, isContainerDefault, options);
         };
-        Configurer.prototype.getSharedCssScriptLoader = function () {
-            return new shared_css_script_loader_1.default(this.cssUris, this.scriptUris);
+        IntraFrame.prototype.setRootModule = function (moduleName, sourceUri) {
+            this.moduleLoader.register(moduleName, sourceUri, container_factory_4.default.ROOT_CONTAINER_ID, true, null);
         };
-        Configurer.prototype.register = function (moduleName, sourceUri, targetContainerId, isContainerDefault, options) {
-            this.moduleManager.register(moduleName, sourceUri, targetContainerId, isContainerDefault, options);
+        IntraFrame.prototype.registerWindow = function (moduleName, sourceUri, windowOptions, options) {
+            var overlay = new dialog_window_1.default(moduleName, this.moduleLoader, windowOptions);
+            var config = {
+                lazyLoading: options && options.lazyLoading ? options.lazyLoading : false,
+                autoCloseWhenOutfocus: false
+            };
+            this.overlayManager.register(overlay, config);
+            this.moduleLoader.register(moduleName, sourceUri, overlay.getContainerId(), true, options);
         };
-        Configurer.prototype.registerRootModule = function (moduleName, sourceUri) {
-            this.moduleManager.register(moduleName, sourceUri, container_factory_3.default.ROOT_CONTAINER_ID, true, null);
+        IntraFrame.prototype.registerContextMenu = function (moduleName, sourceUri, contextMenuOptions, options) {
+            var overlay = new context_menu_1.default(moduleName, this.moduleLoader, contextMenuOptions);
+            var config = {
+                lazyLoading: options && options.lazyLoading ? options.lazyLoading : false,
+                autoCloseWhenOutfocus: true
+            };
+            this.overlayManager.register(overlay, config);
+            this.moduleLoader.register(moduleName, sourceUri, overlay.getContainerId(), true, options);
         };
-        Configurer.prototype.registerWindow = function (moduleName, sourceUri, windowOptions, options) {
-            this.moduleManager.registerWindow(moduleName, sourceUri, windowOptions, options);
+        IntraFrame.prototype.registerDrawer = function (moduleName, sourceUri, drawerOptions, options) {
+            var overlay = new drawer_1.default(moduleName, this.moduleLoader, drawerOptions);
+            var config = {
+                lazyLoading: options && options.lazyLoading ? options.lazyLoading : false,
+                autoCloseWhenOutfocus: true
+            };
+            this.overlayManager.register(overlay, config);
+            this.moduleLoader.register(moduleName, sourceUri, overlay.getContainerId(), true, options);
         };
-        Configurer.prototype.registerContextMenu = function (moduleName, sourceUri, contextMenuOptions, options) {
-            this.moduleManager.registerContextMenu(moduleName, sourceUri, contextMenuOptions, options);
-        };
-        Configurer.prototype.registerDrawer = function (moduleName, sourceUri, drawerOptions, options) {
-            this.moduleManager.registerDrawer(moduleName, sourceUri, drawerOptions, options);
-        };
-        Configurer.prototype.loadSharedCss = function (uri) {
-            this.cssUris.push(uri);
-        };
-        Configurer.prototype.loadSharedScript = function (uri) {
-            this.scriptUris.push(uri);
-        };
-        Configurer.instance = new Configurer();
-        return Configurer;
+        IntraFrame.instances = new Array();
+        return IntraFrame;
     }());
-    exports.default = Configurer;
-});
-define("intraframe", ["require", "exports", "core/module/module_manager", "core/container/container_factory", "core/overlay/overlay_manager", "core/common/common", "core/configurer", "core/common/runtime_error"], function (require, exports, module_manager_6, container_factory_4, overlay_manager_8, common_2, configurer_1, runtime_error_6) {
-    "use strict";
-    Object.defineProperty(exports, "__esModule", { value: true });
     if (document["documentMode"]) {
         common_2.default.isMsIE = true;
     }
@@ -2898,40 +2870,58 @@ define("intraframe", ["require", "exports", "core/module/module_manager", "core/
         common_2.default.currentMouseClientX = e.clientX;
         common_2.default.currentMouseClientY = e.clientY;
     });
-    var __sharedCssScriptIsLoaded = false;
-    var __moduleManagerIsInitialized = false;
     var __bootloader = function () {
-        console.log("bootloader is called.");
-        var __global = window;
-        if (__global.configurer) {
-            var configurer = configurer_1.default.getInstance();
-            __global.configurer(configurer);
-            configurer.getSharedCssScriptLoader().load().then(function () {
-                console.log("css and scripts is loaded.");
-                __sharedCssScriptIsLoaded = true;
-                __startApplications();
+        return __awaiter(this, void 0, void 0, function () {
+            var defaultApp, cssUris, scriptUris, __global, scsLoader, _a, _b, _i, i, moduleLoader, overlayManager;
+            return __generator(this, function (_c) {
+                switch (_c.label) {
+                    case 0:
+                        console.log("bootloader is called.");
+                        defaultApp = new IntraFrame();
+                        cssUris = new Array();
+                        scriptUris = new Array();
+                        __global = window;
+                        if (!__global.onIntraframeReady) return [3 /*break*/, 7];
+                        __global.onIntraframeReady(defaultApp, cssUris, scriptUris);
+                        scsLoader = new shared_css_script_loader_1.default(cssUris, scriptUris);
+                        return [4 /*yield*/, scsLoader.load()];
+                    case 1:
+                        _c.sent();
+                        _a = [];
+                        for (_b in IntraFrame.instances)
+                            _a.push(_b);
+                        _i = 0;
+                        _c.label = 2;
+                    case 2:
+                        if (!(_i < _a.length)) return [3 /*break*/, 6];
+                        i = _a[_i];
+                        moduleLoader = IntraFrame.instances[i].getModuleLoader();
+                        return [4 /*yield*/, moduleLoader.initialize()];
+                    case 3:
+                        _c.sent();
+                        overlayManager = IntraFrame.instances[i].getOverlayManager();
+                        return [4 /*yield*/, overlayManager.initialize()];
+                    case 4:
+                        _c.sent();
+                        _c.label = 5;
+                    case 5:
+                        _i++;
+                        return [3 /*break*/, 2];
+                    case 6:
+                        __startApplications();
+                        return [3 /*break*/, 8];
+                    case 7:
+                        console.log("function 'onIntraframeReady' is not defined.");
+                        _c.label = 8;
+                    case 8: return [2 /*return*/];
+                }
             });
-            var appRootEl = document.querySelector("#" + configurer.getAppRootId());
-            if (!appRootEl) {
-                throw new runtime_error_6.default("有効なルートコンテナが設定されていません。");
-            }
-            var rootContainer = container_factory_4.default.createContainer(container_factory_4.default.ROOT_CONTAINER_ID, "", appRootEl, null);
-            //ContainerFactory.getInstance().setRootElement(appRootEl);
-            overlay_manager_8.default.getInstance().setViewPortElement(appRootEl);
-            module_manager_6.default.getInstance().initialize(rootContainer).then(function () {
-                console.log("moduleManager is initialized.");
-                __moduleManagerIsInitialized = true;
-                __startApplications();
-            });
-        }
-        else {
-            console.log("configurerが未定義です。");
-        }
+        });
     };
     var __startApplications = function () {
-        if (!__sharedCssScriptIsLoaded || !__moduleManagerIsInitialized)
-            return;
-        module_manager_6.default.getInstance().run();
+        IntraFrame.instances.forEach(function (intraFrame) {
+            intraFrame.getModuleLoader().run();
+        });
         var resizeEvent;
         if (common_2.default.isMsIE) {
             resizeEvent = document.createEvent("Event");

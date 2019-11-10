@@ -1,6 +1,7 @@
-import OvarlayManager from "./overlay_manager";
+import OverlayManager from "./overlay_manager";
 import { Point, Size, CssSize } from "../common/types";
 import Overlay from "./overlay";
+import ModuleLoader from "../module/module_loader";
 
 export default abstract class ResizableOverlay extends Overlay {
     public static resizeHandleThicknessPx: number = 8;
@@ -14,20 +15,26 @@ export default abstract class ResizableOverlay extends Overlay {
 
     private resizeHandleEl = new Array<HTMLDivElement>();
 
-    constructor(viewPortElement: HTMLElement, name: string, size: CssSize) {
-        super(viewPortElement, name, size);
+    constructor(name: string, size: CssSize, moduleLoader: ModuleLoader) {
+        super(name, size, moduleLoader);
+    }
+
+    public mount(overlayManager: OverlayManager): void {
+        super.mount(overlayManager);
 
         const maxPctWithoutFrame: string = "calc(100% - " + (ResizableOverlay.resizeHandleThicknessPx * 2) + "px)";
 
-        this.contentEl.style.left = String(ResizableOverlay.resizeHandleThicknessPx) + "px";
-        this.contentEl.style.top = String(ResizableOverlay.resizeHandleThicknessPx) + "px";
-        this.contentEl.style.width = maxPctWithoutFrame;
-        this.contentEl.style.height = maxPctWithoutFrame;
+        const _cs = this.contentEl.style;
+        _cs.left = String(ResizableOverlay.resizeHandleThicknessPx) + "px";
+        _cs.top = String(ResizableOverlay.resizeHandleThicknessPx) + "px";
+        _cs.width = maxPctWithoutFrame;
+        _cs.height = maxPctWithoutFrame;
 
-        this.modalInactiveLayer.style.left = String(ResizableOverlay.resizeHandleThicknessPx) + "px";
-        this.modalInactiveLayer.style.top = String(ResizableOverlay.resizeHandleThicknessPx) + "px";
-        this.modalInactiveLayer.style.width = maxPctWithoutFrame;
-        this.modalInactiveLayer.style.height = maxPctWithoutFrame;
+        const _ls = this.modalInactiveLayer.style;
+        _ls.left = String(ResizableOverlay.resizeHandleThicknessPx) + "px";
+        _ls.top = String(ResizableOverlay.resizeHandleThicknessPx) + "px";
+        _ls.width = maxPctWithoutFrame;
+        _ls.height = maxPctWithoutFrame;
 
         //outerFrameElの周囲にリサイズイベント検知用のエレメントを生成・配置
         this.createResizeHandleElements();
@@ -36,6 +43,8 @@ export default abstract class ResizableOverlay extends Overlay {
     }
 
     private createResizeHandleElements() {
+        const _rh: Array<HTMLDivElement> = this.resizeHandleEl;
+
         const size: number = ResizableOverlay.resizeHandleThicknessPx * 2;
         //0:左上 1:上中 2:右上 3:左中...8:右下  計8箇所 ※中中は不要
         for (let i = 0; i < 8; i++) {
@@ -47,40 +56,40 @@ export default abstract class ResizableOverlay extends Overlay {
             el.style.zIndex = "-1";
             el.addEventListener("mousedown", this.onResizeHandleMouseDown.bind(this));
             
-            this.resizeHandleEl.push(el);
+            _rh.push(el);
         }
         //左上
-        this.resizeHandleEl[0].style.cursor = "nwse-resize";
+        _rh[0].style.cursor = "nwse-resize";
         //上
-        this.resizeHandleEl[1].style.left = String(size) + "px";
-        this.resizeHandleEl[1].style.width = "calc(100% - " + String(size * 2) + "px)";
-        this.resizeHandleEl[1].style.cursor = "ns-resize";
+        _rh[1].style.left = String(size) + "px";
+        _rh[1].style.width = "calc(100% - " + String(size * 2) + "px)";
+        _rh[1].style.cursor = "ns-resize";
         //右上
-        this.resizeHandleEl[2].style.right = "0px";
-        this.resizeHandleEl[2].style.cursor = "nesw-resize";
+        _rh[2].style.right = "0px";
+        _rh[2].style.cursor = "nesw-resize";
         //左中
-        this.resizeHandleEl[3].style.top = String(size) + "px";
-        this.resizeHandleEl[3].style.height = "calc(100% - " + String(size * 2) + "px)";
-        this.resizeHandleEl[3].style.cursor = "ew-resize";
+        _rh[3].style.top = String(size) + "px";
+        _rh[3].style.height = "calc(100% - " + String(size * 2) + "px)";
+        _rh[3].style.cursor = "ew-resize";
         //右中
-        this.resizeHandleEl[4].style.right = "0px";
-        this.resizeHandleEl[4].style.top = String(size) + "px";
-        this.resizeHandleEl[4].style.height = "calc(100% - " + String(size * 2) + "px)";
-        this.resizeHandleEl[4].style.cursor = "ew-resize";
+        _rh[4].style.right = "0px";
+        _rh[4].style.top = String(size) + "px";
+        _rh[4].style.height = "calc(100% - " + String(size * 2) + "px)";
+        _rh[4].style.cursor = "ew-resize";
         //左下
-        this.resizeHandleEl[5].style.bottom = "0px";
-        this.resizeHandleEl[5].style.cursor = "nesw-resize";
+        _rh[5].style.bottom = "0px";
+        _rh[5].style.cursor = "nesw-resize";
         //下
-        this.resizeHandleEl[6].style.left = String(size) + "px";
-        this.resizeHandleEl[6].style.bottom = "0px";
-        this.resizeHandleEl[6].style.width = "calc(100% - " + String(size * 2) + "px)";
-        this.resizeHandleEl[6].style.cursor = "ns-resize";
+        _rh[6].style.left = String(size) + "px";
+        _rh[6].style.bottom = "0px";
+        _rh[6].style.width = "calc(100% - " + String(size * 2) + "px)";
+        _rh[6].style.cursor = "ns-resize";
         //右下
-        this.resizeHandleEl[7].style.right = "0px";
-        this.resizeHandleEl[7].style.bottom = "0px";
-        this.resizeHandleEl[7].style.cursor = "nwse-resize";
+        _rh[7].style.right = "0px";
+        _rh[7].style.bottom = "0px";
+        _rh[7].style.cursor = "nwse-resize";
 
-        this.resizeHandleEl.forEach(element => {
+        _rh.forEach(element => {
             this.frameEl.appendChild(element);
         });
     }
@@ -90,47 +99,52 @@ export default abstract class ResizableOverlay extends Overlay {
         let frameWidth: number, frameHeight: number;
 
         if (this.isResizing && this.resizable) {
+            const _ssw: number = this.resizeStartSizePx.width;
+            const _ssh: number = this.resizeStartSizePx.height;
+            const _smx: number = this.resizeStartMousePos.x;
+            const _smy: number = this.resizeStartMousePos.y;
+
             //※リサイズした場合は単位はピクセルに強制的に変更するものとする
             switch (this.resizePositionIndex) {
                 case 0 : //左上
-                    this.changePosition(this.resizeStartPos.x + (x - this.resizeStartMousePos.x), this.resizeStartPos.y + (y - this.resizeStartMousePos.y));
-                    frameWidth = this.resizeStartSizePx.width - (x - this.resizeStartMousePos.x);
-                    frameHeight = this.resizeStartSizePx.height - (y - this.resizeStartMousePos.y);
+                    this.changePosition(this.resizeStartPos.x + (x - _smx), this.resizeStartPos.y + (y - _smy));
+                    frameWidth = _ssw - (x - _smx);
+                    frameHeight = _ssh - (y - _smy);
                     break;
                 case 1 : //上
-                    this.changePosition(this.position.x, this.resizeStartPos.y + (y - this.resizeStartMousePos.y));
-                    frameWidth = this.resizeStartSizePx.width;
-                    frameHeight = this.resizeStartSizePx.height - (y - this.resizeStartMousePos.y);
+                    this.changePosition(this.position.x, this.resizeStartPos.y + (y - _smy));
+                    frameWidth = _ssw;
+                    frameHeight = _ssh - (y - _smy);
                     break;
                 case 2 : //右上
-                    this.changePosition(this.position.x, this.resizeStartPos.y + (y - this.resizeStartMousePos.y));
-                    frameWidth = this.resizeStartSizePx.width + (x - this.resizeStartMousePos.x);
-                    frameHeight = this.resizeStartSizePx.height - (y - this.resizeStartMousePos.y);
+                    this.changePosition(this.position.x, this.resizeStartPos.y + (y - _smy));
+                    frameWidth = _ssw + (x - _smx);
+                    frameHeight = _ssh - (y - _smy);
                     break;
                 case 3 : //左
-                    this.changePosition(this.resizeStartPos.x + (x - this.resizeStartMousePos.x), this.position.y);
-                    frameWidth = this.resizeStartSizePx.width - (x - this.resizeStartMousePos.x);
-                    frameHeight = this.resizeStartSizePx.height;
+                    this.changePosition(this.resizeStartPos.x + (x - _smx), this.position.y);
+                    frameWidth = _ssw - (x - _smx);
+                    frameHeight = _ssh;
                     break;
                 case 4 : //右
                     this.changePosition(this.position.x, this.position.y);
-                    frameWidth = this.resizeStartSizePx.width + (x - this.resizeStartMousePos.x);
-                    frameHeight = this.resizeStartSizePx.height;
+                    frameWidth = _ssw + (x - _smx);
+                    frameHeight = _ssh;
                     break;
                 case 5 : //左下
-                    this.changePosition(this.resizeStartPos.x + (x - this.resizeStartMousePos.x), this.position.y);
-                    frameWidth = this.resizeStartSizePx.width - (x - this.resizeStartMousePos.x);
-                    frameHeight = this.resizeStartSizePx.height + (y - this.resizeStartMousePos.y);
+                    this.changePosition(this.resizeStartPos.x + (x - _smx), this.position.y);
+                    frameWidth = _ssw - (x - _smx);
+                    frameHeight = _ssh + (y - _smy);
                     break;
                 case 6 : //下
                     this.changePosition(this.position.x, this.position.y);
-                    frameWidth = this.resizeStartSizePx.width;
-                    frameHeight = this.resizeStartSizePx.height + (y - this.resizeStartMousePos.y);
+                    frameWidth = _ssw;
+                    frameHeight = _ssh + (y - _smy);
                     break;
                 case 7 : //右下
                     this.changePosition(this.position.x, this.position.y);
-                    frameWidth = this.resizeStartSizePx.width + (x - this.resizeStartMousePos.x);
-                    frameHeight = this.resizeStartSizePx.height + (y - this.resizeStartMousePos.y);
+                    frameWidth = _ssw + (x - _smx);
+                    frameHeight = _ssh + (y - _smy);
                     break;
             }
 
@@ -142,6 +156,7 @@ export default abstract class ResizableOverlay extends Overlay {
     }
 
     public __dispachMouseUpEvent(x: number, y: number) {
+        if (!this.isMounted) return;
         super.__dispachMouseUpEvent(x, y);
         this.isResizing = false;
         this.cacheCurrentOffsetSize();
@@ -154,7 +169,7 @@ export default abstract class ResizableOverlay extends Overlay {
         this.resizeStartPos = new Point(this.position.x, this.position.y);
         this.resizeStartSizePx = new Size(this.frameEl.offsetWidth, this.frameEl.offsetHeight);
 
-        OvarlayManager.getInstance().changeContentsSelectable(false);
+        this.overlayManager.changeContentsSelectable(false);
     }
 
     public resize(width: string, height: string): void {

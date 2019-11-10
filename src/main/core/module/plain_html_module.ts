@@ -4,6 +4,7 @@ import ContainerFactory from "../container/container_factory";
 import { htmlModuleAdapters } from "../adapter/html_module_adapter";
 import CssTransitionDriver from "../common/css_transition_driver";
 import SourceRepository from "../source_repository";
+import { MountOption } from "./app_module";
 
 export default class PlainHtmlModule extends HtmlModule {
     private prototypeTemplateBegin: string;
@@ -20,7 +21,7 @@ export default class PlainHtmlModule extends HtmlModule {
         this.prototypeTemplateEnd = 
         `   }
             Object.setPrototypeOf(Com.prototype, __HtmlModuleAdapter.prototype);
-            __registerHTMLComponentAdapter(${this.moduleIndex}, new Com(${this.moduleIndex}));
+            __registerHtmlModuleAdapter(${this.moduleIndex}, new Com(${this.moduleIndex}));
          })();
         `;
     }
@@ -44,8 +45,8 @@ export default class PlainHtmlModule extends HtmlModule {
         }
     }
 
-    async mount(elementAttachHandler: (element: HTMLDivElement, ownerModuleName: string) => Container,
-                cssTransitionOptions?: CssTransitionOptions): Promise<boolean> {
+    public async mount(elementAttachHandler: (element: HTMLDivElement, option?: MountOption) => Container,
+                cssTransitionOptions?: CssTransitionOptions): Promise<void> {
         if (!this.isFetched) await this.fetch();
 
         const localPrefix = "_" + this.moduleIndex.toString() + "_";
@@ -71,11 +72,14 @@ export default class PlainHtmlModule extends HtmlModule {
             this.cssTransitionDriver.setCustomTransitionClasses(cssTransitionOptions.cssTransitionDriverClasses);
         }
         
-        this.currentContainer = elementAttachHandler(this.wrapperElement, this.name);
+        const mountOption: MountOption = {
+            order: this.moduleDefinition.orderOnFlatContainer
+        }
+        this.currentContainer = elementAttachHandler(this.wrapperElement, mountOption);
 
         await this.evalScripts();
 
-        //サブコンテナをContainerManagerで生成・登録
+        //サブコンテナの生成・登録
         this.subContainerInfos.forEach((containerInfo: ContainerInfo, domId: string) => {
             let localElementId = domId.replace(localizeRegExp, localPrefix);
             let containerEl: HTMLDivElement = document.getElementById(localElementId) as HTMLDivElement;
@@ -89,7 +93,6 @@ export default class PlainHtmlModule extends HtmlModule {
         this.htmlAdapter.setHtmlComponent(this);
         this.htmlAdapter.triggerOnLoad("name is " + this.name);
 
-        return true;
     }
 
     private async evalScripts(): Promise<void> {

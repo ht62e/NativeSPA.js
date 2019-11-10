@@ -3,7 +3,8 @@ import { Size, CssSize } from "../common/types";
 import { Parcel, Result } from "../common/dto";
 import Container from "../container/container";
 import Common from "../common/common";
-import OvarlayManager from "./overlay_manager";
+import OverlayManager from "./overlay_manager";
+import ModuleLoader from "../module/module_loader";
 
 export interface ContextMenuOptions {
     size?: CssSize;
@@ -15,8 +16,12 @@ export default class ContextMenu extends Overlay {
 
     protected waitForOverlayCloseResolver: (value?: Result | PromiseLike<Result>) => void;
 
-    constructor(viewPortElement: HTMLElement, name: string, options: ContextMenuOptions) {
-        super(viewPortElement, name, options ? options.size : null);
+    constructor(name: string, moduleLoader: ModuleLoader, options: ContextMenuOptions) {
+        super(name, options ? options.size : null, moduleLoader);
+    }
+
+    public mount(overlayManager: OverlayManager): void {
+        super.mount(overlayManager);
 
         this.containerEl = document.createElement("div");
         this.containerEl.className = "";
@@ -38,7 +43,7 @@ export default class ContextMenu extends Overlay {
         });
     }
 
-    public getContainer(): Container {
+    public getChildContainer(): Container {
         return this.container;
     }
     
@@ -123,8 +128,7 @@ export default class ContextMenu extends Overlay {
     }
 
     protected onContentMouseDown(event: MouseEvent) {
-        const overlayManager = OvarlayManager.getInstance();
-        overlayManager.cancelAutoClosingOnlyOnce();
+        this.overlayManager.cancelAutoClosingOnlyOnce();
 
     }
 }

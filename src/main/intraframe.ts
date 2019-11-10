@@ -1,10 +1,90 @@
-import ModuleManager from "./core/module/module_manager";
-import ContainerFactory from "./core/container/container_factory";
-import OvarlayManager from "./core/overlay/overlay_manager";
+import ModuleLoader, { RegisterOptions } from "./core/module/module_loader";
 import Common from "./core/common/common";
-import Configurer from "./core/configurer";
+import OverlayManager, { OverlayConfig } from "./core/overlay/overlay_manager";
+import SharedCssScriptLoader from "./core/common/shared_css_script_loader";
+import ContainerFactory from "./core/container/container_factory";
+import DialogWindow, { WindowOptions } from "./core/overlay/dialog_window";
+import ContextMenu, { ContextMenuOptions } from "./core/overlay/context_menu";
+import Drawer, { DrawerOptions } from "./core/overlay/drawer";
+import SourceRepository from "./core/source_repository";
 import RuntimeError from "./core/common/runtime_error";
-import Container from "./core/container/container";
+import ViewPort from "./core/common/viewport";
+import Overlay from "./core/overlay/overlay";
+
+
+class IntraFrame {
+    public static instances = new Array<IntraFrame>();
+
+    private appElement: HTMLDivElement;
+    private moduleLoader: ModuleLoader;
+    private overlayManager: OverlayManager;
+
+
+    constructor() {
+        IntraFrame.instances.push(this);
+        this.moduleLoader = new ModuleLoader();
+    }
+
+    public getModuleLoader(): ModuleLoader {
+        return this.moduleLoader;
+    }
+
+    public getOverlayManager(): OverlayManager {
+        return this.overlayManager;
+    }
+
+    public setAppElementId(viewPortId: string) {
+        this.appElement = document.querySelector("#" + viewPortId);
+        if (!this.appElement) {
+            throw new RuntimeError("有効なルートコンテナが設定されていません。");
+        }
+        this.overlayManager = new OverlayManager(this.appElement);
+        this.moduleLoader.setViewPort(new ViewPort(this.appElement, this.overlayManager));
+    }
+
+    public setSourceVersion(version: string) {
+        SourceRepository.getInstance().setSourceVersion(version);
+    }
+
+    public addModule(moduleName: string , sourceUri: string, targetContainerId: string, 
+        isContainerDefault: boolean, options?: RegisterOptions): void {
+        this.moduleLoader.register(moduleName, sourceUri, targetContainerId, isContainerDefault, options);
+    }
+
+    public setRootModule(moduleName: string, sourceUri: string) {
+        this.moduleLoader.register(moduleName, sourceUri, ContainerFactory.ROOT_CONTAINER_ID, true, null);
+    }
+
+    public registerWindow(moduleName: string, sourceUri: string, windowOptions: WindowOptions, options?: RegisterOptions) {
+        const overlay = new DialogWindow(moduleName, this.moduleLoader, windowOptions);
+        const config: OverlayConfig = {
+            lazyLoading: options && options.lazyLoading ? options.lazyLoading : false,
+            autoCloseWhenOutfocus: false
+        };
+        this.overlayManager.register(overlay, config);
+        this.moduleLoader.register(moduleName, sourceUri, overlay.getContainerId(), true, options);
+    }
+
+    public registerContextMenu(moduleName: string, sourceUri: string, contextMenuOptions: ContextMenuOptions, options?: RegisterOptions) {
+        const overlay = new ContextMenu(moduleName, this.moduleLoader, contextMenuOptions);
+        const config: OverlayConfig = {
+            lazyLoading: options && options.lazyLoading ? options.lazyLoading : false,
+            autoCloseWhenOutfocus: true
+        };
+        this.overlayManager.register(overlay, config);
+        this.moduleLoader.register(moduleName, sourceUri, overlay.getContainerId(), true, options);
+    }
+
+    public registerDrawer(moduleName: string, sourceUri: string, drawerOptions: DrawerOptions, options?: RegisterOptions) {
+        const overlay = new Drawer(moduleName, this.moduleLoader, drawerOptions);
+        const config: OverlayConfig = {
+            lazyLoading: options && options.lazyLoading ? options.lazyLoading : false,
+            autoCloseWhenOutfocus: true
+        };
+        this.overlayManager.register(overlay, config);
+        this.moduleLoader.register(moduleName, sourceUri, overlay.getContainerId(), true, options);
+    }
+}
 
 if (document["documentMode"]) {
     Common.isMsIE = true;
@@ -15,49 +95,41 @@ window.addEventListener("mousemove", (e: MouseEvent) => {
     Common.currentMouseClientY = e.clientY;
 });
 
-var __sharedCssScriptIsLoaded: boolean = false;
-var __moduleManagerIsInitialized: boolean = false;
-
-var __bootloader = function() {
+var __bootloader = async function() {
     console.log("bootloader is called.");
+    const defaultApp = new IntraFrame();
+    const cssUris = new Array<string>();
+    const scriptUris = new Array<string>();
 
     const __global = window as any;
-    if (__global.configurer) {
-        const configurer = Configurer.getInstance();
+    if (__global.onIntraframeReady) {
 
-        __global.configurer(configurer);
+        __global.onIntraframeReady(defaultApp, cssUris, scriptUris);
 
-        configurer.getSharedCssScriptLoader().load().then(() => {
-            console.log("css and scripts is loaded.");
-            __sharedCssScriptIsLoaded = true;
-            __startApplications();
-        });
+        const scsLoader = new SharedCssScriptLoader(cssUris, scriptUris);
 
-        const appRootEl: HTMLDivElement = document.querySelector("#" + configurer.getAppRootId());
+        await scsLoader.load();
 
-        if (!appRootEl) {
-            throw new RuntimeError("有効なルートコンテナが設定されていません。");
+        for (let i in IntraFrame.instances) {
+            const moduleLoader: ModuleLoader = IntraFrame.instances[i].getModuleLoader();
+            await moduleLoader.initialize();
+
+            const overlayManager: OverlayManager = IntraFrame.instances[i].getOverlayManager();
+            await overlayManager.initialize();
         }
 
-        const rootContainer: Container = ContainerFactory.createContainer(ContainerFactory.ROOT_CONTAINER_ID, "", appRootEl, null);
+        __startApplications();
 
-        //ContainerFactory.getInstance().setRootElement(appRootEl);
-        OvarlayManager.getInstance().setViewPortElement(appRootEl);
-
-        ModuleManager.getInstance().initialize(rootContainer).then(() => {
-            console.log("moduleManager is initialized.");
-            __moduleManagerIsInitialized = true;
-            __startApplications();
-        });    
     } else {
-        console.log("configurerが未定義です。");
+        console.log("function 'onIntraframeReady' is not defined.");
     }
 }
 
-var __startApplications = function() {
-    if (!__sharedCssScriptIsLoaded || !__moduleManagerIsInitialized) return;
 
-    ModuleManager.getInstance().run();
+var __startApplications = function() {
+    IntraFrame.instances.forEach((intraFrame) => {
+        intraFrame.getModuleLoader().run();
+    });
         
     let resizeEvent: Event;
     if(Common.isMsIE){
@@ -68,6 +140,8 @@ var __startApplications = function() {
     }
     window.dispatchEvent(resizeEvent);
 }
+
+
 
 if (document.readyState === "complete") {
     __bootloader();

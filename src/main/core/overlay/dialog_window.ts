@@ -1,9 +1,10 @@
 import Container from "../container/container";
-import OvarlayManager from "./overlay_manager";
+import OverlayManager from "./overlay_manager";
 import { CssSize } from "../common/types";
 import { Result, ActionType, Parcel } from "../common/dto";
 import ResizableOverlay from "./resizable_overlay";
 import { ShowOptions } from "./overlay";
+import ModuleLoader from "../module/module_loader";
 
 export interface WindowOptions {
     size?: CssSize;
@@ -14,6 +15,8 @@ export interface WindowOptions {
 }
 
 export default class DialogWindow extends ResizableOverlay {
+    protected windowOptions: WindowOptions;
+
     protected wrapperEl: HTMLDivElement;
     protected headerEl: HTMLDivElement;
     protected containerEl: HTMLDivElement;
@@ -30,12 +33,20 @@ export default class DialogWindow extends ResizableOverlay {
 
     protected waitForOverlayCloseResolver: (value?: Result | PromiseLike<Result>) => void;
 
-    constructor(viewPortElement: HTMLElement, name: string, options?: WindowOptions) {
-        super(viewPortElement, name, options ? options.size : null);
+    constructor(name: string, moduleLoader: ModuleLoader, options?: WindowOptions) {
+        super(name, options ? options.size : null, moduleLoader);
+
+        this.windowOptions = options;
 
         if (options && options.resizable === false) {
             this.setResizable(false);
         }
+    }
+
+    public mount(overlayManager: OverlayManager): void {
+        super.mount(overlayManager);
+
+        const _wop = this.windowOptions;
 
         this.wrapperEl = document.createElement("div");
         this.wrapperEl.style.position = "absolute";
@@ -49,13 +60,13 @@ export default class DialogWindow extends ResizableOverlay {
         this.headerEl.style.position = "relative";
         this.headerEl.style.display = "flex";
         this.headerEl.style.width = "100%";
-        if (options && options.hideHeader) {
+        if (_wop && _wop.hideHeader) {
             this.headerEl.style.display = "none";
         }
 
         this.headerTitleEl = document.createElement("div");
         this.headerTitleEl.className = "caption";
-        this.headerTitleEl.textContent = options && options.defaultCaption ? options.defaultCaption : "";
+        this.headerTitleEl.textContent = _wop && _wop.defaultCaption ? _wop.defaultCaption : "";
 
         this.headerCloseButtonEl = document.createElement("div");
         this.headerCloseButtonEl.className = "close_button";
@@ -81,7 +92,7 @@ export default class DialogWindow extends ResizableOverlay {
         this.footerEl.className = "itm_dialog_window_footer";
         this.footerEl.style.position = "relative";
         this.footerEl.style.width = "100%";
-        if (options && options.hideFooter) {
+        if (_wop && _wop.hideFooter) {
             this.footerEl.style.display = "none";
         }
 
@@ -118,11 +129,12 @@ export default class DialogWindow extends ResizableOverlay {
             leaveTransitionClass: "itm_dialog_window_leave_transition",
             endStateClass: "itm_dialog_window_end_state"
         });
+
     }
 
     protected onHeaderMouseDown(event: MouseEvent) {
         this.isDragging = true;
-        OvarlayManager.getInstance().changeContentsSelectable(false);
+        this.overlayManager.changeContentsSelectable(false);
     }
 
     protected onHeaderDragStart(event: MouseEvent) {
@@ -130,19 +142,19 @@ export default class DialogWindow extends ResizableOverlay {
     }
 
     protected onHeaderCloseButtonClick(event: MouseEvent) {
-        this.container.getActiveModule().exit(ActionType.CANCEL).then(exited => {
+        this.container.getCurrentModule().exit(ActionType.CANCEL).then(exited => {
             if (exited) this.close();
         });        
     }
 
     protected onOkButtonClick(event: MouseEvent) {
-        this.container.getActiveModule().exit(ActionType.OK).then(exited => {
+        this.container.getCurrentModule().exit(ActionType.OK).then(exited => {
             if (exited) this.close(this.container.getContainerResult());
         });
     }
 
     protected onCancelButtonClick(event: MouseEvent) {
-        this.container.getActiveModule().exit(ActionType.CANCEL).then(exited => {
+        this.container.getCurrentModule().exit(ActionType.CANCEL).then(exited => {
             if (exited) this.close();
         });
     }
@@ -170,7 +182,7 @@ export default class DialogWindow extends ResizableOverlay {
         this.isDragging = false;
     }
 
-    public getContainer(): Container {
+    public getChildContainer(): Container {
         return this.container;
     }
 
