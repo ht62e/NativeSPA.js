@@ -1,15 +1,10 @@
-import DialogWindow, { WindowOptions as DialogWindowOptions } from "./dialog_window";
 import Overlay, { ShowOptions } from "./overlay";
 import { Parcel, Result, ActionType } from "../common/dto";
 import CssTransitionDriver from "../common/css_transition_driver";
-import ContextMenu, { ContextMenuOptions } from "./context_menu";
 import Container from "../container/container";
-import Drawer, { DrawerOptions } from "./drawer";
-import ModuleManager from "../module/module_manager";
 import RuntimeError from "../common/runtime_error";
 
-export default class OvarlayManager {
-    private static instance = new OvarlayManager();
+export default class OverlayManager {
     private viewPortEl: HTMLElement = null;
 
     public overlayLastFocusedElement: HTMLElement = null;
@@ -18,7 +13,8 @@ export default class OvarlayManager {
     private modalBackgroundLayerTransitionDriver: CssTransitionDriver;
 
     private overlays: Map<string, Overlay>;
-    private overlayManagementTable: Map<string, OverlayManagementData>;
+    private statusTable: Map<string, OverlayStatus>;
+    private configTable: Map<string, OverlayConfig>;
 
     private previousMouseX: number = 0;
     private previousMouseY: number = 0;
@@ -38,18 +34,19 @@ export default class OvarlayManager {
     private onSelectStartBindedThis: (event: FocusEvent) => void;
     private windowResizeEventHandlerBindThis: (event: Event) => void;
 
-    constructor() {
+    constructor(viewPortElement: HTMLElement) {
         this.overlays = new Map<string, Overlay>();
-        this.overlayManagementTable = new Map<string, OverlayManagementData>();
+        this.statusTable = new Map<string, OverlayStatus>();
+        this.configTable = new Map<string, OverlayConfig>();
 
-        this.modalBackgroundLayer = document.createElement("div");
-        this.modalBackgroundLayer.className = "itm_modal_background_layer";
-        this.modalBackgroundLayer.style.position = "absolute";
-        this.modalBackgroundLayer.style.overflow = "hidden";
-        this.modalBackgroundLayer.style.width = "100%";
-        this.modalBackgroundLayer.style.height = "100%";
-        this.modalBackgroundLayer.style.display = "none";
-        this.modalBackgroundLayer.style.zIndex = String(this.MODAL_START_Z_INDEX);
+        let _s = this.modalBackgroundLayer = document.createElement("div");
+        _s.className = "itm_modal_background_layer";
+        _s.style.position = "absolute";
+        _s.style.overflow = "hidden";
+        _s.style.width = "100%";
+        _s.style.height = "100%";
+        _s.style.display = "none";
+        _s.style.zIndex = String(this.MODAL_START_Z_INDEX);
 
         this.modalBackgroundLayerTransitionDriver = new CssTransitionDriver(this.modalBackgroundLayer);
 
@@ -59,17 +56,15 @@ export default class OvarlayManager {
         this.onMouseUpBindedThis = this.onMouseUp.bind(this);
         this.onSelectStartBindedThis = this.onSelectStart.bind(this);
         this.windowResizeEventHandlerBindThis = this.windowResizeEventHandler.bind(this);
-    }
 
-    public static getInstance(): OvarlayManager {
-        return OvarlayManager.instance;
+        this.setViewPortElement(viewPortElement);
     }
 
     public findOverlayByContainer(searchContainer: Container): Overlay {
         //TODO: IE11ではforEachしかつかえない。他ブラウザ用に見つかったらbreakするようなコードに変更したい。
         let res: Overlay = null;
         this.overlays.forEach(overlay => {
-            if (overlay.getContainer() === searchContainer) {
+            if (overlay.getChildContainer() === searchContainer) {
                 res = overlay;
             }
         });
@@ -78,10 +73,10 @@ export default class OvarlayManager {
 
     private onMouseDown(event: MouseEvent) {
         if (!this.requestedAutoCloseCancelOnlyOnce) {
-            this.overlayManagementTable.forEach((omd: OverlayManagementData, key: string) => {
-                if (omd.isVisible && omd.isAutoCloseableWhenOutfocus) {
-                    const overlay = this.overlays.get(key);
-                    const module = overlay.getContainer().getActiveModule();
+            this.statusTable.forEach((status: OverlayStatus, name: string) => {
+                if (status.isVisible && this.configTable.get(name).autoCloseWhenOutfocus) {
+                    const overlay = this.overlays.get(name);
+                    const module = overlay.getChildContainer().getCurrentModule();
                     module.exit(ActionType.CANCEL).then(exited => {
                         if (exited) overlay.close();
                     });
@@ -122,6 +117,10 @@ export default class OvarlayManager {
         this.overlayLastFocusedElement = null;
     }
 
+    public getViewPortElement() {
+        return this.viewPortEl;
+    }
+
     public setViewPortElement(element: HTMLElement) {
         if (this.viewPortEl !== null) {
             this.viewPortEl.removeEventListener("focusin", this.onFocusInBindedThis);
@@ -140,30 +139,27 @@ export default class OvarlayManager {
         this.viewPortEl.appendChild(this.modalBackgroundLayer);
     }
 
-    
-    public createWindow(overlayName: string, options?: DialogWindowOptions): DialogWindow {
-        let overlay = new DialogWindow(this.viewPortEl, overlayName, options);
-        this.overlays.set(overlayName, overlay);
-        this.overlayManagementTable.set(overlayName, new OverlayManagementData());
-        return overlay;
+    public register(overlay: Overlay, overlayConfig: OverlayConfig): void {
+        this.overlays.set(overlay.getName(), overlay);
+        this.statusTable.set(overlay.getName(), new OverlayStatus());
+        this.configTable.set(overlay.getName(), overlayConfig);
     }
 
-    public createContextMenu(overlayName: string, options?: ContextMenuOptions): ContextMenu {
-        let overlay = new ContextMenu(this.viewPortEl, overlayName, options);
-        this.overlays.set(overlayName, overlay);
-        const omd = new OverlayManagementData();
-        omd.isAutoCloseableWhenOutfocus = true;
-        this.overlayManagementTable.set(overlayName, omd);
-        return overlay;
-    }
 
-    public createDrawer(overlayName: string, options?: DrawerOptions): Drawer {
-        let overlay = new Drawer(this.viewPortEl, overlayName, options);
-        this.overlays.set(overlayName, overlay);
-        const omd = new OverlayManagementData();
-        omd.isAutoCloseableWhenOutfocus = true;
-        this.overlayManagementTable.set(overlayName, omd);
-        return overlay;
+    public async initialize(): Promise<void> {
+        const names = new Array<string>(); //IE11ではMapの繰り返し中でawaitを使う方法がないため配列に入れてループ
+        this.overlays.forEach((value, key) => {
+            names.push(key);
+        });
+
+        for (let i in names) {
+            const overlayName = names[i];
+            if (!this.configTable.get(overlayName).lazyLoading) {
+                const overlay: Overlay = this.overlays.get(overlayName);
+                overlay.mount(this);
+                await overlay.loadModule();
+            }
+        }
     }
 
     public changeContentsSelectable(selectable: boolean) {
@@ -176,7 +172,7 @@ export default class OvarlayManager {
 
     private endModalMode() {
         let existModalOverlay = false;
-        this.overlayManagementTable.forEach((value: OverlayManagementData, key: string) => {
+        this.statusTable.forEach((value: OverlayStatus, key: string) => {
             if (value.isVisible && value.isModal) existModalOverlay = true;
         });
         if (!existModalOverlay) {
@@ -188,13 +184,13 @@ export default class OvarlayManager {
         await this.checkAndLoadLazyModule(overlayName);
         const overlay = this.overlays.get(overlayName);
 
-        const omd = this.overlayManagementTable.get(overlayName);
-        omd.parentOverlay = options ? options.parent : null;
+        const status = this.statusTable.get(overlayName);
+        status.parentOverlay = options ? options.parent : null;
 
-        omd.isVisible = true;
+        status.isVisible = true;
         this.activateSpecificOverlay(overlayName);
         const result = await overlay.show(parcel, options);
-        omd.isVisible = false;
+        status.isVisible = false;
         this.activateTopOverlay();
 
         return result;
@@ -202,25 +198,26 @@ export default class OvarlayManager {
 
     public async showAsModal(overlayName: string, parcel?: Parcel, options?: ShowOptions): Promise<Result> {
         await this.checkAndLoadLazyModule(overlayName);
-        const omd = this.overlayManagementTable.get(overlayName);
+        const status = this.statusTable.get(overlayName);
         
-        omd.isModal = true;
+        status.isModal = true;
         this.beginModalMode();
         const result = await this.show(overlayName, parcel, options);
-        omd.isModal = false;
+        status.isModal = false;
         this.endModalMode();
 
         return result;
     }
 
     private async checkAndLoadLazyModule(overlayName: string): Promise<boolean> {
-        if (!this.overlayManagementTable.has(overlayName)) {
-            const moduleManager = ModuleManager.getInstance();
-            await moduleManager.loadModuleRecursively(overlayName, true);
-
-            if (!this.overlayManagementTable.has(overlayName)) {
-                throw new RuntimeError("指定されたモジュールはコンテナに登録されていません。");
+        if (this.overlays.has(overlayName)) {
+            const overlay: Overlay = this.overlays.get(overlayName);
+            if (!overlay.getIsMounted()) {
+                overlay.mount(this);
+                await overlay.loadModule();
             }
+        } else {
+            throw new RuntimeError("指定されたモジュールは登録されていません。");
         }
         return true;
     }
@@ -246,30 +243,32 @@ export default class OvarlayManager {
         overlayList.unshift(targetOverlay);
 
         let visibleCount = 0;
-        this.overlayManagementTable.forEach((value: OverlayManagementData, key: string) => {
+        this.statusTable.forEach((value: OverlayStatus, key: string) => {
             if (value.isVisible) ++visibleCount;
         });
 
         let visibleOverlayCounter = 0;
-        let previousOmd: OverlayManagementData = null;
+        let previousOverlayStatus: OverlayStatus = null;
         let previousOverlay: Overlay = null;
         overlayList.forEach((overlay: Overlay) => {
-            const omd = this.overlayManagementTable.get(overlay.getName());
-            if (omd.isVisible) {
-                if (omd.isAutoCloseableWhenOutfocus) {
+            const overlayStatus = this.statusTable.get(overlay.getName());
+            const overlayConfig = this.configTable.get(overlay.getName());
+
+            if (overlayStatus.isVisible) {
+                if (overlayConfig.autoCloseWhenOutfocus) {
                     overlay.changeZIndex(this.FOREGROUND_START_Z_INDEX + visibleCount--);
-                } else if (omd.isModal) {
+                } else if (overlayStatus.isModal) {
                     overlay.changeZIndex(this.MODAL_START_Z_INDEX + visibleCount--);
                 } else {
                     overlay.changeZIndex(this.DEFAULT_OVERLAY_START_Z_INDEX + visibleCount--);
                 }
                 if (visibleOverlayCounter === 0 || 
-                    (previousOverlay.isActive() && overlay === previousOmd.parentOverlay)) {
+                    (previousOverlay.isActive() && overlay === previousOverlayStatus.parentOverlay)) {
                     overlay.activate();
                 } else {
-                    overlay.inactivate(omd.isModal);
+                    overlay.inactivate(overlayStatus.isModal);
                 }
-                previousOmd = omd;
+                previousOverlayStatus = overlayStatus;
                 previousOverlay = overlay;
                 ++visibleOverlayCounter;
             }
@@ -284,7 +283,7 @@ export default class OvarlayManager {
         let targetOverlayName;
 
         this.overlays.forEach((overlay: Overlay, name: string) => {
-            if (this.overlayManagementTable.get(name).isVisible) {
+            if (this.statusTable.get(name).isVisible) {
                 if (overlay.getZIndex() > maxZIndex) {
                     maxZIndex = overlay.getZIndex();
                     targetOverlayName = name;
@@ -300,18 +299,25 @@ export default class OvarlayManager {
     public cancelAutoClosingOnlyOnce() {
         this.requestedAutoCloseCancelOnlyOnce = true;
     }
+
+    public getOverlay(overlayName: string): Overlay {
+        return this.overlays.get(overlayName);
+    }
 }
 
-class OverlayManagementData {
+export interface OverlayConfig {
+    lazyLoading?: boolean;
+    autoCloseWhenOutfocus?: boolean;
+}
+
+class OverlayStatus {
     public isVisible: boolean = false;
     public isModal: boolean = false;
-    public isAutoCloseableWhenOutfocus: boolean = false;
     public parentOverlay: Overlay = null;
 
-    public reset(): OverlayManagementData {
+    public reset(): OverlayStatus {
         this.isVisible = false;
         this.isModal = false;
-        this.isAutoCloseableWhenOutfocus = false;
         this.parentOverlay = null;
         return this;
     }

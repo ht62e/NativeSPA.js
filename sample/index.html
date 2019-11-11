@@ -18,33 +18,45 @@
     <!-- <script src="../build/release/intraframe.js"></script> -->
 
     <script>
+        // window.addEventListener("load", () => {
+        //     new IntraFrame((conf) => {
+        //         console.log(conf);
+        //         console.log("◆◆◆◆◆◆◆◆◆◆◆");
+        //     });            
+        // });
 
-        var configurer = function(config) {
-            config.setAppRootId("app");
-            config.setSourceVersion("debug");
+        var onIntraframeReady = function(app, cssUris, libUris) {
+            app.setAppElementId("app");
 
-            config.loadSharedScript("lib/testlib.js");
+            libUris.push("lib/testlib.js");
 
-            //config.loadSharedScript("lib/testlib.js");
+            app.setRootModule("base", "module/base.html");
 
-            config.register("base", "module/base.html", "root", true);
-            config.register("header", "module/header.html", "base.header", true);
-            config.register("main", "module/main.html", "base.body", false, {lazyLoading: true});
-            config.register("main2", "module/main2.html", "base.body", false, {lazyLoading: true});
-            config.register("tab", "module/tab.html", "base.body", false, {lazyLoading: true});
 
-            config.register("tab1", "module/main.html", "tab.page", false);
-            config.register("tab2", "module/main2.html", "tab.page", false);
-            config.register("tab3", "module/header.html", "tab.page", false);
 
-            config.registerWindow("win1", "module/main.html", {defaultCaption: "window1"});
-            config.registerWindow("win2", "module/main.html", {size: {cssWidth: "600px", cssHeight: "600px"},  defaultCaption: "window2"});
-            config.registerWindow("win3", "module/main.html", {defaultCaption: "window3"}, {lazyLoading: true});
+            app.addModule("header", "module/header.html", "base.header", true);
+            app.addModule("main", "module/main.html", "base.body", false, {lazyLoading: true});
+            app.addModule("main2", "module/main2.html", "base.body", false, {lazyLoading: true});
+            app.addModule("tab", "module/tab.html", "base.body", false, {lazyLoading: true});
 
-            config.registerContextMenu("popup1", "module/popupmenu.html", {size: {cssWidth: "200px", cssHeight: "300px"}});
+            app.addModule("tab1", "module/main.html", "tab.page", false);
+            app.addModule("tab2", "module/main2.html", "tab.page", false, {lazyLoading: true, orderOnFlatContainer: 1});
+            app.addModule("tab3", "module/header.html", "tab.page", false);
 
-            config.registerDrawer("drawer1", "module/popupmenu.html", {});
+            app.registerWindow("win1", "module/main.html", {defaultCaption: "window1"});
+            app.registerWindow("win2", "module/main.html", {size: {cssWidth: "600px", cssHeight: "600px"},  defaultCaption: "window2"});
+            app.registerWindow("win3", "module/main.html", {defaultCaption: "window3"}, {lazyLoading: true});
+
+            app.registerContextMenu("popup1", "module/popupmenu.html", {size: {cssWidth: "200px", cssHeight: "300px"}});
+
+            app.registerDrawer("drawer1", "module/popupmenu.html", {});
+
+
+            return;
+
         }
+
+
 
     </script>
 

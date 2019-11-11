@@ -2,8 +2,8 @@ import Overlay, { ShowOptions } from "./overlay";
 import { Size } from "../common/types";
 import { Parcel, Result } from "../common/dto";
 import Container from "../container/container";
-import Common from "../common/common";
-import OvarlayManager from "./overlay_manager";
+import OverlayManager from "./overlay_manager";
+import ModuleLoader from "../module/module_loader";
 
 export interface DrawerOptions {
     dockType?: DockType;
@@ -23,21 +23,25 @@ export default class Drawer extends Overlay {
 
     protected waitForOverlayCloseResolver: (value?: Result | PromiseLike<Result>) => void;
 
-    constructor(viewPortElement: HTMLElement, name: string, options: DrawerOptions) {
-        super(viewPortElement, name, null);
+    constructor(name: string, moduleLoader: ModuleLoader, options: DrawerOptions) {
+        super(name, null, moduleLoader);
 
         this.dockType = options.dockType !== undefined ? options.dockType: DockType.Left;
         this.dockSize = options.dockSize !== undefined ? options.dockSize: "33%";
+    }
+
+    public mount(overlayManager: OverlayManager): void {
+        super.mount(overlayManager);
 
         this.changeDockType(this.dockType);
 
-        this.containerEl = document.createElement("div");
-        this.containerEl.className = "";
-        this.containerEl.style.position = "relative";
-        this.containerEl.style.width = "100%";
-        this.containerEl.style.height = "100%";
-
-        this.registerAsContainer("drawer", this.containerEl);
+        let _s: HTMLDivElement;
+        _s = this.containerEl = document.createElement("div");
+        _s.className = "";
+        _s.style.position = "relative";
+        _s.style.width = "100%";
+        _s.style.height = "100%";
+        this.registerAsContainer("drawer", _s);
 
         this.contentEl.className = "itm_drawer_container";
         this.contentEl.appendChild(this.containerEl);
@@ -45,7 +49,7 @@ export default class Drawer extends Overlay {
         
     }
 
-    public getContainer(): Container {
+    public getChildContainer(): Container {
         return this.container;
     }
 
@@ -126,8 +130,7 @@ export default class Drawer extends Overlay {
     }
 
     protected onContentMouseDown(event: MouseEvent) {
-        const overlayManager = OvarlayManager.getInstance();
-        overlayManager.cancelAutoClosingOnlyOnce();
+        this.overlayManager.cancelAutoClosingOnlyOnce();
 
     }
 }

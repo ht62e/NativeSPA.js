@@ -3,7 +3,8 @@ import { Size, CssSize } from "../common/types";
 import { Parcel, Result } from "../common/dto";
 import Container from "../container/container";
 import Common from "../common/common";
-import OvarlayManager from "./overlay_manager";
+import OverlayManager from "./overlay_manager";
+import ModuleLoader from "../module/module_loader";
 
 export interface ContextMenuOptions {
     size?: CssSize;
@@ -15,16 +16,20 @@ export default class ContextMenu extends Overlay {
 
     protected waitForOverlayCloseResolver: (value?: Result | PromiseLike<Result>) => void;
 
-    constructor(viewPortElement: HTMLElement, name: string, options: ContextMenuOptions) {
-        super(viewPortElement, name, options ? options.size : null);
+    constructor(name: string, moduleLoader: ModuleLoader, options: ContextMenuOptions) {
+        super(name, options ? options.size : null, moduleLoader);
+    }
 
-        this.containerEl = document.createElement("div");
-        this.containerEl.className = "";
-        this.containerEl.style.position = "relative";
-        this.containerEl.style.width = "100%";
-        this.containerEl.style.height = "100%";
+    public mount(overlayManager: OverlayManager): void {
+        super.mount(overlayManager);
 
-        this.registerAsContainer("contextmenu", this.containerEl);
+        let _s: HTMLDivElement;
+        _s = this.containerEl = document.createElement("div");
+        _s.className = "";
+        _s.style.position = "relative";
+        _s.style.width = "100%";
+        _s.style.height = "100%";
+        this.registerAsContainer("contextmenu", _s);
 
         this.contentEl.className = "itm_context_menu_container";
         this.contentEl.appendChild(this.containerEl);
@@ -38,7 +43,7 @@ export default class ContextMenu extends Overlay {
         });
     }
 
-    public getContainer(): Container {
+    public getChildContainer(): Container {
         return this.container;
     }
     
@@ -123,8 +128,7 @@ export default class ContextMenu extends Overlay {
     }
 
     protected onContentMouseDown(event: MouseEvent) {
-        const overlayManager = OvarlayManager.getInstance();
-        overlayManager.cancelAutoClosingOnlyOnce();
+        this.overlayManager.cancelAutoClosingOnlyOnce();
 
     }
 }

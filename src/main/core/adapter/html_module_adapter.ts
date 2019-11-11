@@ -1,7 +1,5 @@
 import HtmlModule from "../module/html_module";
-import OvarlayManager from "../overlay/overlay_manager";
 import { Parcel, ActionType, Result } from "../common/dto";
-import ModuleManager from "../module/module_manager";
 import Navigation from "./navigation";
 import { ContainerNavigationInfo } from "../container/container";
 
@@ -10,9 +8,6 @@ export const htmlModuleAdapters = new Map<number, HtmlModuleAdapter>();
 export default abstract class HtmlModuleAdapter {
     protected htmlModule: HtmlModule;
     protected isModified: boolean = false;
-
-    protected moduleManager: ModuleManager = ModuleManager.getInstance();
-    protected overlayManager: OvarlayManager = OvarlayManager.getInstance();
 
     public navigation: Navigation;
 
@@ -23,11 +18,11 @@ export default abstract class HtmlModuleAdapter {
             cancelExit: this.cancelExit.bind(this),
             continueExit: this.continueExit.bind(this)
         };
-        this.navigation = new Navigation(this);
     }
 
     public setHtmlComponent(htmlModule: HtmlModule) {
         this.htmlModule = htmlModule;
+        this.navigation = new Navigation(this.htmlModule.getModuleLoader(), this);
     }
 
     public getHtmlModule(): HtmlModule {
@@ -43,7 +38,7 @@ export default abstract class HtmlModuleAdapter {
     }
 
     public async sendMessage(destination: string, command: string, message?: any): Promise<any> {
-        return this.moduleManager.dispatchMessage(destination, command, message);
+        return this.htmlModule.getModuleLoader().dispatchMessage(destination, command, message);
     }
 
     protected abstract onLoad(param: any): void;
@@ -121,6 +116,6 @@ interface ResponseFunction {
 const __global = window as any;
 __global.__HtmlModuleAdapter = HtmlModuleAdapter;
 
-__global.__registerHTMLComponentAdapter = function(moduleIndex: number, componentClass: HtmlModuleAdapter) {
+__global.__registerHtmlModuleAdapter = function(moduleIndex: number, componentClass: HtmlModuleAdapter) {
     htmlModuleAdapters.set(moduleIndex, componentClass);
 }

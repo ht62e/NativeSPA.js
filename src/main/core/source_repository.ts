@@ -68,8 +68,3 @@ export default class SourceRepository {
     }
 
 }
-
-interface PromiseResponseInterface {
-    resolve: (value?: string | PromiseLike<string>) => void,
-    reject: (value?: string | PromiseLike<string>) => void
-}

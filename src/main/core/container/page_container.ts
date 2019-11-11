@@ -1,57 +1,55 @@
 import Container, { CssTransitionOptions } from "./container";
-import Module from "../module/module";
+import AppModule, { MountOption } from "../module/app_module";
 import RuntimeError from "../common/runtime_error";
 import { Parcel, Result, ActionType } from "../common/dto";
-import ModuleManager from "../module/module_manager";
 
 export default class PageContainer extends Container {
+    protected mountedModules = new Map<string, Array<AppModule>>();
 
-    constructor(id: string, bindDomElement: HTMLDivElement, owner: Module, cssTransitionOptions?: CssTransitionOptions) {
+    constructor(id: string, bindDomElement: HTMLElement, owner: AppModule, cssTransitionOptions?: CssTransitionOptions) {
         super(id, bindDomElement, owner, cssTransitionOptions);
         bindDomElement.classList.add("itm_page_container");
     }
 
-    public async addModule(module: Module): Promise<boolean> {
+    public async addModule(module: AppModule): Promise<void> {
         const moduleName = module.getName();
         if (!this.mountedModules.has(moduleName)) {
-            this.mountedModules.set(moduleName, new Array<Module>());
+            this.mountedModules.set(moduleName, new Array<AppModule>());
         } 
         this.mountedModules.get(moduleName).push(module);
 
-        await module.mount((element: HTMLDivElement): Container => {
+        await module.mount((element: HTMLDivElement, option?: MountOption): Container => {
             this.bindDomElement.appendChild(element);
             return this;
         }, this.cssTransitionOptions);
-
-        return true;
     }
 
     public initialize(parcel?: Parcel): void {
-        this.moduleChangeHistory = new Array<Module>();
+        this.moduleChangeHistory = new Array<AppModule>();
         this.hideAllModules();
 
-        if (this.defaultModule) {
-            this.forward(this.defaultModule, parcel, true);
+        if (this.defaultModuleName) {
+            this.switch(this.defaultModuleName, parcel, true);
         }
     }
 
-    public async jump(module: Module, parcel?: Parcel, withoutTransition?: boolean): Promise<Result> {
+    public async switch(moduleName: string, parcel?: Parcel, withoutTransition?: boolean): Promise<Result> {
         this.moduleChangeHistory.length = 0;
-        this.moduleChangeHistory.push(module);
-
-        return await this.navigate(module, parcel, withoutTransition);
+        return await this.navigate(moduleName, parcel, withoutTransition);
     }    
 
-    public async forward(module: Module, parcel?: Parcel, withoutTransition?: boolean): Promise<Result> {
-        if (this.moduleChangeHistory.indexOf(module) !== -1) return;
-        this.moduleChangeHistory.push(module);
+    public async forward(moduleName: string, parcel?: Parcel, withoutTransition?: boolean): Promise<Result> {
+        //if (this.moduleChangeHistory.indexOf(moduleName) !== -1) return;
 
-        return await this.navigate(module, parcel, withoutTransition);
+        return await this.navigate(moduleName, parcel, withoutTransition);
     }
 
-    private async navigate(module: Module, parcel?: Parcel, withoutTransition?: boolean): Promise<Result> {
-        await this.initializeModule(module, parcel);
+    private async navigate(moduleName: string, parcel?: Parcel, withoutTransition?: boolean): Promise<Result> {
+        const module: AppModule = await this.prepareModule(moduleName);
+        module.initialize(parcel);
         this.activateModule(module, withoutTransition);
+
+        this.moduleChangeHistory.push(module);
 
         const result = await module.waitForExit();
 
@@ -67,7 +65,7 @@ export default class PageContainer extends Container {
 
     public back(): void {
         this.inBackProcess = true;
-        this.activeModule.exit(ActionType.BACK).then(exited => {
+        this.currentModule.exit(ActionType.BACK).then(exited => {
             if (exited) {
                 this.showPreviousModule();
             } else {
@@ -76,28 +74,39 @@ export default class PageContainer extends Container {
         });
     }
 
-    protected async initializeModule(module: Module, parcel?: Parcel): Promise<boolean> {
-        if (!this.mountedModules.has(module.getName())) {
-            const moduleManager = ModuleManager.getInstance();
-            await moduleManager.loadModuleRecursively(module.getName(), true);
+    protected async prepareModule(moduleName: string): Promise<AppModule> {
+        let availableModule: AppModule = null;
 
-            if (!this.mountedModules.has(module.getName())) {
+        //ロード済みのモジュールを使いまわせるかどうかをチェック
+        const moduleInstances: Array<AppModule> = this.mountedModules.get(moduleName);
+        if (moduleInstances) {
+            for (let i in moduleInstances) {
+                if (this.moduleChangeHistory.indexOf(moduleInstances[i]) === -1) {
+                    availableModule = moduleInstances[i];
+                    break;
+                }
+            }
+        }
+
+        //なかったら新たにロードする
+        if (!availableModule) {
+            const moduleLoader = this.owner.getModuleLoader();
+            availableModule = await moduleLoader.loadModuleRecursively(moduleName, this.owner);
+            if (availableModule.getOwnerContainer() !== this) {
                 throw new RuntimeError("指定されたモジュールはコンテナに登録されていません。");
             }
 
-            console.log(module.getName() + " is lazy loaded.");
+            console.log(availableModule.getName() + " is lazy loaded.");
         }
-        
-        module.initialize(parcel);
 
-        return true;
+        return availableModule;
     }
 
-    protected activateModule(module: Module, withoutTransition?: boolean) {
-        if (this.activeModule) {
-            this.activeModule.hide();
+    protected activateModule(module: AppModule, withoutTransition?: boolean) {
+        if (this.currentModule) {
+            this.currentModule.hide();
         }
-        this.activeModule = module;
+        this.currentModule = module;
         module.show(withoutTransition);
         this.triggerSubContainerNavigationEvent();
     }
@@ -109,21 +118,28 @@ export default class PageContainer extends Container {
         if (this.moduleChangeHistory.length > 0) {
             this.activateModule(this.moduleChangeHistory[this.moduleChangeHistory.length - 1]);
         } else {
-            if (this.activeModule && this.activeModule !== this.defaultModule) {
-                this.activeModule.hide();
+            if (this.currentModule && this.currentModule.getName() !== this.defaultModuleName) {
+                //defaultModuleの時に閉じないのはOverlay保持のコンテナの場合でOverlayのCloseアニメーションとの二重アニメーションを防ぐため
+                this.currentModule.hide();
             }
         }
     }
 
     protected hideAllModules(): void {
-        // this.mountedModules.forEach((m: Module) => {
-        //     m.hide();
-        // });
-
-        this.mountedModules.forEach((moduleInstances: Array<Module>) => {
-            moduleInstances.forEach((module: Module) => {
+        this.mountedModules.forEach((moduleInstances: Array<AppModule>) => {
+            moduleInstances.forEach((module: AppModule) => {
                 module.hide();
             })
         });
+    }
+
+    public getActiveModuleInstance(moduleName: string): AppModule {
+        let lastInstance: AppModule = null;
+        this.moduleChangeHistory.forEach((module: AppModule) => {
+            if (module.getName() === moduleName) {
+                lastInstance = module;
+            }
+        });
+        return lastInstance;
     }
 }

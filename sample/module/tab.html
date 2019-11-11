@@ -10,7 +10,7 @@
 <script data-scope-mode="prototype">
     this.onTabButtonClick = function(e) {
         if (e.target.dataset.index) {
-            this.navigation.forward("tab.page::tab" + e.target.dataset.index, null);
+            this.navigation.switch("tab.page::tab" + e.target.dataset.index, null);
         }
     }
 
