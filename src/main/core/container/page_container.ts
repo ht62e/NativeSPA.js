@@ -118,8 +118,8 @@ export default class PageContainer extends Container {
         if (this.moduleChangeHistory.length > 0) {
             this.activateModule(this.moduleChangeHistory[this.moduleChangeHistory.length - 1]);
         } else {
-            //if (this.activeModule && this.activeModule !== this.defaultModule) {
-            if (this.currentModule) {
+            if (this.currentModule && this.currentModule.getName() !== this.defaultModuleName) {
+                //defaultModuleの時に閉じないのはOverlay保持のコンテナの場合でOverlayのCloseアニメーションとの二重アニメーションを防ぐため
                 this.currentModule.hide();
             }
         }

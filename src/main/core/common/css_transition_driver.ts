@@ -89,44 +89,46 @@ export default class CssTransitionDriver {
     protected toggleClasses(visible: boolean, withoutTransition?: boolean): boolean {
         let transitionIsUsed: boolean = true;
 
+        const _t = this.target;
+
         if (visible) {
-            this.target.style.display = "";
-            this.target.style.visibility = ""; //初回表示まではvisibility:hiddenで非表示状態になっている
+            _t.style.display = "";
+            _t.style.visibility = ""; //初回表示まではvisibility:hiddenで非表示状態になっている
 
             window.setTimeout(() => {
-                this.target.style.pointerEvents = "";
+                _t.style.pointerEvents = "";
                 if (this.enterTransitionClass && !withoutTransition) {
-                    this.target.classList.add(this.enterTransitionClass);
+                    _t.classList.add(this.enterTransitionClass);
                 } else {
                     transitionIsUsed = false;
                 }
                 if (this.standyStateClass) {
-                    this.target.classList.remove(this.standyStateClass);
+                    _t.classList.remove(this.standyStateClass);
                 }
                 if (this.leaveTransitionClass) {
-                    this.target.classList.remove(this.leaveTransitionClass);
+                    _t.classList.remove(this.leaveTransitionClass);
                 }
                 if (this.endStateClass) {
-                    this.target.classList.remove(this.endStateClass);
+                    _t.classList.remove(this.endStateClass);
                 }  
 
             }, 0);
         } else {
-            this.target.style.pointerEvents = "none";
+            _t.style.pointerEvents = "none";
             if (this.standyStateClass) {
-                this.target.classList.remove(this.standyStateClass);
+                _t.classList.remove(this.standyStateClass);
             }
             if (this.enterTransitionClass) {
-                this.target.classList.remove(this.enterTransitionClass);
+                _t.classList.remove(this.enterTransitionClass);
             }
             if (this.leaveTransitionClass && !withoutTransition) {
-                this.target.classList.add(this.leaveTransitionClass);
+                _t.classList.add(this.leaveTransitionClass);
             } else {
-                this.target.style.display = "none";
+                _t.style.display = "none";
                 transitionIsUsed = false;
             }
             if (this.endStateClass) {
-                this.target.classList.add(this.endStateClass);
+                _t.classList.add(this.endStateClass);
             }
         }
 
@@ -134,16 +136,17 @@ export default class CssTransitionDriver {
     }
 
     protected setStandbyStateClasses(): void {
-        this.target.style.display = "none";
+        const _t = this.target;
+        _t.style.display = "none";
 
         if (this.standyStateClass) {
-            this.target.classList.add(this.standyStateClass);
+            _t.classList.add(this.standyStateClass);
         }
         if (this.leaveTransitionClass) {
-            this.target.classList.remove(this.leaveTransitionClass)
+            _t.classList.remove(this.leaveTransitionClass)
         }
         if (this.endStateClass) {
-            this.target.classList.remove(this.endStateClass)
+            _t.classList.remove(this.endStateClass)
         }
     }
 }

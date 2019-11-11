@@ -1,3 +1,14 @@
+/*
+
+    intraframe.js
+
+    Copyright (c) 2019 Ryota Takaki
+
+    This software is released under the MIT License.
+    http://opensource.org/licenses/mit-license.php
+
+*/
+
 import ModuleLoader, { RegisterOptions } from "./core/module/module_loader";
 import Common from "./core/common/common";
 import OverlayManager, { OverlayConfig } from "./core/overlay/overlay_manager";
@@ -10,7 +21,6 @@ import SourceRepository from "./core/source_repository";
 import RuntimeError from "./core/common/runtime_error";
 import ViewPort from "./core/common/viewport";
 import Overlay from "./core/overlay/overlay";
-
 
 class IntraFrame {
     public static instances = new Array<IntraFrame>();

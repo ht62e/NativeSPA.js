@@ -23,13 +23,13 @@ export default class ContextMenu extends Overlay {
     public mount(overlayManager: OverlayManager): void {
         super.mount(overlayManager);
 
-        this.containerEl = document.createElement("div");
-        this.containerEl.className = "";
-        this.containerEl.style.position = "relative";
-        this.containerEl.style.width = "100%";
-        this.containerEl.style.height = "100%";
-
-        this.registerAsContainer("contextmenu", this.containerEl);
+        let _s: HTMLDivElement;
+        _s = this.containerEl = document.createElement("div");
+        _s.className = "";
+        _s.style.position = "relative";
+        _s.style.width = "100%";
+        _s.style.height = "100%";
+        this.registerAsContainer("contextmenu", _s);
 
         this.contentEl.className = "itm_context_menu_container";
         this.contentEl.appendChild(this.containerEl);

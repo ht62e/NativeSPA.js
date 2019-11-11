@@ -48,70 +48,72 @@ export default class DialogWindow extends ResizableOverlay {
 
         const _wop = this.windowOptions;
 
-        this.wrapperEl = document.createElement("div");
-        this.wrapperEl.style.position = "absolute";
-        this.wrapperEl.style.display = "flex";
-        this.wrapperEl.style.flexDirection = "column";
-        this.wrapperEl.style.width = "100%";
-        this.wrapperEl.style.height = "100%";
+        let _s: HTMLDivElement;
+        _s = this.wrapperEl = document.createElement("div");
+        _s.style.position = "absolute";
+        _s.style.display = "flex";
+        _s.style.flexDirection = "column";
+        _s.style.width = "100%";
+        _s.style.height = "100%";
 
-        this.headerEl = document.createElement("div");
-        this.headerEl.className = "itm_dialog_window_header";
-        this.headerEl.style.position = "relative";
-        this.headerEl.style.display = "flex";
-        this.headerEl.style.width = "100%";
+        _s = this.headerEl = document.createElement("div");
+        _s.className = "itm_dialog_window_header";
+        _s.style.position = "relative";
+        _s.style.display = "flex";
+        _s.style.width = "100%";
         if (_wop && _wop.hideHeader) {
             this.headerEl.style.display = "none";
         }
 
-        this.headerTitleEl = document.createElement("div");
-        this.headerTitleEl.className = "caption";
-        this.headerTitleEl.textContent = _wop && _wop.defaultCaption ? _wop.defaultCaption : "";
+        _s = this.headerTitleEl = document.createElement("div");
+        _s.className = "caption";
+        _s.textContent = _wop && _wop.defaultCaption ? _wop.defaultCaption : "";
 
-        this.headerCloseButtonEl = document.createElement("div");
-        this.headerCloseButtonEl.className = "close_button";
-        this.headerCloseButtonEl.textContent = "×";
-        this.headerCloseButtonEl.addEventListener("click", this.onHeaderCloseButtonClick.bind(this));
+        _s = this.headerCloseButtonEl = document.createElement("div");
+        _s.className = "close_button";
+        _s.textContent = "×";
+        _s.addEventListener("click", this.onHeaderCloseButtonClick.bind(this));
 
-        this.headerEl.appendChild(this.headerTitleEl);
-        this.headerEl.appendChild(this.headerCloseButtonEl);
+        _s = this.headerEl;
+        _s.appendChild(this.headerTitleEl);
+        _s.appendChild(this.headerCloseButtonEl);
+        _s.addEventListener("mousedown", this.onHeaderMouseDown.bind(this));
+        _s.addEventListener("dragstart", this.onHeaderDragStart.bind(this));
 
-        this.headerEl.addEventListener("mousedown", this.onHeaderMouseDown.bind(this));
-        this.headerEl.addEventListener("dragstart", this.onHeaderDragStart.bind(this));
-
-        this.containerEl = document.createElement("div");
-        this.containerEl.className = "itm_dialog_window_body";
-        this.containerEl.style.position = "relative";
-        this.containerEl.style.flexGrow = "1";
-        this.containerEl.style.flexShrink = "1";
-        this.containerEl.style.width = "100%";
+        _s = this.containerEl = document.createElement("div");
+        _s.className = "itm_dialog_window_body";
+        _s.style.position = "relative";
+        _s.style.flexGrow = "1";
+        _s.style.flexShrink = "1";
+        _s.style.width = "100%";
 
         this.registerAsContainer("window", this.containerEl);
 
-        this.footerEl = document.createElement("div");
-        this.footerEl.className = "itm_dialog_window_footer";
-        this.footerEl.style.position = "relative";
-        this.footerEl.style.width = "100%";
+        _s = this.footerEl = document.createElement("div");
+        _s.className = "itm_dialog_window_footer";
+        _s.style.position = "relative";
+        _s.style.width = "100%";
         if (_wop && _wop.hideFooter) {
-            this.footerEl.style.display = "none";
+            _s.style.display = "none";
         }
 
-        this.okButtonEl = document.createElement("input");
-        this.okButtonEl.type = "button";
-        this.okButtonEl.classList.add("itm_dialog_window_footer_button", "ok");
-        this.okButtonEl.value = "OK";
-        this.okButtonEl.addEventListener("click", this.onOkButtonClick.bind(this));
+        let _t: HTMLInputElement;
+        _t = this.okButtonEl = document.createElement("input");
+        _t.type = "button";
+        _t.classList.add("itm_dialog_window_footer_button", "ok");
+        _t.value = "OK";
+        _t.addEventListener("click", this.onOkButtonClick.bind(this));
 
-        this.cancelButtonEl = document.createElement("input");
-        this.cancelButtonEl.type = "button";
-        this.cancelButtonEl.classList.add("itm_dialog_window_footer_button", "cancel");
-        this.cancelButtonEl.value = "キャンセル";
-        this.cancelButtonEl.addEventListener("click", this.onCancelButtonClick.bind(this));
+        _t = this.cancelButtonEl = document.createElement("input");
+        _t.type = "button";
+        _t.classList.add("itm_dialog_window_footer_button", "cancel");
+        _t.value = "キャンセル";
+        _t.addEventListener("click", this.onCancelButtonClick.bind(this));
 
-        this.applyButtonEl = document.createElement("input");
-        this.applyButtonEl.type = "button";
-        this.applyButtonEl.classList.add("itm_dialog_window_footer_button", "apply");
-        this.applyButtonEl.value = "適用";        
+        _t = this.applyButtonEl = document.createElement("input");
+        _t.type = "button";
+        _t.classList.add("itm_dialog_window_footer_button", "apply");
+        _t.value = "適用";        
 
         this.footerEl.appendChild(this.okButtonEl);
         this.footerEl.appendChild(this.cancelButtonEl);

@@ -176,59 +176,61 @@ define("core/common/css_transition_driver", ["require", "exports"], function (re
         CssTransitionDriver.prototype.toggleClasses = function (visible, withoutTransition) {
             var _this = this;
             var transitionIsUsed = true;
+            var _t = this.target;
             if (visible) {
-                this.target.style.display = "";
-                this.target.style.visibility = ""; //初回表示まではvisibility:hiddenで非表示状態になっている
+                _t.style.display = "";
+                _t.style.visibility = ""; //初回表示まではvisibility:hiddenで非表示状態になっている
                 window.setTimeout(function () {
-                    _this.target.style.pointerEvents = "";
+                    _t.style.pointerEvents = "";
                     if (_this.enterTransitionClass && !withoutTransition) {
-                        _this.target.classList.add(_this.enterTransitionClass);
+                        _t.classList.add(_this.enterTransitionClass);
                     }
                     else {
                         transitionIsUsed = false;
                     }
                     if (_this.standyStateClass) {
-                        _this.target.classList.remove(_this.standyStateClass);
+                        _t.classList.remove(_this.standyStateClass);
                     }
                     if (_this.leaveTransitionClass) {
-                        _this.target.classList.remove(_this.leaveTransitionClass);
+                        _t.classList.remove(_this.leaveTransitionClass);
                     }
                     if (_this.endStateClass) {
-                        _this.target.classList.remove(_this.endStateClass);
+                        _t.classList.remove(_this.endStateClass);
                     }
                 }, 0);
             }
             else {
-                this.target.style.pointerEvents = "none";
+                _t.style.pointerEvents = "none";
                 if (this.standyStateClass) {
-                    this.target.classList.remove(this.standyStateClass);
+                    _t.classList.remove(this.standyStateClass);
                 }
                 if (this.enterTransitionClass) {
-                    this.target.classList.remove(this.enterTransitionClass);
+                    _t.classList.remove(this.enterTransitionClass);
                 }
                 if (this.leaveTransitionClass && !withoutTransition) {
-                    this.target.classList.add(this.leaveTransitionClass);
+                    _t.classList.add(this.leaveTransitionClass);
                 }
                 else {
-                    this.target.style.display = "none";
+                    _t.style.display = "none";
                     transitionIsUsed = false;
                 }
                 if (this.endStateClass) {
-                    this.target.classList.add(this.endStateClass);
+                    _t.classList.add(this.endStateClass);
                 }
             }
             return transitionIsUsed;
         };
         CssTransitionDriver.prototype.setStandbyStateClasses = function () {
-            this.target.style.display = "none";
+            var _t = this.target;
+            _t.style.display = "none";
             if (this.standyStateClass) {
-                this.target.classList.add(this.standyStateClass);
+                _t.classList.add(this.standyStateClass);
             }
             if (this.leaveTransitionClass) {
-                this.target.classList.remove(this.leaveTransitionClass);
+                _t.classList.remove(this.leaveTransitionClass);
             }
             if (this.endStateClass) {
-                this.target.classList.remove(this.endStateClass);
+                _t.classList.remove(this.endStateClass);
             }
         };
         return CssTransitionDriver;
@@ -615,8 +617,8 @@ define("core/container/page_container", ["require", "exports", "core/container/c
                 this.activateModule(this.moduleChangeHistory[this.moduleChangeHistory.length - 1]);
             }
             else {
-                //if (this.activeModule && this.activeModule !== this.defaultModule) {
-                if (this.currentModule) {
+                if (this.currentModule && this.currentModule.getName() !== this.defaultModuleName) {
+                    //defaultModuleの時に閉じないのはOverlay保持のコンテナの場合でOverlayのCloseアニメーションとの二重アニメーションを防ぐため
                     this.currentModule.hide();
                 }
             }
@@ -1071,9 +1073,9 @@ define("core/overlay/overlay_manager", ["require", "exports", "core/common/dto",
         OverlayManager.prototype.onMouseDown = function (event) {
             var _this = this;
             if (!this.requestedAutoCloseCancelOnlyOnce) {
-                this.statusTable.forEach(function (omd, key) {
-                    if (omd.isVisible && omd.isAutoCloseableWhenOutfocus) {
-                        var overlay_1 = _this.overlays.get(key);
+                this.statusTable.forEach(function (status, name) {
+                    if (status.isVisible && _this.configTable.get(name).autoCloseWhenOutfocus) {
+                        var overlay_1 = _this.overlays.get(name);
                         var module = overlay_1.getChildContainer().getCurrentModule();
                         module.exit(dto_2.ActionType.CANCEL).then(function (exited) {
                             if (exited)
@@ -1185,21 +1187,21 @@ define("core/overlay/overlay_manager", ["require", "exports", "core/common/dto",
         };
         OverlayManager.prototype.show = function (overlayName, parcel, options) {
             return __awaiter(this, void 0, void 0, function () {
-                var overlay, omd, result;
+                var overlay, status, result;
                 return __generator(this, function (_a) {
                     switch (_a.label) {
                         case 0: return [4 /*yield*/, this.checkAndLoadLazyModule(overlayName)];
                         case 1:
                             _a.sent();
                             overlay = this.overlays.get(overlayName);
-                            omd = this.statusTable.get(overlayName);
-                            omd.parentOverlay = options ? options.parent : null;
-                            omd.isVisible = true;
+                            status = this.statusTable.get(overlayName);
+                            status.parentOverlay = options ? options.parent : null;
+                            status.isVisible = true;
                             this.activateSpecificOverlay(overlayName);
                             return [4 /*yield*/, overlay.show(parcel, options)];
                         case 2:
                             result = _a.sent();
-                            omd.isVisible = false;
+                            status.isVisible = false;
                             this.activateTopOverlay();
                             return [2 /*return*/, result];
                     }
@@ -1208,19 +1210,19 @@ define("core/overlay/overlay_manager", ["require", "exports", "core/common/dto",
         };
         OverlayManager.prototype.showAsModal = function (overlayName, parcel, options) {
             return __awaiter(this, void 0, void 0, function () {
-                var omd, result;
+                var status, result;
                 return __generator(this, function (_a) {
                     switch (_a.label) {
                         case 0: return [4 /*yield*/, this.checkAndLoadLazyModule(overlayName)];
                         case 1:
                             _a.sent();
-                            omd = this.statusTable.get(overlayName);
-                            omd.isModal = true;
+                            status = this.statusTable.get(overlayName);
+                            status.isModal = true;
                             this.beginModalMode();
                             return [4 /*yield*/, this.show(overlayName, parcel, options)];
                         case 2:
                             result = _a.sent();
-                            omd.isModal = false;
+                            status.isModal = false;
                             this.endModalMode();
                             return [2 /*return*/, result];
                     }
@@ -1270,28 +1272,29 @@ define("core/overlay/overlay_manager", ["require", "exports", "core/common/dto",
                     ++visibleCount;
             });
             var visibleOverlayCounter = 0;
-            var previousOmd = null;
+            var previousOverlayStatus = null;
             var previousOverlay = null;
             overlayList.forEach(function (overlay) {
-                var omd = _this.statusTable.get(overlay.getName());
-                if (omd.isVisible) {
-                    if (omd.isAutoCloseableWhenOutfocus) {
+                var overlayStatus = _this.statusTable.get(overlay.getName());
+                var overlayConfig = _this.configTable.get(overlay.getName());
+                if (overlayStatus.isVisible) {
+                    if (overlayConfig.autoCloseWhenOutfocus) {
                         overlay.changeZIndex(_this.FOREGROUND_START_Z_INDEX + visibleCount--);
                     }
-                    else if (omd.isModal) {
+                    else if (overlayStatus.isModal) {
                         overlay.changeZIndex(_this.MODAL_START_Z_INDEX + visibleCount--);
                     }
                     else {
                         overlay.changeZIndex(_this.DEFAULT_OVERLAY_START_Z_INDEX + visibleCount--);
                     }
                     if (visibleOverlayCounter === 0 ||
-                        (previousOverlay.isActive() && overlay === previousOmd.parentOverlay)) {
+                        (previousOverlay.isActive() && overlay === previousOverlayStatus.parentOverlay)) {
                         overlay.activate();
                     }
                     else {
-                        overlay.inactivate(omd.isModal);
+                        overlay.inactivate(overlayStatus.isModal);
                     }
-                    previousOmd = omd;
+                    previousOverlayStatus = overlayStatus;
                     previousOverlay = overlay;
                     ++visibleOverlayCounter;
                 }
@@ -1327,13 +1330,11 @@ define("core/overlay/overlay_manager", ["require", "exports", "core/common/dto",
         function OverlayStatus() {
             this.isVisible = false;
             this.isModal = false;
-            this.isAutoCloseableWhenOutfocus = false;
             this.parentOverlay = null;
         }
         OverlayStatus.prototype.reset = function () {
             this.isVisible = false;
             this.isModal = false;
-            this.isAutoCloseableWhenOutfocus = false;
             this.parentOverlay = null;
             return this;
         };
@@ -2414,59 +2415,62 @@ define("core/overlay/dialog_window", ["require", "exports", "core/common/dto", "
         DialogWindow.prototype.mount = function (overlayManager) {
             _super.prototype.mount.call(this, overlayManager);
             var _wop = this.windowOptions;
-            this.wrapperEl = document.createElement("div");
-            this.wrapperEl.style.position = "absolute";
-            this.wrapperEl.style.display = "flex";
-            this.wrapperEl.style.flexDirection = "column";
-            this.wrapperEl.style.width = "100%";
-            this.wrapperEl.style.height = "100%";
-            this.headerEl = document.createElement("div");
-            this.headerEl.className = "itm_dialog_window_header";
-            this.headerEl.style.position = "relative";
-            this.headerEl.style.display = "flex";
-            this.headerEl.style.width = "100%";
+            var _s;
+            _s = this.wrapperEl = document.createElement("div");
+            _s.style.position = "absolute";
+            _s.style.display = "flex";
+            _s.style.flexDirection = "column";
+            _s.style.width = "100%";
+            _s.style.height = "100%";
+            _s = this.headerEl = document.createElement("div");
+            _s.className = "itm_dialog_window_header";
+            _s.style.position = "relative";
+            _s.style.display = "flex";
+            _s.style.width = "100%";
             if (_wop && _wop.hideHeader) {
                 this.headerEl.style.display = "none";
             }
-            this.headerTitleEl = document.createElement("div");
-            this.headerTitleEl.className = "caption";
-            this.headerTitleEl.textContent = _wop && _wop.defaultCaption ? _wop.defaultCaption : "";
-            this.headerCloseButtonEl = document.createElement("div");
-            this.headerCloseButtonEl.className = "close_button";
-            this.headerCloseButtonEl.textContent = "×";
-            this.headerCloseButtonEl.addEventListener("click", this.onHeaderCloseButtonClick.bind(this));
-            this.headerEl.appendChild(this.headerTitleEl);
-            this.headerEl.appendChild(this.headerCloseButtonEl);
-            this.headerEl.addEventListener("mousedown", this.onHeaderMouseDown.bind(this));
-            this.headerEl.addEventListener("dragstart", this.onHeaderDragStart.bind(this));
-            this.containerEl = document.createElement("div");
-            this.containerEl.className = "itm_dialog_window_body";
-            this.containerEl.style.position = "relative";
-            this.containerEl.style.flexGrow = "1";
-            this.containerEl.style.flexShrink = "1";
-            this.containerEl.style.width = "100%";
+            _s = this.headerTitleEl = document.createElement("div");
+            _s.className = "caption";
+            _s.textContent = _wop && _wop.defaultCaption ? _wop.defaultCaption : "";
+            _s = this.headerCloseButtonEl = document.createElement("div");
+            _s.className = "close_button";
+            _s.textContent = "×";
+            _s.addEventListener("click", this.onHeaderCloseButtonClick.bind(this));
+            _s = this.headerEl;
+            _s.appendChild(this.headerTitleEl);
+            _s.appendChild(this.headerCloseButtonEl);
+            _s.addEventListener("mousedown", this.onHeaderMouseDown.bind(this));
+            _s.addEventListener("dragstart", this.onHeaderDragStart.bind(this));
+            _s = this.containerEl = document.createElement("div");
+            _s.className = "itm_dialog_window_body";
+            _s.style.position = "relative";
+            _s.style.flexGrow = "1";
+            _s.style.flexShrink = "1";
+            _s.style.width = "100%";
             this.registerAsContainer("window", this.containerEl);
-            this.footerEl = document.createElement("div");
-            this.footerEl.className = "itm_dialog_window_footer";
-            this.footerEl.style.position = "relative";
-            this.footerEl.style.width = "100%";
+            _s = this.footerEl = document.createElement("div");
+            _s.className = "itm_dialog_window_footer";
+            _s.style.position = "relative";
+            _s.style.width = "100%";
             if (_wop && _wop.hideFooter) {
-                this.footerEl.style.display = "none";
+                _s.style.display = "none";
             }
-            this.okButtonEl = document.createElement("input");
-            this.okButtonEl.type = "button";
-            this.okButtonEl.classList.add("itm_dialog_window_footer_button", "ok");
-            this.okButtonEl.value = "OK";
-            this.okButtonEl.addEventListener("click", this.onOkButtonClick.bind(this));
-            this.cancelButtonEl = document.createElement("input");
-            this.cancelButtonEl.type = "button";
-            this.cancelButtonEl.classList.add("itm_dialog_window_footer_button", "cancel");
-            this.cancelButtonEl.value = "キャンセル";
-            this.cancelButtonEl.addEventListener("click", this.onCancelButtonClick.bind(this));
-            this.applyButtonEl = document.createElement("input");
-            this.applyButtonEl.type = "button";
-            this.applyButtonEl.classList.add("itm_dialog_window_footer_button", "apply");
-            this.applyButtonEl.value = "適用";
+            var _t;
+            _t = this.okButtonEl = document.createElement("input");
+            _t.type = "button";
+            _t.classList.add("itm_dialog_window_footer_button", "ok");
+            _t.value = "OK";
+            _t.addEventListener("click", this.onOkButtonClick.bind(this));
+            _t = this.cancelButtonEl = document.createElement("input");
+            _t.type = "button";
+            _t.classList.add("itm_dialog_window_footer_button", "cancel");
+            _t.value = "キャンセル";
+            _t.addEventListener("click", this.onCancelButtonClick.bind(this));
+            _t = this.applyButtonEl = document.createElement("input");
+            _t.type = "button";
+            _t.classList.add("itm_dialog_window_footer_button", "apply");
+            _t.value = "適用";
             this.footerEl.appendChild(this.okButtonEl);
             this.footerEl.appendChild(this.cancelButtonEl);
             this.wrapperEl.appendChild(this.headerEl);
@@ -2588,12 +2592,13 @@ define("core/overlay/context_menu", ["require", "exports", "core/overlay/overlay
         }
         ContextMenu.prototype.mount = function (overlayManager) {
             _super.prototype.mount.call(this, overlayManager);
-            this.containerEl = document.createElement("div");
-            this.containerEl.className = "";
-            this.containerEl.style.position = "relative";
-            this.containerEl.style.width = "100%";
-            this.containerEl.style.height = "100%";
-            this.registerAsContainer("contextmenu", this.containerEl);
+            var _s;
+            _s = this.containerEl = document.createElement("div");
+            _s.className = "";
+            _s.style.position = "relative";
+            _s.style.width = "100%";
+            _s.style.height = "100%";
+            this.registerAsContainer("contextmenu", _s);
             this.contentEl.className = "itm_context_menu_container";
             this.contentEl.appendChild(this.containerEl);
             this.contentEl.addEventListener("mousedown", this.onContentMouseDown.bind(this));
@@ -2705,12 +2710,13 @@ define("core/overlay/drawer", ["require", "exports", "core/overlay/overlay"], fu
         Drawer.prototype.mount = function (overlayManager) {
             _super.prototype.mount.call(this, overlayManager);
             this.changeDockType(this.dockType);
-            this.containerEl = document.createElement("div");
-            this.containerEl.className = "";
-            this.containerEl.style.position = "relative";
-            this.containerEl.style.width = "100%";
-            this.containerEl.style.height = "100%";
-            this.registerAsContainer("drawer", this.containerEl);
+            var _s;
+            _s = this.containerEl = document.createElement("div");
+            _s.className = "";
+            _s.style.position = "relative";
+            _s.style.width = "100%";
+            _s.style.height = "100%";
+            this.registerAsContainer("drawer", _s);
             this.contentEl.className = "itm_drawer_container";
             this.contentEl.appendChild(this.containerEl);
             this.contentEl.addEventListener("mousedown", this.onContentMouseDown.bind(this));

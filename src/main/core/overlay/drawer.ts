@@ -2,7 +2,6 @@ import Overlay, { ShowOptions } from "./overlay";
 import { Size } from "../common/types";
 import { Parcel, Result } from "../common/dto";
 import Container from "../container/container";
-import Common from "../common/common";
 import OverlayManager from "./overlay_manager";
 import ModuleLoader from "../module/module_loader";
 
@@ -36,13 +35,13 @@ export default class Drawer extends Overlay {
 
         this.changeDockType(this.dockType);
 
-        this.containerEl = document.createElement("div");
-        this.containerEl.className = "";
-        this.containerEl.style.position = "relative";
-        this.containerEl.style.width = "100%";
-        this.containerEl.style.height = "100%";
-
-        this.registerAsContainer("drawer", this.containerEl);
+        let _s: HTMLDivElement;
+        _s = this.containerEl = document.createElement("div");
+        _s.className = "";
+        _s.style.position = "relative";
+        _s.style.width = "100%";
+        _s.style.height = "100%";
+        this.registerAsContainer("drawer", _s);
 
         this.contentEl.className = "itm_drawer_container";
         this.contentEl.appendChild(this.containerEl);
