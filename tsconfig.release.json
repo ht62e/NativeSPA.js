@@ -1,0 +1,17 @@
+{
+    "compilerOptions": {
+        "target": "ES5",
+        "sourceMap": false,
+        "rootDir": "./src/main",
+        "module": "es2015",
+        "outDir": "./build/es2015",
+        "lib": [
+            "dom",
+            "es5",
+            "scripthost",
+            "es2015.promise",
+            "es2015.iterable",
+            "es2015.collection",
+        ]
+    }
+}

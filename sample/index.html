@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="utf-8">
+    <title>test</title>
+    <script src="./lib/promise-7.0.4.min.js"></script>
+    <!-- <script src="./lib/vue.js"></script>    
+    <script src="./lib/vue_material/vue-material.min.js"></script>
+    <link rel="stylesheet" href="./lib/vue_material/vue-material.min.css">
+    <link rel="stylesheet" href="./lib/vue_material/theme/default.css"> -->
+
+    <link rel="stylesheet" href="../main.css">
+
+    <!-- <script src="./lib/jquery-3.4.1.min.js"></script> -->
+
+    <script data-main="../build/amd/intraframe.js" src="./lib/require.js"></script>
+    <!-- <script src="../build/release/intraframe.js"></script> -->
+
+    <script>
+        // window.addEventListener("load", () => {
+        //     new IntraFrame((conf) => {
+        //         console.log(conf);
+        //         console.log("◆◆◆◆◆◆◆◆◆◆◆");
+        //     });            
+        // });
+
+        var onIntraframeReady = function(app, cssUris, libUris) {
+            app.setAppElementId("app");
+
+            libUris.push("lib/testlib.js");
+
+            app.setRootModule("base", "module/base.html");
+
+
+
+            app.addModule("header", "module/header.html", "base.header", true);
+            app.addModule("main", "module/main.html", "base.body", false, {lazyLoading: true});
+            app.addModule("main2", "module/main2.html", "base.body", false, {lazyLoading: true});
+            app.addModule("tab", "module/tab.html", "base.body", false, {lazyLoading: true});
+
+            app.addModule("tab1", "module/main.html", "tab.page", false);
+            app.addModule("tab2", "module/main2.html", "tab.page", false, {lazyLoading: true, orderOnFlatContainer: 1});
+            app.addModule("tab3", "module/header.html", "tab.page", false);
+
+            app.registerWindow("win1", "module/main.html", {defaultCaption: "window1"});
+            app.registerWindow("win2", "module/main.html", {size: {cssWidth: "600px", cssHeight: "600px"},  defaultCaption: "window2"});
+            app.registerWindow("win3", "module/main.html", {defaultCaption: "window3"}, {lazyLoading: true});
+
+            app.registerContextMenu("popup1", "module/popupmenu.html", {size: {cssWidth: "200px", cssHeight: "300px"}});
+
+            app.registerDrawer("drawer1", "module/popupmenu.html", {});
+
+
+            return;
+
+        }
+
+
+
+    </script>
+
+
+
+    <style>
+        * {
+            margin: 0px;
+            padding: 0px;
+        }
+
+        html, body {
+            height: 100%;
+            overflow: hidden;
+        }
+
+        .module {
+            height: 100%;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="app" style="width: 100%; height: 100%;">
+
+    </div>
+</body>
+
+</html>
