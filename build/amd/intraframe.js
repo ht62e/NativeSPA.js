@@ -2808,6 +2808,16 @@ define("core/overlay/drawer", ["require", "exports", "core/overlay/overlay"], fu
     }(overlay_4.default));
     exports.default = Drawer;
 });
+/*
+
+    intraframe.js
+
+    Copyright (c) 2019 Ryota Takaki
+
+    This software is released under the MIT License.
+    http://opensource.org/licenses/mit-license.php
+
+*/
 define("intraframe", ["require", "exports", "core/module/module_loader", "core/common/common", "core/overlay/overlay_manager", "core/common/shared_css_script_loader", "core/container/container_factory", "core/overlay/dialog_window", "core/overlay/context_menu", "core/overlay/drawer", "core/source_repository", "core/common/runtime_error", "core/common/viewport"], function (require, exports, module_loader_1, common_2, overlay_manager_1, shared_css_script_loader_1, container_factory_4, dialog_window_1, context_menu_1, drawer_1, source_repository_3, runtime_error_6, viewport_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
