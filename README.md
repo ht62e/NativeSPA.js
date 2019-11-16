@@ -1,5 +1,6 @@
 # intraframe.js
 業務システムに特化したシングルページアプリケーション（SPA）構築用JavaScriptフレームワーク
+JavaScript framework for building a single-page application (SPA) specialized for enterprise web application.
 
 ## Description
 - 従来のサーバーサイドMVCと同じページ単位でSPA内で用いる画面やフレーム（モジュール）を作成できる
