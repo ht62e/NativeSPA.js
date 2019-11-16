@@ -1,4 +1,4 @@
-<script data-scope-mode="prototype">
+<script data-script-type="prototype">
     this.page = 0;
 
     this.test1Click = function() {
@@ -26,33 +26,35 @@
 
 </script>
 
-<script data-source="lib/testlib2.js"></script>
+<script src="testlib2.js"></script>
 
-<div id="\:menu_button">
-    
-</div>
-<div id="\:title">
-    Window Title
-</div>
-<div id="\:logout">
-    <input type="button" id="\:show_main_button" value="show main">
-</div>
+<template>
+    <div id="\:menu_button">
+        
+    </div>
+    <div id="\:title">
+        Window Title
+    </div>
+    <div id="\:logout">
+        <input type="button" id="\:show_main_button" value="show main">
+    </div>
+</template>
 
 <style>
-    #\:module {
+    #module {
         display: flex;
         align-items: stretch;
         background-color: #3d5885;
     }
 
-    #\:menu_button {
+    #menu_button {
         flex-shrink: 0;
         flex-grow: 0;
         width: 40px;
         background-color: rgba(0, 0, 0, 0.15);
     }
 
-    #\:title {
+    #title {
         flex-grow: 1;
         font-size: 16pt;
         font-family: Meiryo;
@@ -61,7 +63,7 @@
         color: #FFFFFF;
     }
 
-    #\:logout {
+    #logout {
         flex-shrink: 0;
         flex-grow: 0;
         width: 150px;

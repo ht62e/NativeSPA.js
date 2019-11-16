@@ -8,14 +8,16 @@
 
 </script>
 
-<div id="\:all">
-    <div id="\:header" data-container-name="header"></div>
-    <div id="\:body" data-container-name="body"></div>
-    <div id="\:footer" data-container-name="footer"></div>
-</div>
+<template>
+    <div id="\:all">
+        <div id="\:header" data-container-name="header"></div>
+        <div id="\:body" data-container-name="body"></div>
+        <div id="\:footer" data-container-name="footer"></div>
+    </div>
+</template>
 
 <style>
-    #\:all {
+    #all {
         display: flex;
         flex-direction: column;
         width: 100%;
@@ -23,21 +25,21 @@
 
     }
 
-    #\:header {
+    #header {
         flex-grow: 0;
         flex-shrink: 0;
         height: 40px;
         /* background-color: rgb(63, 89, 175); */
     }
 
-    #\:body {
+    #body {
         flex-grow: 1;
         flex-shrink: 1;
         height: 480px;
         background-color: #F5F5F5;
     }
 
-    #\:footer {
+    #footer {
         flex-grow: 0;
         flex-shrink: 0;
         height: 60px;

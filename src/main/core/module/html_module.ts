@@ -8,7 +8,7 @@ import ModuleLoader from "./module_loader";
 
 export default abstract class HtmlModule extends AppModule {
     protected source: string;
-    protected wrapperElement: HTMLDivElement;
+    protected wrapperEl: HTMLDivElement;
     protected subContainerInfos = new Map<string, ContainerInfo>();
 
     protected cssTransitionDriver: CssTransitionDriver;
@@ -22,9 +22,6 @@ export default abstract class HtmlModule extends AppModule {
     protected abstract onCreate(): void;
     protected abstract loadSubContainerInfos(): void;
 
-    public abstract changeModuleCssPosition(left: string, top: string): void;
-    public abstract changeModuleCssSize(width: string, height: string): void;
-
     constructor(moduleDefinition: ModuleDefinition, loader: ModuleLoader) {
         super();
         this.moduleLoader = loader;
@@ -33,6 +30,7 @@ export default abstract class HtmlModule extends AppModule {
         this.moduleIndex = loader.getNextModuleInstanceSequence();
         this.name = moduleDefinition.moduleName;
         this.sourceUri = moduleDefinition.sourceUri;
+        this.sourceDirectory = /.*\//.exec(this.sourceUri)[0];
         
         this.onCreate();
     }
@@ -44,7 +42,7 @@ export default abstract class HtmlModule extends AppModule {
     }
 
     public dispatchResizeEvent(): void {
-        if (!this.wrapperElement) return;
+        if (!this.wrapperEl) return;
 
         this.subContainerInfos.forEach((containerInfo: ContainerInfo) => {
             containerInfo.container.onResize();
@@ -72,8 +70,8 @@ export default abstract class HtmlModule extends AppModule {
         if (this.cssTransitionDriver) {
             this.cssTransitionDriver.show(withoutTransition);
         } else {
-            this.wrapperElement.style.display = "";
-            this.wrapperElement.style.visibility = "";
+            this.wrapperEl.style.display = "";
+            this.wrapperEl.style.visibility = "";
         }
 
         this.htmlAdapter.triggerOnShow(false, null);
@@ -87,8 +85,8 @@ export default abstract class HtmlModule extends AppModule {
         if (this.cssTransitionDriver) {
             this.cssTransitionDriver.hide(withoutTransition);
         } else {
-            if (this.wrapperElement.style.visibility !== "hidden") {
-                this.wrapperElement.style.display = "none";
+            if (this.wrapperEl.style.visibility !== "hidden") {
+                this.wrapperEl.style.display = "none";
             }
         }
         this.htmlAdapter.triggerOnHide(null);
@@ -150,7 +148,15 @@ export default abstract class HtmlModule extends AppModule {
         return target; 
     }
 
+    public changeModuleCssPosition(left: string, top: string) {
+        this.wrapperEl.style.left = left;
+        this.wrapperEl.style.top = top;
+    }
 
+    public changeModuleCssSize(width: string, height: string) {
+        this.wrapperEl.style.width = width;
+        this.wrapperEl.style.height = height;
+    }
 }
 
 

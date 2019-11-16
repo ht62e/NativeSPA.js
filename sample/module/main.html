@@ -1,34 +1,44 @@
-<div id="\:all" class="module">
-    <div>This is main.html</div>
-    <div><input type="button" id="\:show_main2" value="show main2"></div>
-    <div><input type="button" id="\:show_tab" value="show tab"></div>
-    <div><input type="button" id="\:show_win1" value="show win1"></div>
-    <div><input type="button" id="\:show_win2" value="show win2"></div>
-    <div><input type="button" id="\:show_win3" value="show win3"></div>
-    <div><input type="button" id="\:show_win1_as_modal" value="show win1 as modal"></div>
-    <div><input type="button" id="\:show_win2_as_modal" value="show win2 as modal"></div>
-    <div><input type="button" id="\:show_win3_as_modal" value="show win3 as modal"></div>
-    <div><input type="button" id="\:back" value="back"></div>
-    <div><input type="button" id="\:close" value="close"></div>
-    <div><input type="text" id="\:input1"></div>
-    <div id="\:vue_test" style="width: 200px;">
-            <md-button class="md-raised md-primary">Vueボタン</md-button>
-            <md-field>
-                <label>Type here!</label>
-                <md-input></md-input>
-                <span class="md-helper-text">Helper text</span>
-            </md-field>
+<template>
+    <div id="\:all" class="module">
+        <div>This is main.html</div>
+        <div><input type="button" id="\:show_main2" value="show main2"></div>
+        <div><input type="button" id="\:show_tab" value="show tab"></div>
+        <div><input type="button" id="\:show_win1" value="show win1"></div>
+        <div><input type="button" id="\:show_win2" value="show win2"></div>
+        <div><input type="button" id="\:show_win3" value="show win3"></div>
+        <div><input type="button" id="\:show_win1_as_modal" value="show win1 as modal"></div>
+        <div><input type="button" id="\:show_win2_as_modal" value="show win2 as modal"></div>
+        <div><input type="button" id="\:show_win3_as_modal" value="show win3 as modal"></div>
+        <div><input type="button" id="\:back" value="back"></div>
+        <div><input type="button" id="\:close" value="close"></div>
+        <div><input type="text" id="\:input1"></div>
+        <div id="\:vue_test" style="width: 200px;">
+                <md-button class="md-raised md-primary">Vueボタン</md-button>
+                <md-field>
+                    <label>Type here!</label>
+                    <md-input></md-input>
+                    <span class="md-helper-text">Helper text</span>
+                </md-field>
+        </div>
+        <h1>H1 CSS Test</h1>
+        <div><textarea id="\:textarea1"></textarea></div>
     </div>
-    <div><textarea id="\:textarea1"></textarea></div>
-</div>
+</template>
+
+<style data-src="main.css"></style>
 
 <style>
-    #\:textarea1 {
+    #textarea1 {
         width: 400px;
         height: 200px;
     }
 </style>
 
+<template>
+    aabbcctest
+    <template>333</template>
+    1231615
+</template>
 
 <script>
     // new Vue({
@@ -41,7 +51,7 @@
     }, 1000);
 </script>
 
-<script data-scope-mode="prototype">
+<script data-script-type="prototype">
     
 
     this.textArea1 = document.getElementById("\:textarea1");
@@ -149,7 +159,7 @@
     }, 3000);
 </script>
 
-<script data-scope-mode="native">
+<script data-script-type="native">
     setTimeout(function() {
         document.getElementById("\:input1").value = "実行完了4";
     }, 4000);

@@ -9,6 +9,7 @@ export default abstract class AppModule implements ContainerHolder {
     protected moduleIndex: number;
     protected name: string;
     protected sourceUri: string;
+    protected sourceDirectory: string;
     protected moduleDefinition: ModuleDefinition;
     protected caption: string = "";
 

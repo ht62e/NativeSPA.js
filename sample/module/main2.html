@@ -1,14 +1,16 @@
-<div id="\:all" class="module">
+<template>
+    <div id="\:all" class="module">
         <div>This is main2.html</div>
         <div><input type="button" id="\:show_main" value="show main"></div>
         <div><input type="button" id="\:back" value="back"></div>
         <div><input type="button" id="\:close" value="close"></div>
         <div><input type="text" id="\:input1"></div>
+        <h1>H1 CSS Test</h1>
         <div><textarea id="\:textarea1"></textarea></div>
     </div>
-    
+</template>
     <style>
-        #\:textarea1 {
+        #textarea1 {
             width: 400px;
             height: 300px;
         }
@@ -20,7 +22,7 @@
         }, 1000);
     </script>
     
-    <script data-scope-mode="prototype">
+    <script data-script-type="prototype">
         this.textArea1 = document.getElementById("\:textarea1");
         document.getElementById("\:show_main").addEventListener("click", (function() {
             this.navigation.forward("base.body::main", null, function(obj) {
@@ -67,7 +69,7 @@
         }, 3000);
     </script>
     
-    <script data-scope-mode="native">
+    <script data-script-type="native">
         setTimeout(function() {
             document.getElementById("\:input1").value = "実行完了4";
         }, 4000);

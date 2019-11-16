@@ -20,7 +20,6 @@ import Drawer, { DrawerOptions } from "./core/overlay/drawer";
 import SourceRepository from "./core/source_repository";
 import RuntimeError from "./core/common/runtime_error";
 import ViewPort from "./core/common/viewport";
-import Overlay from "./core/overlay/overlay";
 
 class IntraFrame {
     public static instances = new Array<IntraFrame>();
