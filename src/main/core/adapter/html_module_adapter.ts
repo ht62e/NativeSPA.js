@@ -2,6 +2,7 @@ import HtmlModule from "../module/html_module";
 import { Parcel, ActionType, Result } from "../common/dto";
 import Navigation from "./navigation";
 import { ContainerNavigationInfo } from "../container/container";
+import MessageDispatcher from "../module/message_dispatcher";
 
 export const htmlModuleAdapters = new Map<number, HtmlModuleAdapter>();
 
@@ -38,8 +39,14 @@ export default abstract class HtmlModuleAdapter {
     }
 
     public async sendMessage(destination: string, command: string, message?: any): Promise<any> {
-        return this.htmlModule.getModuleLoader().dispatchMessage(destination, command, message);
+        const dispatcher = this.htmlModule.getModuleLoader().getMessageDispatcher();
+        return dispatcher.send(destination, command, message);
     }
+
+    public async multicastMessage(destination: string, command: string, message?: any): Promise<any> {
+        const dispatcher = this.htmlModule.getModuleLoader().getMessageDispatcher();
+        return dispatcher.multicast(destination, command, message);
+    }    
 
     protected abstract onLoad(param: any): void;
     protected abstract onInitialize(param: Parcel): void;
@@ -73,11 +80,11 @@ export default abstract class HtmlModuleAdapter {
         }
     }
 
-    public triggerOnReceiveMessage(command: string, message?: any): void {
+    public triggerOnReceiveMessage(command: string, params?: any): void {
         if (this.onMessageReceived) {
-            this.onMessageReceived(command, this.returnMessageResponse.bind(this), message);
+            this.onMessageReceived(command, this.returnMessageResponse.bind(this), params);
         } else {
-
+            this.htmlModule.returnMessageResponse(null);
         }
     }
 

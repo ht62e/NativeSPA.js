@@ -4,6 +4,7 @@ import RuntimeError from "../common/runtime_error";
 import Container from "../container/container";
 import ContainerHolder from "../container/container_holder";
 import ViewPort from "../common/viewport";
+import MessageDispatcher from "./message_dispatcher";
 
 export interface RegisterOptions {
     moduleType?: ModuleType;
@@ -23,7 +24,7 @@ export default class ModuleLoader {
     private instanceSequence = 0;
 
     private viewPort: ViewPort;
-
+    private messageDispatcher: MessageDispatcher;
     private descriptions: Map<string, ModuleDefinition>;
 
     //PageContainer内の自動生成された2番目以降のインスタンスは保持しない
@@ -36,6 +37,8 @@ export default class ModuleLoader {
         this.loadedModules = new Map<string, AppModule>();
         this.prefetchedModules = new Map<string, AppModule>();
         this.subModuleList = new Map<string, Array<string>>();
+
+        this.messageDispatcher = new MessageDispatcher(this);
     }
 
     public setViewPort(viewPort: ViewPort) {
@@ -44,6 +47,10 @@ export default class ModuleLoader {
 
     public getViewPort(): ViewPort {
         return this.viewPort;
+    }
+
+    public getMessageDispatcher(): MessageDispatcher {
+        return this.messageDispatcher;
     }
 
     public register(name: string, sourceUri: string, targetContainerId: string, 
@@ -180,8 +187,4 @@ export default class ModuleLoader {
         return module;
     }
 
-    public dispatchMessage(destination: string, command: string, message?: any): Promise<any> {
-        //TODO 仮
-        return this.getModule(destination).passMessage(command, message);
-    }
 }

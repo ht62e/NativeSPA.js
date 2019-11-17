@@ -1,5 +1,5 @@
 import Container, { ContainerInfo, ContainerNavigationInfo, CssTransitionOptions } from "../container/container";
-import AppModule, { MountOption, ModuleDefinition } from "./app_module";
+import AppModule, { ModuleDefinition } from "./app_module";
 import SourceRepository from "../source_repository";
 import HtmlModuleAdapter from "../adapter/html_module_adapter";
 import { Result, ActionType, Parcel } from "../common/dto";
@@ -17,7 +17,7 @@ export default abstract class HtmlModule extends AppModule {
 
     private exitResolver: (value?: boolean | PromiseLike<boolean>) => void;
     private exitForWaitResolver: (value?: Result | PromiseLike<Result>) => void;
-    private passMessageResolver: (value?: any | PromiseLike<any>) => void;
+    private messageHandleResolver: (value?: any | PromiseLike<any>) => void;
 
     protected abstract onCreate(): void;
     protected abstract loadSubContainerInfos(): void;
@@ -126,17 +126,24 @@ export default abstract class HtmlModule extends AppModule {
         }        
     }
 
-    public async passMessage(command: string, message?: any): Promise<any> {
+    public async messageHandler(command: string, params?: any): Promise<any> {
         return new Promise(resolve => {
-            this.passMessageResolver = resolve;
-            this.htmlAdapter.triggerOnReceiveMessage(command, message);
+            this.messageHandleResolver = resolve;
+            this.htmlAdapter.triggerOnReceiveMessage(command, params);
+        });
+    }
+
+    public multicastMessageHandler(command: string, params?: any): void {
+        this.messageHandler(command, params);
+        this.subContainerInfos.forEach((c: ContainerInfo) => {
+            c.container.getCurrentModule().messageHandler(command, params);
         });
     }
 
     public returnMessageResponse(messageResponse: any) {
-        if (this.passMessage) {
-            this.passMessageResolver(messageResponse);
-            this.passMessageResolver = null;
+        if (this.messageHandler) {
+            this.messageHandleResolver(messageResponse);
+            this.messageHandleResolver = null;
         }
     }
 

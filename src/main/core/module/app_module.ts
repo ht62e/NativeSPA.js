@@ -35,7 +35,8 @@ export default abstract class AppModule implements ContainerHolder {
     public abstract changeModuleCssSize(width: string, height: string): void;
 
     public abstract subContainerNavigationEventHandler(subContainerId: string, currentInfo: ContainerNavigationInfo, histories: Array<ContainerNavigationInfo>): boolean;
-    public abstract passMessage(command: string, message?: any): Promise<any>;
+    public abstract messageHandler(command: string, params?: any): Promise<any>;
+    public abstract multicastMessageHandler(command: string, params?: any): void;
 
     public abstract dispatchResizeEvent(): void;
 
@@ -57,7 +58,8 @@ export default abstract class AppModule implements ContainerHolder {
 
     public setCaption(caption: string) {
         this.caption = caption;
-    }    
+    }
+    
 
 }
 
