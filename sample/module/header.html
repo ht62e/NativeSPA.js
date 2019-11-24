@@ -2,7 +2,7 @@
     this.page = 0;
 
     this.test1Click = function() {
-        this.navigation.forward("base.body::main");
+        this.$navigation.forward("base.body::main");
         this.page = 0;
         // if (this.page === 0) {
         //     this.moduleSwitcher.forward("base.body::main2");
@@ -15,7 +15,7 @@
     document.getElementById("\:show_main_button").addEventListener("click", this.test1Click.bind(this));
 
     document.getElementById("\:menu_button").addEventListener("click", (function() {
-        this.navigation.showDrawer("drawer1");
+        this.$navigation.showDrawer("drawer1");
     }).bind(this));
 
     this.onMessageReceived = function(command, doResponse, message) {

@@ -13,11 +13,11 @@ export default class ContainerFactory {
     public static createContainer(id: string, type: string, bindDomElement: HTMLElement, owner: AppModule): Container {
         let newContainer = null;
 
-        if (!type || type === "separated") {
+        if (!type || type === "stack") {
             newContainer = new PageContainer(id, bindDomElement, owner, {
                 enableCssTransition: true
             });
-        } else if ("continuous") {
+        } else if ("flat") {
             newContainer = new FlatContainer(id, bindDomElement, owner);
         }
 

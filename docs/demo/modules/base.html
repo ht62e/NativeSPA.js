@@ -1,27 +1,25 @@
 <script>
-    this.onLoad = function() {
-        this.$module.register("header", "module/header.html", "header", true);
+    this.onLoad = function(param) {
+        this.$module.register("header", "modules/header.html", "header", true);
+        this.$module.register("home", "modules/home.html", "body", true);
+        this.$module.register("demo1", "modules/demo1.html", "body", false);
+        this.$module.register("viewerTab", "modules/viewer_tab.html", "body", false);
     }
 
     this.onSubContainerNavigated = function(subContainerId, currentInfo, histories) {
-        console.log(subContainerId);
-        console.log(currentInfo);
-        console.log(histories);
         this.$module.sendMessage("header", "change_caption", {caption: currentInfo.caption});
     }
 
 </script>
 
 <template>
-    <div id="\:all">
-        <div id="\:header" data-container-name="header"></div>
-        <div id="\:body" data-container-name="body"></div>
-        <div id="\:footer" data-container-name="footer"></div>
-    </div>
+    <div id="\:header" data-container-name="header"></div>
+    <div id="\:body" data-container-name="body"></div>
+    <div id="\:footer" data-container-name="footer"></div>
 </template>
 
 <style>
-    #all {
+    #module {
         display: flex;
         flex-direction: column;
         width: 100%;
@@ -33,7 +31,6 @@
         flex-grow: 0;
         flex-shrink: 0;
         height: 40px;
-        /* background-color: rgb(63, 89, 175); */
     }
 
     #body {
@@ -47,7 +44,6 @@
         flex-grow: 0;
         flex-shrink: 0;
         height: 60px;
-        /* background-color: #FFFFFF; */
         background-color: #F0F0F0;
     }
 

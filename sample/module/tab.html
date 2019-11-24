@@ -5,14 +5,14 @@
             <div class="\:tab_buttons" data-index="2">TabPage2</div>
             <div class="\:tab_buttons" data-index="3">TabPage3</div>
         </div>
-        <div id="\:page" data-container-name="page" data-container-type="continuous"></div>
+        <div id="\:page" data-container-name="page" data-container-type="flat"></div>
     </div>
 </template>
 
 <script data-script-type="prototype">
     this.onTabButtonClick = function(e) {
         if (e.target.dataset.index) {
-            this.navigation.switch("tab.page::tab" + e.target.dataset.index, null);
+            this.$navigation.switch("tab.page::tab" + e.target.dataset.index, null);
         }
     }
 

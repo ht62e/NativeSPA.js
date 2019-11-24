@@ -25,7 +25,7 @@ export default class ModuleLoader {
 
     private viewPort: ViewPort;
     private messageDispatcher: MessageDispatcher;
-    private descriptions: Map<string, ModuleDefinition>;
+    private definitions: Map<string, ModuleDefinition>;
 
     //PageContainer内の自動生成された2番目以降のインスタンスは保持しない
     private loadedModules: Map<string, AppModule>;
@@ -33,7 +33,7 @@ export default class ModuleLoader {
     private subModuleList: Map<string, Array<string>>;   
 
     constructor() {
-        this.descriptions = new Map<string, ModuleDefinition>();
+        this.definitions = new Map<string, ModuleDefinition>();
         this.loadedModules = new Map<string, AppModule>();
         this.prefetchedModules = new Map<string, AppModule>();
         this.subModuleList = new Map<string, Array<string>>();
@@ -55,10 +55,10 @@ export default class ModuleLoader {
 
     public register(name: string, sourceUri: string, targetContainerId: string, 
                     isContainerDefault: boolean, options?: RegisterOptions) {
-        this.registerDescription(name, sourceUri, targetContainerId, isContainerDefault, options);
+        this.addModuleDefinition(name, sourceUri, targetContainerId, isContainerDefault, options);
     }
 
-    private registerDescription(moduleName: string, sourceUri: string, 
+    private addModuleDefinition(moduleName: string, sourceUri: string, 
                                 targetContainerId: string, isContainerDefault: boolean,
                                 options?: RegisterOptions): ModuleDefinition {
         const op: RegisterOptions = options || {};
@@ -72,7 +72,14 @@ export default class ModuleLoader {
             forcePrefetch: op.forcePrefetch !== undefined ? op.forcePrefetch : true,
             orderOnFlatContainer: op.orderOnFlatContainer
         };
-        this.descriptions.set(moduleName, ds);
+        this.definitions.set(moduleName, ds);
+
+        const targetModuleName: string = targetContainerId.split(".")[0];
+        if (!this.subModuleList.has(targetModuleName)) {
+            this.subModuleList.set(targetModuleName, new Array<string>());
+        }
+        this.subModuleList.get(targetModuleName).push(moduleName);
+
         return ds;
     }
 
@@ -94,35 +101,28 @@ export default class ModuleLoader {
     }
 
     public async initialize(): Promise<void> {
-        const descriptionModuleNames = new Array<string>(); //IE11ではMapの繰り返し中でawaitを使う方法がないため配列に入れてループ
-        this.descriptions.forEach((value, key) => {
-            descriptionModuleNames.push(key);
+        const definitionModuleNames = new Array<string>(); //IE11ではMapの繰り返し中でawaitを使う方法がないため配列に入れてループ
+        this.definitions.forEach((value, key) => {
+            definitionModuleNames.push(key);
         });
 
-        for (const i in descriptionModuleNames) {
-            const description = this.descriptions.get(descriptionModuleNames[i]);
-            //プリフェッチ
-            if (description.forcePrefetch) {
-                const module: AppModule = await this.fetchModule(description.moduleName);
-                this.prefetchedModules.set(description.moduleName, module);
+        //prefetching        
+        for (const i in definitionModuleNames) {
+            const definition = this.definitions.get(definitionModuleNames[i]);
+            if (definition.forcePrefetch) {
+                const module: AppModule = await this.fetchModule(definition.moduleName);
+                this.prefetchedModules.set(definition.moduleName, module);
             }
-
-            //サブモジュールリスト生成
-            const targetModuleName: string = description.targetContainerId.split(".")[0];
-            if (!this.subModuleList.has(targetModuleName)) {
-                this.subModuleList.set(targetModuleName, new Array<string>());
-            }
-            this.subModuleList.get(targetModuleName).push(description.moduleName);
-
-            //TODO descriptionsに存在しないmoduleNameのsubModuleListのリストがあったなら警告を出すか止める
+            
+            //TODO definitionsに存在しないmoduleNameのsubModuleListのリストがあったなら警告を出すか止める
         }
 
         //ツリールートから順番にモジュールのロードを実行（遅延ロードモジュールを除く
         const subModules: Array<string> = this.subModuleList.get("$root");
 
         for (const subModuleName of subModules) {
-            const subModuleDescription = this.descriptions.get(subModuleName);
-            if (!subModuleDescription.lazyLoading) {
+            const subModuleDefinition = this.definitions.get(subModuleName);
+            if (!subModuleDefinition.lazyLoading) {
                 await this.loadModuleRecursively(subModuleName, this.viewPort);
             } else {
                 console.log(subModuleName + " is lazy load mode.");
@@ -138,7 +138,7 @@ export default class ModuleLoader {
             module = this.prefetchedModules.get(moduleName);
             this.prefetchedModules.delete(moduleName);
         } else {
-            const definition: ModuleDefinition = this.descriptions.get(moduleName);
+            const definition: ModuleDefinition = this.definitions.get(moduleName);
             if (!definition) {
                 throw new RuntimeError("指定されたモジュール " + moduleName + " は定義されていません。");
             }
@@ -156,7 +156,7 @@ export default class ModuleLoader {
 
     public async loadModuleRecursively(moduleName: string, owner: ContainerHolder): Promise<AppModule> {
         const module: AppModule = await this.fetchModule(moduleName);
-        const moduleDefinition: ModuleDefinition = this.descriptions.get(moduleName);
+        const moduleDefinition: ModuleDefinition = this.definitions.get(moduleName);
 
         const parts = moduleDefinition.targetContainerId.split(".");
         const targetContainerName: string = parts[1];
@@ -176,8 +176,8 @@ export default class ModuleLoader {
         const subModules: Array<string> = this.subModuleList.get(moduleName) || [];
 
         for (const subModuleName of subModules) {
-            const subModuleDescription = this.descriptions.get(subModuleName);
-            if (!subModuleDescription.lazyLoading) {
+            const subModuleDefinition = this.definitions.get(subModuleName);
+            if (!subModuleDefinition.lazyLoading) {
                 await this.loadModuleRecursively(subModuleName, module);
             } else {
                 console.log(subModuleName + " is lazy load mode.");

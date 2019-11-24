@@ -10,6 +10,8 @@ import Utils from "../common/utils";
 export default class PlainHtmlModule extends HtmlModule {
     private prototypeTemplateBegin: string;
     private prototypeTemplateEnd: string;
+    private es2015TemplateBegin: string;
+    private es2015TemplateEnd: string;
 
     protected onCreate(): void {
         this.prototypeTemplateBegin = 
@@ -22,6 +24,16 @@ export default class PlainHtmlModule extends HtmlModule {
         this.prototypeTemplateEnd = 
         `   }
             Object.setPrototypeOf(Com.prototype, __HtmlModuleAdapter.prototype);
+            new Com(${this.moduleIndex});
+         })();
+        `;
+
+        this.es2015TemplateBegin = 
+        `(function() {
+        `;
+    
+        this.es2015TemplateEnd = 
+        `   
             __registerHtmlModuleAdapter(${this.moduleIndex}, new Com(${this.moduleIndex}));
          })();
         `;
@@ -51,11 +63,9 @@ export default class PlainHtmlModule extends HtmlModule {
                 cssTransitionOptions?: CssTransitionOptions): Promise<void> {
         if (!this.isFetched) await this.fetch();
 
-        const localPrefix = "_itf_" + this.moduleIndex.toString() + "_";
-
         //引数で与えられたコンテナDOMに対して自身をロード
         this.wrapperEl = document.createElement("div");
-        this.wrapperEl.id = localPrefix + "module";
+        this.wrapperEl.id = this.localDomIdPrefix + "module";
         this.wrapperEl.className = "itm_html_module";
         this.wrapperEl.style.position = "absolute";
         this.wrapperEl.style.overflow = "auto";
@@ -63,9 +73,9 @@ export default class PlainHtmlModule extends HtmlModule {
         this.wrapperEl.style.height = "100%";
         this.wrapperEl.style.visibility = "hidden";
 
-        this.wrapperEl.innerHTML = this.parseTemplate(this.source, localPrefix);
+        this.wrapperEl.innerHTML = this.parseTemplate(this.source, this.localDomIdPrefix);
 
-        const styles: Array<HTMLStyleElement> = await this.parseStyle(this.source, localPrefix, this.wrapperEl.id);
+        const styles: Array<HTMLStyleElement> = await this.parseStyle(this.source, this.localDomIdPrefix, this.wrapperEl.id);
         const globalHeadEl = document.getElementsByTagName("head")[0];
         styles.forEach(el => {
             globalHeadEl.appendChild(el);
@@ -81,14 +91,14 @@ export default class PlainHtmlModule extends HtmlModule {
         }
         this.currentContainer = elementAttachHandler(this.wrapperEl, mountOption);
 
-        const scripts: Array<HTMLScriptElement> = await this.parseScripts(this.source, localPrefix);
+        const scripts: Array<HTMLScriptElement> = await this.parseScripts(this.source, this.localDomIdPrefix);
         scripts.forEach(el => {
             this.wrapperEl.appendChild(el);
         });
 
         //サブコンテナの生成・登録
         this.subContainerInfos.forEach((containerInfo: ContainerInfo, domId: string) => {
-            let localElementId = domId.replace(/\\:/g, localPrefix);
+            let localElementId = domId.replace(/\\:/g, this.localDomIdPrefix);
             let containerEl: HTMLDivElement = document.getElementById(localElementId) as HTMLDivElement;
             let containerId: string = this.name + "." + containerInfo.name;
             containerInfo.container = ContainerFactory.createContainer(containerId, containerInfo.type, containerEl, this);
@@ -97,9 +107,13 @@ export default class PlainHtmlModule extends HtmlModule {
         this.isMounted = true;
 
         this.htmlAdapter = htmlModuleAdapters.get(this.moduleIndex);
-        this.htmlAdapter.setHtmlComponent(this);
-        this.htmlAdapter.triggerOnLoad("name is " + this.name);
+        this.htmlAdapter._setHtmlModule(this);
+        this.htmlAdapter._internal.triggerOnLoad({});
 
+    }
+
+    public unmount() {
+        throw new Error("Method not implemented.");
     }
 
     private parseTemplate(source: string, localPrefix: string): string {
@@ -108,6 +122,8 @@ export default class PlainHtmlModule extends HtmlModule {
         if (htmlBlocks.length > 0) {
             const h = Utils.extractInnerHtml(htmlBlocks[0]);
             return h.replace(localizeRegExp, localPrefix);
+        } else {
+            return "";
         }
     }
 

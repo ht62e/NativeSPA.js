@@ -21,6 +21,7 @@ export default abstract class AppModule implements ContainerHolder {
 
     public abstract fetch(): Promise<void>;
     public abstract mount(elementAttachHandler: (element: HTMLDivElement, option?: MountOption) => Container, cssTransitionOptions?: CssTransitionOptions): Promise<void>;
+    public abstract unmount();
     public abstract getChildContainer(containerName: string): Container
 
     public abstract initialize(parcel: Parcel): void;

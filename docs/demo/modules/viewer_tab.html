@@ -1,0 +1,48 @@
+<script>
+    this.onLoad = function(params) {
+        //this.$module.register("header", "modules/header.html", "tab_header", true);
+
+        //this.$module.$id("tab_header").addEventListener("click", this.onTabButtonClick.bind(this));
+    }
+
+    this.onInitialize = function(param) {
+        console.log(param);
+    }
+
+    this.onTabButtonClick = function(e) {
+        if (e.target.dataset.index) {
+            this.$navigation.switch("tab_body::tab" + e.target.dataset.index, null);
+        }
+    }
+</script>
+
+<template>
+    <div id="\:tab_header">
+        <div class="\:tab_header_button" data-index="1">Basic</div>
+        <div class="\:tab_header_button" data-index="2">Map</div>    
+    </div>
+    <div id="\:tab_body" data-container-name="tab_body" data-container-type="flat"></div>
+</template>
+
+<style>
+    #module {
+        display: flex;
+        flex-direction: column;        
+    }
+
+    #tab_header {
+        flex-grow: 0;
+        flex-shrink: 0;
+        display: flex;
+        height: 40px;
+    }
+
+    .tab_header_button {
+        font-size: 10pt;
+        flex-grow: 0;
+        flex-shrink: 0;
+        width: 100px;
+        text-align: center;
+        border-right: 1px solid #E0E0E0;
+    }
+</style>

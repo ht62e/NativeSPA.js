@@ -21,13 +21,12 @@ import SourceRepository from "./core/source_repository";
 import RuntimeError from "./core/common/runtime_error";
 import ViewPort from "./core/common/viewport";
 
-class IntraFrame {
+export default class IntraFrame {
     public static instances = new Array<IntraFrame>();
 
     private appElement: HTMLDivElement;
     private moduleLoader: ModuleLoader;
     private overlayManager: OverlayManager;
-
 
     constructor() {
         IntraFrame.instances.push(this);
@@ -55,7 +54,7 @@ class IntraFrame {
         SourceRepository.getInstance().setSourceVersion(version);
     }
 
-    public addModule(moduleName: string , sourceUri: string, targetContainerId: string, 
+    public register(moduleName: string , sourceUri: string, targetContainerId: string, 
         isContainerDefault: boolean, options?: RegisterOptions): void {
         this.moduleLoader.register(moduleName, sourceUri, targetContainerId, isContainerDefault, options);
     }
@@ -110,10 +109,15 @@ var __bootloader = async function() {
     const cssUris = new Array<string>();
     const scriptUris = new Array<string>();
 
-    const __global = window as any;
-    if (__global.onIntraframeReady) {
+    document.documentElement.style.height = "100%";
+    document.documentElement.style.overflow = "hidden";
+    document.body.style.height = "100%";
+    document.body.style.overflow = "hidden";
 
-        __global.onIntraframeReady(defaultApp, cssUris, scriptUris);
+    const __global = window as any;
+    if (__global.intraframeConfig) {
+
+        __global.intraframeConfig(defaultApp, cssUris, scriptUris);
 
         const scsLoader = new SharedCssScriptLoader(cssUris, scriptUris);
 
@@ -130,10 +134,11 @@ var __bootloader = async function() {
         __startApplications();
 
     } else {
-        console.log("function 'onIntraframeReady' is not defined.");
+        console.log("function 'intraframeConfig' is not defined.");
     }
 }
 
+;(window as any).IntraFrame = IntraFrame;
 
 var __startApplications = function() {
     IntraFrame.instances.forEach((intraFrame) => {
@@ -149,8 +154,6 @@ var __startApplications = function() {
     }
     window.dispatchEvent(resizeEvent);
 }
-
-
 
 if (document.readyState === "complete") {
     __bootloader();

@@ -25,18 +25,18 @@
     <script data-script-type="prototype">
         this.textArea1 = document.getElementById("\:textarea1");
         document.getElementById("\:show_main").addEventListener("click", (function() {
-            this.navigation.forward("base.body::main", null, function(obj) {
+            this.$navigation.forward("base.body::main", null, function(obj) {
                 console.log("main2 callback");
                 console.log(obj);
             });
         }).bind(this));
 
         document.getElementById("\:back").addEventListener("click", (function() {
-            this.navigation.back();
+            this.$navigation.back();
         }).bind(this));
 
         document.getElementById("\:close").addEventListener("click", (function() {
-            this.exit(0);
+            this.$module.exit(0);
         }).bind(this));
     
         setTimeout(function() {

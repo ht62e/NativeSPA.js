@@ -71,7 +71,6 @@ export default class DialogWindow extends ResizableOverlay {
 
         _s = this.headerCloseButtonEl = document.createElement("div");
         _s.className = "close_button";
-        _s.textContent = "×";
         _s.addEventListener("click", this.onHeaderCloseButtonClick.bind(this));
 
         _s = this.headerEl;

@@ -1,0 +1,43 @@
+<script>
+    this.onLoad = function(param) {
+        this.$module.$id("demo_1").addEventListener("click", (function(e) {
+            this.$navigation.forward("demo1");
+        }).bind(this));
+
+        this.$module.setCaption("Home");
+
+        // new Vue({
+        //     el: '#\:test',
+        //     components: {
+        //         'md-button': httpVueLoader('./lib/vue-material/src/components/MdButton/MdButton.vue')
+        //     }
+        // });
+    }
+
+</script>
+
+<template>
+    This is Intraframe.js demo application.
+
+    <div >
+            <!-- <md-button class="md-raised md-primary">Vueボタン</md-button> -->
+            <a id="\:demo_1" class="waves-effect waves-light btn blue darken-3">Demo 1</a>
+    </div>
+
+
+    <div class="\:tag1">This module is implemented by plain JavaScript</div>
+</template>
+
+<style>
+    #module {
+        background-color: #FFFFFF;
+    }
+
+    .tag1 {
+        position: absolute;
+        padding: 5px;
+        top: 0px;
+        right: 0px;
+        background-color: rgba(0, 0, 0, 0.15);
+    }
+</style>

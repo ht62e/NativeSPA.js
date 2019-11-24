@@ -15,6 +15,8 @@ export default abstract class HtmlModule extends AppModule {
 
     protected htmlAdapter: HtmlModuleAdapter = null;
 
+    protected localDomIdPrefix: string;
+
     private exitResolver: (value?: boolean | PromiseLike<boolean>) => void;
     private exitForWaitResolver: (value?: Result | PromiseLike<Result>) => void;
     private messageHandleResolver: (value?: any | PromiseLike<any>) => void;
@@ -31,14 +33,17 @@ export default abstract class HtmlModule extends AppModule {
         this.name = moduleDefinition.moduleName;
         this.sourceUri = moduleDefinition.sourceUri;
         this.sourceDirectory = /.*\//.exec(this.sourceUri)[0];
+        this.localDomIdPrefix = "_itm_" + this.moduleIndex.toString() + "_";
         
         this.onCreate();
     }
 
-
+    public getLocalDomIdPrefix(): string {
+        return this.localDomIdPrefix;
+    }
 
     public subContainerNavigationEventHandler(subContainerId: string, currentInfo: ContainerNavigationInfo, histories: Array<ContainerNavigationInfo>): boolean {
-        return this.htmlAdapter.triggerOnSubContainerNavigated(subContainerId, currentInfo, histories);
+        return this.htmlAdapter._internal.triggerOnSubContainerNavigated(subContainerId, currentInfo, histories);
     }
 
     public dispatchResizeEvent(): void {
@@ -63,7 +68,7 @@ export default abstract class HtmlModule extends AppModule {
             containerInfo.container.initialize(parcel);
         });
 
-        this.htmlAdapter.triggerOnInitialize(parcel);
+        this.htmlAdapter._internal.triggerOnInitialize(parcel);
     }
 
     public show(withoutTransition?: boolean): void {
@@ -74,7 +79,7 @@ export default abstract class HtmlModule extends AppModule {
             this.wrapperEl.style.visibility = "";
         }
 
-        this.htmlAdapter.triggerOnShow(false, null);
+        this.htmlAdapter._internal.triggerOnShow(false, null);
 
         this.subContainerInfos.forEach((containerInfo: ContainerInfo) => {
             containerInfo.container.onShow();
@@ -89,7 +94,7 @@ export default abstract class HtmlModule extends AppModule {
                 this.wrapperEl.style.display = "none";
             }
         }
-        this.htmlAdapter.triggerOnHide(null);
+        this.htmlAdapter._internal.triggerOnHide(null);
     }
 
     
@@ -104,7 +109,7 @@ export default abstract class HtmlModule extends AppModule {
         //通常、backナビゲーション時にcontainerオブジェクト経由でコールされる
         return new Promise(resolve => {
             this.exitResolver = resolve;
-            this.htmlAdapter.triggerOnExit(actionType);
+            this.htmlAdapter._internal.triggerOnExit(actionType);
         });
     }
 
@@ -129,7 +134,7 @@ export default abstract class HtmlModule extends AppModule {
     public async messageHandler(command: string, params?: any): Promise<any> {
         return new Promise(resolve => {
             this.messageHandleResolver = resolve;
-            this.htmlAdapter.triggerOnReceiveMessage(command, params);
+            this.htmlAdapter._internal.triggerOnReceiveMessage(command, params);
         });
     }
 

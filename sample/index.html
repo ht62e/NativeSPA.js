@@ -10,7 +10,7 @@
     <link rel="stylesheet" href="./lib/vue_material/vue-material.min.css">
     <link rel="stylesheet" href="./lib/vue_material/theme/default.css"> -->
 
-    <link rel="stylesheet" href="../main.css">
+    <link rel="stylesheet" href="../intraframe.css">
 
     <!-- <script src="./lib/jquery-3.4.1.min.js"></script> -->
 
@@ -25,7 +25,7 @@
         //     });            
         // });
 
-        var onIntraframeReady = function(app, cssUris, libUris) {
+        var intraframeConfig = function(app, cssUris, libUris) {
             app.setAppElementId("app");
 
             libUris.push("lib/testlib.js");
@@ -34,14 +34,14 @@
 
 
 
-            app.addModule("header", "module/header.html", "base.header", true);
-            app.addModule("main", "module/main.html", "base.body", false, {lazyLoading: true});
-            app.addModule("main2", "module/main2.html", "base.body", false, {lazyLoading: true});
-            app.addModule("tab", "module/tab.html", "base.body", false, {lazyLoading: true});
+            //app.register("header", "module/header.html", "base.header", true);
+            app.register("main", "module/main.html", "base.body", false, {lazyLoading: true});
+            app.register("main2", "module/main2.html", "base.body", false, {lazyLoading: true});
+            app.register("tab", "module/tab.html", "base.body", false, {lazyLoading: true});
 
-            app.addModule("tab1", "module/main.html", "tab.page", false);
-            app.addModule("tab2", "module/main2.html", "tab.page", false, {lazyLoading: true, orderOnFlatContainer: 1});
-            app.addModule("tab3", "module/header.html", "tab.page", false);
+            app.register("tab1", "module/main.html", "tab.page", false);
+            app.register("tab2", "module/main2.html", "tab.page", false, {lazyLoading: true, orderOnFlatContainer: 1});
+            app.register("tab3", "module/header.html", "tab.page", false);
 
             app.registerWindow("win1", "module/main.html", {defaultCaption: "window1"});
             app.registerWindow("win2", "module/main.html", {size: {cssWidth: "600px", cssHeight: "600px"},  defaultCaption: "window2"});
@@ -68,14 +68,6 @@
             padding: 0px;
         }
 
-        html, body {
-            height: 100%;
-            overflow: hidden;
-        }
-
-        .module {
-            height: 100%;
-        }
     </style>
 </head>
 

@@ -1,28 +1,28 @@
-import HtmlModuleAdapter from "./html_module_adapter";
-import ModuleLoader from "../module/module_loader";
-import OverlayManager from "../overlay/overlay_manager";
-import Overlay, { ShowOptions } from "../overlay/overlay";
-import Container from "../container/container";
-import RuntimeError from "../common/runtime_error";
-import { Parcel, Result } from "../common/dto";
-import PageContainer from "../container/page_container";
-import AppModule from "../module/app_module";
+import ModuleLoader from "../../module/module_loader";
+import OverlayManager from "../../overlay/overlay_manager";
+import Overlay, { ShowOptions } from "../../overlay/overlay";
+import Container from "../../container/container";
+import RuntimeError from "../../common/runtime_error";
+import { Parcel, Result } from "../../common/dto";
+import PageContainer from "../../container/page_container";
+import AppModule from "../../module/app_module";
+import HtmlModule from "../../module/html_module";
 
-export default class Navigation {
-    private adapter: HtmlModuleAdapter;
+export default class ModuleAdapterNavigation {
+    private htmlModule: HtmlModule;
     private moduleLoader: ModuleLoader;
     private overlayManager: OverlayManager;
 
-    constructor(moduleLoader: ModuleLoader, adapter: HtmlModuleAdapter) {
+    constructor(moduleLoader: ModuleLoader, htmlModule: HtmlModule) {
         this.moduleLoader = moduleLoader;
         this.overlayManager = moduleLoader.getViewPort().getOverlayManager();
-        this.adapter = adapter;
+        this.htmlModule = htmlModule;
     }
 
     private getCurrentOverlay(): Overlay {
         //呼び出し元モジュールのコンテナの最上位コンテナを取得
         let i = 0; //循環時の無限ループ防止用カウンタ
-        let container: Container = this.adapter.getHtmlModule().getOwnerContainer();
+        let container: Container = this.htmlModule.getOwnerContainer();
         while (container.getOwner()) {
             container = container.getOwner().getOwnerContainer();
             if (i++ > 100) {
@@ -43,7 +43,7 @@ export default class Navigation {
             targetContainerId = tiParts[0];
             moduleName  = tiParts[1];
         } else {
-            targetContainerId = this.adapter.getHtmlModule().getOwnerContainer().getId();
+            targetContainerId = this.htmlModule.getOwnerContainer().getId();
             moduleName = targetIdentifier;
         }
         const parts: Array<string> = targetContainerId.split(".");
@@ -66,7 +66,7 @@ export default class Navigation {
             targetContainerId = tiParts[0];
             moduleName  = tiParts[1];
         } else {
-            targetContainerId = this.adapter.getHtmlModule().getOwnerContainer().getId();
+            targetContainerId = this.htmlModule.getOwnerContainer().getId();
             moduleName = targetIdentifier;
         }
         const parts: Array<string> = targetContainerId.split(".");
@@ -92,7 +92,7 @@ export default class Navigation {
         if (targetContainerId) {
             containerId = targetContainerId;
         } else {
-            containerId = this.adapter.getHtmlModule().getOwnerContainer().getId();
+            containerId = this.htmlModule.getOwnerContainer().getId();
         }
         const parts: Array<string> = containerId.split(".");
         const targetModuleName: string = parts[0];

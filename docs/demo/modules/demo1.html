@@ -1,0 +1,71 @@
+<script>
+    this.onLoad = function(param) {
+
+        this.selectedItem = null;
+
+        this.$module.$id("show_button1").addEventListener("click", (function(e) {
+            this.$navigation.forward("viewerTab", this.selectedItem);
+        }).bind(this));
+
+        this.$module.$id("show_button2").addEventListener("click", (function(e) {
+            this.$navigation.showWindowAsModal("viewerWindow", this.selectedItem);
+        }).bind(this));
+
+        this.data = [
+            {"id": 1, "companyName": "Jamia", "country": "Indonesia", "city": "Natakoli", "latitude": -8.7019653, "longitude": 122.4184108},
+            {"id": 2, "companyName": "Reallinks","country": "France","city": "Orléans","latitude": 47.895835,"longitude": 1.853886}, 
+            {"id": 3, "companyName": "Riffwire","country": "Portugal","city": "Souto","latitude": 41.0753802,"longitude": -8.1202831},
+            {"id": 4, "companyName": "Bubblemix","country": "Czech Republic","city": "Nesovice","latitude": 49.1511054,"longitude": 17.0809537}, 
+            {"id": 5, "companyName": "Edgewire","country": "China","city": "Jiacun","latitude": 31.2467156,"longitude": 121.445175}
+        ];
+
+        $("#\:grid").jsGrid({
+            width: "100%",
+            height: "300px",
+            data: this.data,
+
+            rowClick: (function(args) {
+                this.selectedItem = args.item;
+            }).bind(this),
+    
+            fields: [
+                { name: "companyName", type: "text"},
+                { name: "country", type: "text"},
+                { name: "city", type: "text"},
+                { name: "latitude", type: "number"},
+                { name: "longitude", type: "number" }
+            ]
+        });
+    }
+
+</script>
+
+<template>
+    <div>Company list</div>
+    <div id="\:grid"></div>
+    <div class="\:tag1">This module is implemented by jQuery</div>
+    <input type="button" id="\:show_button1" value="Show item">
+    <input type="button" id="\:show_button2" value="Show item (Window)">
+    <input type="button" id="\:edit2" value="Edit (Vue)">
+    <input type="button" id="\:edit3" value="Edit by Vue form (window)">
+    <input type="button" id="\:edit4" value="Edit by React form">
+</template>
+
+<style>
+    #module {
+        background-color: #FFFFFF;
+        padding: 5px;
+    }
+
+    #grid {
+        font-size: 9pt;
+    }
+
+    .tag1 {
+        position: absolute;
+        padding: 5px;
+        top: 0px;
+        right: 0px;
+        background-color: rgba(0, 0, 0, 0.15);
+    }
+</style>
