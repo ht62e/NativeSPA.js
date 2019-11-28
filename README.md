@@ -8,6 +8,7 @@ JavaScript framework for building a single-page application (SPA) specialized fo
 - iframe不使用
 - ビルド不要
 - ReactやVueの部分的な導入に対応（本格的な導入にはビルドが必要）
+- モジュール内部でjQueryを従来通り使用可能
 - IE11対応（ES6 Promise Polyfillが必要）
 
 ## Demo
