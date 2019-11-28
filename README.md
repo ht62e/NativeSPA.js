@@ -7,8 +7,8 @@ JavaScript framework for building a single-page application (SPA) specialized fo
 - コンパイル不要のモジュール単位Scoped CSS
 - iframe不使用
 - ビルド不要
-- ReactやVueの部分的な導入に対応（本格的に使うならビルドが必要）
-- IE11対応 ※ES6 Promise Polyfillが必要
+- ReactやVueの部分的な導入に対応（本格的な導入にはビルドが必要）
+- IE11対応（ES6 Promise Polyfillが必要）
 
 ## Demo
 
