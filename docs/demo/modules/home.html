@@ -1,10 +1,10 @@
 <script>
     this.onLoad = function(param) {
-        this.$module.$id("demo_1").addEventListener("click", (function(e) {
-            this.$navigation.forward("demo1");
+        this.$f.$id("demo_1").addEventListener("click", (function(e) {
+            this.$f.push("demo1");
         }).bind(this));
 
-        this.$module.setCaption("Home");
+        this.$f.setCaption("Home");
 
         // new Vue({
         //     el: '#\:test',

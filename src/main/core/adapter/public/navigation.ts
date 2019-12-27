@@ -57,7 +57,7 @@ export default class ModuleAdapterNavigation {
         return target.switch(moduleName, parcel);
     }
 
-    public async forward(targetIdentifier: string, parcel?: Parcel): Promise<Result> {
+    public async push(targetIdentifier: string, parcel?: Parcel): Promise<Result> {
         let targetContainerId: string;
         let moduleName: string;
         const tiParts: Array<string> = targetIdentifier.split("::");
@@ -78,7 +78,7 @@ export default class ModuleAdapterNavigation {
         const target: Container = activeModuleInstance.getChildContainer(targetContainerName);
 
         if (target instanceof PageContainer) {
-            return target.forward(moduleName, parcel);
+            return target.push(moduleName, parcel);
         } else {
             throw new RuntimeError("Container [" + target.getId + "] is not PageContainer.");
         }
@@ -87,7 +87,7 @@ export default class ModuleAdapterNavigation {
 
 
 
-    public back(targetContainerId: string): void {
+    public pop(targetContainerId: string): void {
         let containerId: string;
         if (targetContainerId) {
             containerId = targetContainerId;
@@ -103,7 +103,7 @@ export default class ModuleAdapterNavigation {
         const target: Container = activeModuleInstance.getChildContainer(targetContainerName);
 
         if (target instanceof PageContainer) {
-            return target.back();
+            return target.pop();
         } else {
             throw new RuntimeError("Container [" + target.getId + "] is not PageContainer.");
         }

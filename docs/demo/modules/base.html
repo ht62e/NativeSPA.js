@@ -1,13 +1,13 @@
 <script>
     this.onLoad = function(param) {
-        this.$module.register("header", "modules/header.html", "header", true);
-        this.$module.register("home", "modules/home.html", "body", true);
-        this.$module.register("demo1", "modules/demo1.html", "body", false);
-        this.$module.register("viewerTab", "modules/viewer_tab.html", "body", false);
+        this.$f.register("header", "modules/header.html", "header", true);
+        this.$f.register("home", "modules/home.html", "body", true);
+        this.$f.register("demo1", "modules/demo1.html", "body", false);
+        this.$f.register("viewerTab", "modules/viewer_tab.html", "body", false);
     }
 
     this.onSubContainerNavigated = function(subContainerId, currentInfo, histories) {
-        this.$module.sendMessage("header", "change_caption", {caption: currentInfo.caption});
+        this.$f.sendMessage("header", "change_caption", {caption: currentInfo.caption});
     }
 
 </script>

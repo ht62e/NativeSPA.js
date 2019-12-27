@@ -1,13 +1,13 @@
 <script>
     this.onLoad = function() {
-        this.$module.register("header", "module/header.html", "header", true);
+        this.$f.register("header", "module/header.html", "header", true);
     }
 
     this.onSubContainerNavigated = function(subContainerId, currentInfo, histories) {
         console.log(subContainerId);
         console.log(currentInfo);
         console.log(histories);
-        this.$module.sendMessage("header", "change_caption", {caption: currentInfo.caption});
+        this.$f.sendMessage("header", "change_caption", {caption: currentInfo.caption});
     }
 
 </script>

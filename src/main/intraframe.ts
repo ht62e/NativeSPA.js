@@ -103,7 +103,7 @@ window.addEventListener("mousemove", (e: MouseEvent) => {
     Common.currentMouseClientY = e.clientY;
 });
 
-var __bootloader = async function() {
+var __bootstrap = async function() {
     console.log("bootloader is called.");
     const defaultApp = new IntraFrame();
     const cssUris = new Array<string>();
@@ -156,10 +156,10 @@ var __startApplications = function() {
 }
 
 if (document.readyState === "complete") {
-    __bootloader();
+    __bootstrap();
 } else {
     window.addEventListener("load", () => {
-        __bootloader();
+        __bootstrap();
     });
 }
 

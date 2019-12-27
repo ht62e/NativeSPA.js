@@ -57,55 +57,55 @@
     this.textArea1 = document.getElementById("\:textarea1");
 
     document.getElementById("\:all").addEventListener("dblclick", (function() {
-        this.$navigation.showContextMenu("popup1", null);
+        this.$f.showContextMenu("popup1", null);
     }).bind(this));
 
     document.getElementById("\:show_main2").addEventListener("click", (function() {
-        this.$navigation.forward("main2", null);
+        this.$f.push("main2", null);
     }).bind(this));
 
     document.getElementById("\:show_tab").addEventListener("click", (function() {
-        this.$navigation.forward("tab", null);
+        this.$f.push("tab", null);
     }).bind(this));
 
     document.getElementById("\:show_win1").addEventListener("click", (function() {
-        this.$navigation.showWindow("win1", null, null).then((function(result) {
+        this.$f.showWindow("win1", null, null).then((function(result) {
             this.writeLine(JSON.stringify(result));
         }).bind(this));
     }).bind(this));
 
     document.getElementById("\:show_win2").addEventListener("click", (function() {
-        this.$navigation.showWindow("win2", null, null).then((function(result) {
+        this.$f.showWindow("win2", null, null).then((function(result) {
             this.writeLine(JSON.stringify(result));
         }).bind(this));
     }).bind(this));
 
     document.getElementById("\:show_win3").addEventListener("click", (function() {
-        this.$navigation.showWindow("win3", null, null).then((function(result) {
+        this.$f.showWindow("win3", null, null).then((function(result) {
             this.writeLine(JSON.stringify(result));
         }).bind(this));
     }).bind(this));
 
     document.getElementById("\:show_win1_as_modal").addEventListener("click", (function() {
-        this.$navigation.showWindowAsModal("win1", null, null).then((function(result) {
+        this.$f.showWindowAsModal("win1", null, null).then((function(result) {
             this.writeLine(JSON.stringify(result));
         }).bind(this));
     }).bind(this));
 
     document.getElementById("\:show_win2_as_modal").addEventListener("click", (function() {
-        this.$navigation.showWindowAsModal("win2", null, null).then((function(result) {
+        this.$f.showWindowAsModal("win2", null, null).then((function(result) {
             this.writeLine(JSON.stringify(result));
         }).bind(this));
     }).bind(this));
 
     document.getElementById("\:show_win3_as_modal").addEventListener("click", (function() {
-        this.$navigation.showWindowAsModal("win3", null, null).then((function(result) {
+        this.$f.showWindowAsModal("win3", null, null).then((function(result) {
             this.writeLine(JSON.stringify(result));
         }).bind(this));
     }).bind(this));
 
     document.getElementById("\:back").addEventListener("click", (function() {
-        this.$navigation.back("base.body");
+        this.$f.pop("base.body");
     }).bind(this));
 
     document.getElementById("\:close").addEventListener("click", (function() {
@@ -129,7 +129,7 @@
 
     this.onShow = function(isFirst, param) {
         this.textArea1.value += "onShow is called." + "\n";
-        this.$module.setCaption("this is main : " + Date.now());
+        this.$f.setCaption("this is main : " + Date.now());
     }
 
     this.onHide = function(param) {

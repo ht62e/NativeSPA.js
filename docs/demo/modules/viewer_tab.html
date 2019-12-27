@@ -1,8 +1,8 @@
 <script>
     this.onLoad = function(params) {
-        //this.$module.register("header", "modules/header.html", "tab_header", true);
+        //this.$f.register("header", "modules/header.html", "tab_header", true);
 
-        //this.$module.$id("tab_header").addEventListener("click", this.onTabButtonClick.bind(this));
+        //this.$f.$id("tab_header").addEventListener("click", this.onTabButtonClick.bind(this));
     }
 
     this.onInitialize = function(param) {
@@ -11,7 +11,7 @@
 
     this.onTabButtonClick = function(e) {
         if (e.target.dataset.index) {
-            this.$navigation.switch("tab_body::tab" + e.target.dataset.index, null);
+            this.$f.switch("tab_body::tab" + e.target.dataset.index, null);
         }
     }
 </script>

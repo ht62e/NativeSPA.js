@@ -3,12 +3,12 @@
 
         this.selectedItem = null;
 
-        this.$module.$id("show_button1").addEventListener("click", (function(e) {
-            this.$navigation.forward("viewerTab", this.selectedItem);
+        this.$f.$id("show_button1").addEventListener("click", (function(e) {
+            this.$f.push("viewerTab", this.selectedItem);
         }).bind(this));
 
-        this.$module.$id("show_button2").addEventListener("click", (function(e) {
-            this.$navigation.showWindowAsModal("viewerWindow", this.selectedItem);
+        this.$f.$id("show_button2").addEventListener("click", (function(e) {
+            this.$f.showWindowAsModal("viewerWindow", this.selectedItem);
         }).bind(this));
 
         this.data = [

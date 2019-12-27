@@ -38,7 +38,7 @@ export default class PageContainer extends Container {
         return await this.navigate(moduleName, parcel, withoutTransition);
     }    
 
-    public async forward(moduleName: string, parcel?: Parcel, withoutTransition?: boolean): Promise<Result> {
+    public async push(moduleName: string, parcel?: Parcel, withoutTransition?: boolean): Promise<Result> {
         //if (this.moduleChangeHistory.indexOf(moduleName) !== -1) return;
 
         return await this.navigate(moduleName, parcel, withoutTransition);
@@ -63,7 +63,7 @@ export default class PageContainer extends Container {
         return result;
     }
 
-    public back(): void {
+    public pop(): void {
         this.inBackProcess = true;
         this.currentModule.exit(ActionType.BACK).then(exited => {
             if (exited) {

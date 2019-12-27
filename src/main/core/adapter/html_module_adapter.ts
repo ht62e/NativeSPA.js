@@ -11,8 +11,7 @@ export default abstract class HtmlModuleAdapter {
     public _htmlModule: HtmlModule;
     public _internal: ModuleAdapterInternal;
 
-    public $module: ModuleFunctions;
-    public $navigation: ModuleAdapterNavigation;
+    public $f: ModuleFunctions;
 
     constructor(moduleIndex) {
         htmlModuleAdapters.set(moduleIndex, this);
@@ -21,8 +20,7 @@ export default abstract class HtmlModuleAdapter {
     public _setHtmlModule(htmlModule: HtmlModule) {
         this._htmlModule = htmlModule;
         this._internal = new ModuleAdapterInternal(this);
-        this.$module = new ModuleFunctions(htmlModule);
-        this.$navigation = new ModuleAdapterNavigation(this._htmlModule.getModuleLoader(), this._htmlModule);
+        this.$f = new ModuleFunctions(this._htmlModule);
     }
 
     public abstract onLoad(param: any): void;
