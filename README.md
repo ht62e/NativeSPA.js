@@ -3,16 +3,15 @@
 JavaScript framework for building a single-page application (SPA) specialized for enterprise web application.
 
 ## Description
-- 従来のサーバーサイドMVCと同じページ単位でSPA内で用いる画面やフレーム（モジュール）を作成できる
-- プラグイン無しでCSSとScriptのスコープをモジュール内に限定できる
-- モジュールごとに別のフレームワークを使うこともできる
-- モジュール単位の遅延読み込みに対応
-- 業務システムでよく使われるUI要素を標準搭載
-- IE11対応
+- 大規模業務システムを見据えた動的ロード前提の独自モジュールシステム
+- コンパイル不要のモジュール単位Scoped CSS
+- iframe不使用
+- ビルド不要
+- ReactやVueの部分的な導入に対応（本格的な導入にはビルドが必要）
+- モジュール内部でjQueryを従来通り使用可能
+- IE11対応（ES6 Promise Polyfillが必要）
 
 ## Demo
-
-## vs.
 
 ## Requirement
 
